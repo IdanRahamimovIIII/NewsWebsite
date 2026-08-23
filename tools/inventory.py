@@ -9,7 +9,7 @@ missing. No merging, no judgement about which source is right — counting only.
 usage:
   inventory.py --reports reports --parsed site/data/paid --budgetkey build/raw
 """
-import argparse, collections, json, os
+import argparse, collections, json, os, re, sys
 
 
 def human(n):
@@ -111,24 +111,65 @@ def budgetkey(dirpath, out):
         out.append("  no .json files")
 
 
+def totals(text):
+    """(publishers, records) out of an inventory, new or previously written."""
+    pub = re.search(r"^  (\d+) publishers:", text, re.M)
+    rec = re.search(r"^  total\s+(\d+)\s", text, re.M)
+    return (int(pub.group(1)) if pub else None,
+            int(rec.group(1)) if rec else None)
+
+
+def compare(previous, text, out):
+    """Collection should only ever grow. A run that discovers less than the last
+       one has usually lost its cache or half-failed a sweep — and the committed
+       files would quietly shrink to a fraction with nothing saying so. Refuse.
+
+       Growth is normal and silent; only a shrink is worth a line."""
+    was_p, was_r = totals(previous)
+    now_p, now_r = totals(text)
+    if was_r is None or now_r is None:
+        return True
+    out.append("")
+    out.append("AGAINST THE LAST RUN")
+    out.append("  publishers %s -> %s" % (was_p, now_p))
+    out.append("  records    %s -> %s" % (was_r, now_r))
+    shrunk = (now_r < was_r) or (was_p is not None and now_p is not None and now_p < was_p)
+    if shrunk:
+        out.append("  ! THIS RUN FOUND LESS THAN THE LAST ONE.")
+        out.append("  ! Most likely the report cache was evicted and only some")
+        out.append("  ! years were re-collected. Not committing a smaller dataset.")
+    return not shrunk
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--reports", default="reports")
     ap.add_argument("--parsed", default="site/data/paid")
     ap.add_argument("--budgetkey", default="build/raw")
     ap.add_argument("--out", help="also write this text to a file")
+    ap.add_argument("--allow-shrink", action="store_true",
+                    help="commit even if this run collected less than the last")
     a = ap.parse_args()
+
+    previous = ""
+    if a.out and os.path.exists(a.out):          # read BEFORE we overwrite it
+        with open(a.out, encoding="utf-8") as fh:
+            previous = fh.read()
 
     out = []
     reports(a.reports, out)
     parsed(a.parsed, out)
     budgetkey(a.budgetkey, out)
     text = "\n".join(out)
+    grew = compare(previous, text, out) if previous else True
+    text = "\n".join(out)
     print(text)
     if a.out:
         os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
         with open(a.out, "w", encoding="utf-8") as fh:
             fh.write(text + "\n")
+    if not grew and not a.allow_shrink:
+        sys.exit("collection shrank since the last run - stopping before commit")
 
 
 if __name__ == "__main__":

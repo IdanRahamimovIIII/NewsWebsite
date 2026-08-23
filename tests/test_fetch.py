@@ -266,5 +266,19 @@ with tempfile.TemporaryDirectory() as d:
     ok("and the contract records both sources",
        set(both[0]["sources"]) == {"bk", "file"}, both[0]["sources"])
 
+print("\ncollection must never quietly shrink:")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+import inventory as I
+SMALL = "  56 publishers:\n  total        224741       230 MB\n"
+BIG   = "  59 publishers:\n  total        257910       263 MB\n"
+ok("it reads publishers and records back out", I.totals(BIG) == (59, 257910), I.totals(BIG))
+ok("growing is fine", I.compare(SMALL, BIG, []) is True)
+ok("fewer records is refused", I.compare(BIG, SMALL, []) is False)
+ok("fewer publishers is refused too",
+   I.compare("  59 publishers:\n  total        224741  x\n",
+             "  56 publishers:\n  total        224741  x\n", []) is False)
+ok("a first run, with nothing to compare to, is fine",
+   I.compare("", BIG, []) is True)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)
