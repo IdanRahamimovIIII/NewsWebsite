@@ -44,6 +44,46 @@ def reports(dirpath, out):
         out.append("    %-46s %2d reports  %s" % (
             pub[:46], len(qs), ", ".join("%sQ%s" % q for q in qs)))
 
+    # THE HOLE, stated. Reports we know exist and cannot download.
+    miss_path = os.path.join(dirpath, "unreachable.json")
+    if os.path.exists(miss_path):
+        with open(miss_path, encoding="utf-8") as fh:
+            missing = json.load(fh)
+        out.append("")
+        if not missing:
+            out.append("  every report we found was reachable")
+        else:
+            out.append("  %d MORE REPORTS EXIST THAT WE CANNOT DOWNLOAD" % len(missing))
+            out.append("  (the host refuses a server; a browser can still open them)")
+            years = collections.Counter(m.get("year") or "?" for m in missing.values())
+            out.append("    by year: %s" % ", ".join(
+                "%s:%d" % (y, years[y]) for y in sorted(years)))
+            who = collections.Counter(m.get("publisher") or "(none)"
+                                      for m in missing.values())
+            out.append("    worst affected:")
+            for pub, n in who.most_common(10):
+                out.append("      %-46s %d" % (pub[:46], n))
+            got = len(files)
+            out.append("    so we hold %d of %d known reports (%.0f%%)"
+                       % (got, got + len(missing), 100.0 * got / (got + len(missing))))
+
+    fail_path = os.path.join(dirpath, "failed.json")
+    if os.path.exists(fail_path):
+        with open(fail_path, encoding="utf-8") as fh:
+            failed = json.load(fh)
+        if failed:
+            out.append("")
+            out.append("  %d REPORTS FAILED TO DOWNLOAD" % len(failed))
+            kinds = collections.Counter(f.get("error", "?").split(":")[0][:52]
+                                        for f in failed.values())
+            for k, n in kinds.most_common():
+                out.append("    %5d  %s" % (n, k))
+            who = collections.Counter(f.get("publisher") or "(none)"
+                                      for f in failed.values())
+            out.append("    worst affected:")
+            for pub, n in who.most_common(8):
+                out.append("      %-46s %d" % (pub[:46], n))
+
     on_disk = {m.get("file") for m in manifest.values()}
     orphans = [f for f in files if f not in on_disk]
     if orphans:

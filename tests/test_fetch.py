@@ -266,6 +266,33 @@ with tempfile.TemporaryDirectory() as d:
     ok("and the contract records both sources",
        set(both[0]["sources"]) == {"bk", "file"}, both[0]["sources"])
 
+print("\nurls the ministries actually use (the 1,190-failure bug):")
+REAL = [
+    "https://www.gov.il/BlobFolder/dynamiccollectorresultitem/health_1/he/רבעון 4 - 2020.xlsx",
+    "https://www.gov.il/BlobFolder/dynamiccollectorresultitem/answer1_140/he/"
+    "הסנגוריה הציבורית - תשלום בפועל רבעון 1 לשנת 2018 - לפרסום (3).xlsx",
+    "https://www.gov.il/BlobFolder/dynamiccollectorresultitem/justice0242/he/"
+    "‏‏הסיוע המשפטי - תשלום בממשקים לעורכי הדין ברבעון 2 לשנת 2024.xlsx",
+]
+enc = [R.encode_url(u) for u in REAL]
+ok("a hebrew filename with spaces becomes ascii", all(e.isascii() for e in enc))
+ok("no spaces survive", not any(" " in e for e in enc))
+ok("invisible RTL marks are encoded",
+   "‏" not in enc[2] and "%E2%80%8F" in enc[2], enc[2][:80])
+ok("encoding twice changes nothing",
+   all(R.encode_url(e) == e for e in enc))
+PLAIN = "https://www.gov.il/BlobFolder/x/education_1_2025/he/education_1_2025.xlsx"
+ok("an already-plain url is left exactly alone", R.encode_url(PLAIN) == PLAIN)
+import urllib.request as _ur
+try:
+    for e in enc:
+        _ur.Request(e)
+    made = True
+except Exception:
+    made = False
+ok("urllib will accept every one of them", made)
+
+
 print("\ncollection must never quietly shrink:")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import inventory as I

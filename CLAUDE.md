@@ -96,12 +96,18 @@ her, and do not judge the merge on a fraction of the data.
    list FEWER contracts; and one snapshot cannot give a per-year figure, which
    needs the series. Now every reachable report is downloaded.
 
-3. **`parse_report.py` threw away every row with a blank payment column** —
+3. **`parse_report.py` threw away every row whose payment column was zero** —
    the `if paid <= 0: continue` sat ABOVE the code writing the full record.
    924 of education's 3,488 rows, gone with their ח"פ, full purpose and
-   publication number: exactly the rows where the file is silent and BudgetKey
-   might not be. Rule 5. Fixed: `0020.full.json` went 2,557 → 3,481 records,
-   and the merged count 2,455 → 3,342.
+   publication number. Fixed: `0020.full.json` went 2,557 → 3,481 records, and
+   the merged count 2,455 → 3,342.
+   **measured 2026-08-23, education 2025 Q1:** those rows are not blanks. The
+   file has NO blank cells in either money column — 2,112 numbers and 747
+   explicit `0.00` in the cumulative column, 1,576 and 1,912 in the period
+   column, zero empties in both. The ministry writes 0 when it means 0. So a
+   dropped row was not a silence we were tidying away, it was the ministry
+   asserting "nothing was paid on this contract" — a fact, and one we were
+   deleting. (Checked on ONE file; other ministries may not be as disciplined.)
 
 4. **`fetch_budgetkey.py` selected 21 columns** — the ones today's merge happens
    to read, chosen during COLLECTION, before anyone had looked at the table, and

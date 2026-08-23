@@ -183,10 +183,38 @@ def filename_for(url, meta):
                                  meta.get("year") or "0000", tag)
 
 
+def encode_url(url):
+    """Percent-encode the path and query.
+
+       THE 1,190-FAILURE BUG (2026-08-23). The ministries name their files in
+       Hebrew, with spaces, apostrophes, brackets and invisible RTL marks:
+         .../he/רבעון 4 - 2020.xlsx
+         .../he/הסנגוריה הציבורית - תשלום בפועל רבעון 1 לשנת 2018 - לפרסום (3).xlsx
+       Handed to urllib as-is, those die with "URL can't contain control
+       characters (found at least ' ')" or "'ascii' codec can't encode". Out of
+       1,816 reports the first full run downloaded 626 and failed on 1,190 —
+       roughly two thirds of the archive — and every one of those failures was
+       ours, not the government's.
+
+       It also silently biased everything downstream: the ministries that
+       survived were the ones whose filenames happened to be plain ASCII, so a
+       ministry looked like it had stopped reporting when really its Hebrew
+       filenames were unfetchable.
+
+       quote() with '%' in safe is idempotent, so an already-encoded url passes
+       through unchanged."""
+    p = urllib.parse.urlsplit(url)
+    return urllib.parse.urlunsplit((
+        p.scheme, p.netloc,
+        urllib.parse.quote(p.path, safe="/%!$&'()*+,;=:@~"),
+        urllib.parse.quote(p.query, safe="/%!$&'()*+,;=:@?~"),
+        p.fragment))
+
+
 def head(url, timeout=60):
     """Size without downloading. Some hosts refuse HEAD; a Range GET of one
        byte gets the same answer everywhere."""
-    req = urllib.request.Request(url, headers=dict(UA, Range="bytes=0-0"))
+    req = urllib.request.Request(encode_url(url), headers=dict(UA, Range="bytes=0-0"))
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             cr = r.headers.get("Content-Range") or ""
@@ -325,7 +353,7 @@ def probe_forward(url, meta, log=print, today=None):
 
 
 def download(url, path, timeout=300):
-    req = urllib.request.Request(url, headers=UA)
+    req = urllib.request.Request(encode_url(url), headers=UA)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         data = r.read()
     if len(data) < 5000:
@@ -370,6 +398,25 @@ def run(out_dir, manifest_path, sections, years, limit=None, log=print, catalogu
     newest, blocked = newest_per_publisher(all_found, log=log)
     log("%d reports reachable, %d ministries unreachable" % (len(found), len(blocked)))
 
+    # WRITE DOWN WHAT WE COULD NOT REACH.
+    # This line used to be the whole story of the gap, and it was silent about
+    # the size of it: newest_per_publisher only names a ministry with NO
+    # reachable report at all. A ministry with a 2024 file on gov.il and twenty
+    # 2016-2019 files on foi.gov.il lost the twenty and nothing said so — which
+    # is exactly "a partial answer shown as if it were complete".
+    # Now every skipped url is recorded next to the reports, so the inventory
+    # can say how big the hole is instead of implying there isn't one.
+    skipped = {u: m for u, m in all_found.items() if not reachable(u)}
+    if skipped:
+        log("%d reports exist that we CANNOT download (host refuses a server)"
+            % len(skipped))
+        by_year = {}
+        for m in skipped.values():
+            by_year[m.get("year") or "?"] = by_year.get(m.get("year") or "?", 0) + 1
+        log("  by year: %s" % ", ".join("%s:%d" % kv for kv in sorted(by_year.items())))
+    with open(os.path.join(out_dir, "unreachable.json"), "w", encoding="utf-8") as fh:
+        json.dump(skipped, fh, ensure_ascii=False, indent=1)
+
     # BudgetKey's index lags behind the ministries: walk forward from each
     # ministry's newest indexed report and collect every quarter published since.
     log("checking for quarters published since BudgetKey last looked…")
@@ -382,6 +429,7 @@ def run(out_dir, manifest_path, sections, years, limit=None, log=print, catalogu
 
 def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log):
     got = skipped = failed = 0
+    failures = {}
     for i, (url, meta) in enumerate(sorted(found.items())):
         if limit and got >= limit:
             break
@@ -403,14 +451,28 @@ def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log):
             log("  ↓ %s  (%d KB)" % (name, n // 1024))
         except Exception as e:
             failed += 1
+            failures[url] = {"file": name, "publisher": meta.get("publisher"),
+                             "year": meta.get("year"), "period": meta.get("period"),
+                             "error": str(e)[:200]}
             log("  ✘ %s — %s" % (name, e))
         time.sleep(0.5)                           # be a polite guest
 
     if manifest_path:
         with open(manifest_path, "w", encoding="utf-8") as fh:
             json.dump(manifest, fh, ensure_ascii=False, indent=1)
+    # a failure that only ever appears in a scrolling log is a hole nobody sees
+    with open(os.path.join(out_dir, "failed.json"), "w", encoding="utf-8") as fh:
+        json.dump(failures, fh, ensure_ascii=False, indent=1)
     log("downloaded %d · unchanged %d · failed %d · unreachable ministries %d"
         % (got, skipped, failed, len(blocked)))
+    if failed:
+        kinds = {}
+        for f in failures.values():
+            k = f["error"].split(":")[0][:48]
+            kinds[k] = kinds.get(k, 0) + 1
+        log("failures by kind:")
+        for k, n in sorted(kinds.items(), key=lambda x: -x[1]):
+            log("  %5d  %s" % (n, k))
     return {"downloaded": got, "skipped": skipped, "failed": failed,
             "found": len(found), "blocked": blocked}
 
