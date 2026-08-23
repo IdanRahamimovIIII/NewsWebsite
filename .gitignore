@@ -37,3 +37,13 @@ _old_delete_me/
 # NOTE: site/data/**  IS committed on purpose. Those JSON files are what the
 # site actually reads, and what the monthly workflow updates. That is the
 # point of putting this on GitHub.
+#
+# WITH ONE EXCEPTION, added 2026-08-23 after the first full run.
+# The .full.json files — every column of every row — came to 241 MB across 49
+# sections, with 0024.full.json alone at 33.7 MB. GitHub's recommended maximum
+# file size is 1 MB (enforced at 100 MB) and 28 of them are over it. They are
+# rewritten every month, so each refresh would add another 241 MB to history
+# forever. The lean files the site actually loads are 7.6 MB for all 49.
+# The full files are still produced and still downloadable — the workflow
+# uploads them as a build artifact. They just do not live in git.
+site/data/paid/*.full.json

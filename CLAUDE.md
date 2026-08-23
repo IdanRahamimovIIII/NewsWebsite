@@ -2,7 +2,13 @@
 
 Notes from Claude to Claude (and Mercy) for future chats about this project.
 
-## START HERE (updated 2026-08-22)
+## START HERE (updated 2026-08-23)
+
+**2026-08-23: the work moved to COLLECTION.** The monthly GitHub
+Actions job downloads the ministries' reports; the merge step is
+deliberately unwired until collection is finished. Four wrong
+assumptions of mine were retracted that day — read
+"COLLECTION PIPELINE" below before touching anything in tools/.
 
 **What Mercy is working on next: `index.html` — התקציב.** In her words it is
 "the most important part of all of it and the main reason I wanted to make the
@@ -43,6 +49,173 @@ these conclusions wrong, outdated, or incomplete — update or delete it in the
 same chat, and date the change. A wrong "conclusion" is worse than none.
 Add new hard-won conclusions here too (API quirks, schema facts, decisions),
 each with a date. Keep it short; this is distilled knowledge, not a log.
+
+## COLLECTION PIPELINE — GITHUB ACTIONS (2026-08-23). Read before touching tools/
+
+HOW SURE ANY OF THIS IS: lines marked **measured** were read from a live
+source on the date given, and the query or file is named so you can repeat it.
+Everything else is inference from a small sample — usually ONE ministry-quarter
+(education 2025 Q1) — and should be treated as a working assumption, not a fact.
+Today four of my confident conclusions were wrong; assume more are. If something
+here contradicts what you observe, believe what you observe and fix this file.
+
+Mercy set the frame and it governs everything below:
+
+> "I want to have the dataset separated until we have everything. no picking
+>  what we keep and what dont"
+
+So the monthly job COLLECTS. It does not combine. `build_dataset.py` still
+exists and its 35 tests still run, but nothing calls it — there is a comment in
+`refresh-data.yml` where the step used to be. Do not wire it back in without
+her, and do not judge the merge on a fraction of the data.
+
+### FOUR THINGS RETRACTED TODAY — all were me deciding what mattered too early
+
+1. **"The report URL is static except the date."** WRONG, and I built a whole
+   calendar-walking design on it before checking. Education really is
+   `.../BlobFolder/.../education_1_2025/he/education_1_2025.xlsx` and swapping
+   the date really does work — Mercy verified that by hand. It does not
+   generalise. Real URLs pulled from the API on 2026-08-23:
+   ```
+   .../BlobFolder/dynamiccollectorresultitem/answer1_143/he/חופש מידע רבעוןראשון 2019 - לפרסום (1).xlsx
+   .../BlobFolder/dynamiccollectorresultitem/health_1/he/רבעון 4 - 2020.xlsx
+   .../BlobFolder/dynamiccollectorresultitem/tourism_201/he/repository-of-answers_ministry-of-tourism_tourism_201.xlsx
+   ```
+   `health_1` looks like an item id rather than Q1, and `tourism_201` does not
+   read as a year; filenames are free Hebrew text with spaces. This is three
+   URLs out of a 300-row sample from one query, so the exact mix of forms is
+   unknown — what it does establish is that the dated form is NOT universal, so
+   addresses cannot be assumed derivable and have to be looked up. `walk_quarters()` / `probe_forward()` in `fetch_reports.py`
+   still earn their place — they found education Q2 2025, which BudgetKey's
+   index does not know about — but they are a supplement, never the source.
+
+2. **`newest_per_publisher()` kept one report per ministry and discarded the
+   rest** — 26 URLs found, 5 downloaded. The reasoning was that the payment
+   column is cumulative so the newest answers the same question. Wrong twice:
+   education's Q2 2025 file is 295 KB against Q1's 663 KB, so a LATER report can
+   list FEWER contracts; and one snapshot cannot give a per-year figure, which
+   needs the series. Now every reachable report is downloaded.
+
+3. **`parse_report.py` threw away every row with a blank payment column** —
+   the `if paid <= 0: continue` sat ABOVE the code writing the full record.
+   924 of education's 3,488 rows, gone with their ח"פ, full purpose and
+   publication number: exactly the rows where the file is silent and BudgetKey
+   might not be. Rule 5. Fixed: `0020.full.json` went 2,557 → 3,481 records,
+   and the merged count 2,455 → 3,342.
+
+4. **`fetch_budgetkey.py` selected 21 columns** — the ones today's merge happens
+   to read, chosen during COLLECTION, before anyone had looked at the table, and
+   not reversible without re-downloading a million rows. Now `SELECT *` minus
+   `volume_per_year` / `executed_per_year` (rule 7), and it prints by name any
+   column it left behind.
+
+Also fixed: reports were parsed in ALPHABETICAL order by a shell loop, so an
+older report could land last and roll a cumulative figure BACKWARDS — a wrong
+number, not a missing one. `tools/parse_all.py` now sorts by the report's own
+(year, period), oldest first, and passes `--source-url`, which the shell loop
+never did (that is why `sources` was empty).
+
+### WHY GITHUB ACTIONS AND NOT THE RELAY — every alternative measured
+
+Mercy asked this directly and deserved a real answer. Tested 2026-08-23:
+
+| route | result |
+|---|---|
+| this container → `next.obudget.org` | `Tunnel connection failed: 403` |
+| container `curl` → `workers.dev` | connection refused (000) |
+| WebFetch → relay, section-filtered `DISTINCT` (343 chars) | `PROXY_REJECTED 403` — URL too long, ceiling ~248 |
+| WebFetch → relay, unfiltered `DISTINCT` (fits) | `Read timeout` |
+| WebFetch → relay, **no DISTINCT + LIMIT** | **works, instant** |
+| this desktop | no `device_bash` — files only, no shell |
+| GitHub Actions | plain internet, no ceiling, no timeout |
+
+So: `DISTINCT` over the ~4M-row report table is slower than the fetch timeout,
+and the queries short enough to pass the URL ceiling are the ones that cannot
+filter. GitHub Actions is not a preference — it is the only route of the ones above
+that worked. There may be others nobody tried.
+Non-DISTINCT probes through the relay ARE fast — use them for spot checks.
+
+### WORKER v8 — `/preset/reports?sec=0020`
+
+The old `reports` preset asked for `DISTINCT ON (publisher)` across the whole
+table and **times out** (verified). Replaced with a section-filtered version,
+and `digits()` strips anything non-numeric before it reaches SQL — that route is
+open to the internet.
+
+### MEASURED 2026-08-23 (do not re-derive)
+
+- **measured** `quarterly_contract_spending_reports`: `min("report-year")`=2015,
+  `max`=2026. So twelve years appear in the index; the workflow currently asks
+  for five (2022–2026). Whether every year in between is well populated is
+  untested.
+- **measured** Sections are not ministries. `0001..0099` is a brute-force sweep
+  of budget code prefixes. Three sections produced five publishers: 0020 → 1,
+  0024 → 4, 0015 → nothing. The 0015 result is only for years 2022–2026; whether
+  defence publishes under another section, or earlier, is untested.
+- **measured** Discovery rows are not URLs: 88 rows for section 0024 were 11
+  distinct URLs (rows are per url+publisher+year+period).
+- **measured, one ministry-quarter** (education 2025 Q1):
+  `0020.json` 111 KB / 2,557 orders ≈ 43 B per order;
+  `0020.full.json` 4.0 MB / 3,488 rows ≈ 1.2 KB per row.
+  **EXTRAPOLATED, not measured:** at those rates 945,088 distinct orders would be
+  roughly 40 MB lean and ~1.2 GB full. One ministry is a thin basis — education
+  may be unusually wordy or unusually terse. Re-check against the inventory once
+  more ministries are in, and do not plan storage on this alone.
+- A report with no publisher recorded produced `unknown_1_2024.xlsx`; a second
+  nameless one would have overwritten it. Filenames now carry a URL fingerprint.
+
+### WHERE THE DATA LIVES — decided with Mercy 2026-08-23
+
+The reasoning, not a verdict: a file answers the question it was filed under,
+so "how much did מילגם get from all of government" would mean downloading all 99
+sections. That argues for files for browsing and something queryable for search.
+Nothing has been built or benchmarked — D1 is a candidate we picked off its
+published limits, not one we have tried.
+
+| the question | answered by |
+|---|---|
+| who got money from one ministry | **static per-section file** — free, CDN-cached, no meter |
+| a supplier across all of government | **D1** behind the worker |
+| one contract by id | **D1**, indexed on `order_id` |
+
+Split axis should be section rather than year — a contract spans years, so year
+files would duplicate it and force a fetch of all of them to show its history.
+If a section turns out too big, split it by size instead. At most
+99 files in `site/data/paid/`, plus `index.json`. Per-year figures go INSIDE each
+contract (~43 B → ~100 B per contract; education 111 KB → ~250 KB, ~60 KB gzipped).
+`.full.json` never goes to the browser.
+
+Limits checked 2026-08-23, in the order they will actually bite:
+
+- **D1 free: 5M rows read/day, and Cloudflare's docs say "rows read" counts rows
+  SCANNED.** If so, one unindexed query over ~1M contracts would be ~5 page views
+  a day. Worth confirming on a real table before committing to the design. Index `order_id`,
+  `budget_code`, `company_id`, supplier. Never ship a query that filters on an
+  unindexed column.
+- D1 free: **100,000 rows WRITTEN per day** — a full rebuild of ~1M contracts
+  would take ten days. `build_dataset.py` must eventually emit a DIFF, not a
+  dataset.
+- D1 free storage 5 GB. Workers free 100,000 requests/day, 10 ms CPU each.
+- GitHub: recommended max file **1 MB**, enforced at 100 MB, repo 10 GB.
+  Our education `.full.json` is already 4 MB.
+- Actions cache: 10 GB per repo default, entries evicted after 7 days unused
+  (GitHub docs, read 2026-08-23 — not something we have hit yet).
+- The repo is PRIVATE (Mercy confirmed), so the 60-day auto-disable of
+  scheduled workflows in public repos does not apply.
+
+### STILL OPEN
+
+- `contracts_data` and data.gov.il are not collected at all. `contracts_data`
+  has dotted budget codes (`20.67.02.05`) and **no `order_id`**, so the paging
+  written for `contract_spending` will not work on it. Look at its shape before
+  writing anything — guessing is how rows go missing silently.
+- `compare.html` searches `contract_spending` first, so a contract that exists
+  only in a ministry file cannot be found there. The union is in the builder,
+  not in the tool.
+- `worker.js` line ~66: `const BUILD_KEY = "rebuild"` in plain text gates
+  `?reset=1`, which wipes the vote index. Private repo, but still a live word.
+- Report the BudgetKey payment-column parsing bug to הסדנא לידע ציבורי.
+- The contractors deep-dive page — needs D1, cannot be built on files.
 
 ## The vision (updated 2026-08-21, after extensive work with Mercy)
 
@@ -591,7 +764,8 @@ inherit that shortcut.
 
 Her words, and what each one means in code:
 
-1. **Collect all the relevant files.** 82 publishers, newest report each.
+1. **Collect all the relevant files.** 82 publishers, EVERY report each —
+   "newest report each" was wrong, see COLLECTION PIPELINE (2026-08-23).
 2. **One combined database, relevant data only.**
 3. **Decide which data points we care about** — the schema below.
 4. **Fill every cell that any source can fill.** Empty only when nothing has it.
@@ -824,17 +998,25 @@ the JSON can be rebuilt if the parser improves. Name them `<slug>_<q>_<year>.xls
 
 **Where to GET a report:** our own page already links it — open a ministry,
 click פרטים on any contract, and the `הדוח שפורסם ב-…` link IS the file
-(`lastReport(r).url`). Otherwise the gov.il URLs follow a pattern:
+(`lastReport(r).url`). Otherwise SOME gov.il URLs follow a pattern:
 `…/dynamiccollectorresultitem/<slug>_<q>_<year>/he/repository-of-answers_<ministry>_<slug>_<q>_<year>.xlsx`
-— e.g. `health_3_2024`, `finance_3_2024d`, `education_1_2025`. Bumping the
-quarter/year in the URL usually finds a newer one; older reports sit on
-foi.gov.il with Hebrew filenames instead. NOTE the report a contract links is
+— e.g. `health_3_2024`, `finance_3_2024d`, `education_1_2025`, and bumping the
+quarter/year there does find a newer one. **CORRECTED 2026-08-23: most do not.**
+`…/dynamiccollectorresultitem/health_1/he/רבעון 4 - 2020.xlsx` and
+`…/answer1_143/he/חופש מידע רבעוןראשון 2019 - לפרסום (1).xlsx` are real; there
+`health_1` is an item id and the filename is free text. Do not treat the dated
+form as the rule — see COLLECTION PIPELINE. Older reports sit on foi.gov.il
+with Hebrew filenames instead. NOTE the report a contract links is
 whatever report last mentioned THAT contract — not necessarily the ministry's
 newest. For a full picture always take the newest report the ministry has.
 
-**To add a ministry:** put its newest quarterly .xlsx in `reports/`, then
+**To add a ministry:** put its .xlsx files in `reports/` and run
 
-    python3 tools/parse_report.py <file.xlsx> site/data/paid --source-url <url>
+    python3 tools/parse_all.py --reports reports --out site/data/paid
+
+which parses them OLDEST FIRST and passes each file's source url. Calling
+`parse_report.py` directly in a shell loop is what let an older report overwrite
+a newer cumulative figure — see COLLECTION PIPELINE (2026-08-23).
 
 The parser matches headers LOOSELY (`"חשבוניות" in h and "מצטבר" in h`) because
 the real headers carry typos, double spaces and stray apostrophes — matching

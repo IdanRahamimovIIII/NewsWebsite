@@ -54,6 +54,31 @@ R.bk = _real_bk
 
 # ---------------------------------------------------------- newest per ministry
 
+print("\nthe section list comes from the budget, not from guessing:")
+def fake_budget(sql, rows=0):
+    if "raw_budget" in sql and "year = 2026" in sql:
+        return []                                   # not published yet
+    if "raw_budget" in sql:
+        return [{"code": "0020", "title": "משרד החינוך"},
+                {"code": "0000", "title": "הכנסות המדינה"},   # not a spending section
+                {"code": "C221", "title": "the functional tree"},
+                {"code": "0024", "title": "משרד הבריאות"}]
+    return []
+R.bk, _rb = fake_budget, R.bk
+secs = R.sections_from_budget(log=lambda *a: None, year=2026)
+ok("it falls back a year when the newest is not published",
+   set(secs) == {"0020", "0024"}, sorted(secs))
+ok("0000 is excluded — it is revenue, not a spending section", "0000" not in secs)
+ok("the C functional tree is excluded", not any(s.startswith("C") for s in secs))
+ok("names come with the codes", secs["0020"] == "משרד החינוך", secs)
+def dead(sql, rows=0):
+    raise RuntimeError("budgetkey down")
+R.bk = dead
+fb = R.sections_from_budget(log=lambda *a: None, year=2026)
+ok("if the list cannot be read we still sweep, not stop", len(fb) == 99, len(fb))
+R.bk = _rb
+
+
 print("\nnewest per ministry:")
 best, blocked = R.newest_per_publisher({
     "https://www.gov.il/a/health_1_2023/f.xlsx": {"publisher": "בריאות", "year": "2023", "period": "1"},

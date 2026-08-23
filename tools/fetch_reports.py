@@ -31,8 +31,43 @@ import urllib.parse, urllib.request
 API = "https://next.obudget.org/api/query"
 UA = {"User-Agent": "our-money/1.0 (+https://github.com/) python-urllib"}
 
-# every budget section that can hold contracts; discovery walks these
-DEFAULT_SECTIONS = ["%04d" % n for n in range(1, 100)]
+# Fallback only. The real list comes from raw_budget — see sections_from_budget.
+# "0001".."0099" was a guess at what exists, and a guess is how we ended up
+# asking 99 questions to find 63 answers while still missing nothing useful.
+FALLBACK_SECTIONS = ["%04d" % n for n in range(1, 100)]
+
+
+def sections_from_budget(log=print, year=None):
+    """The budget's OWN list of four-digit sections, with their names.
+
+       Mercy's question: "isn't this imply we can just call for a table of all
+       the sections?" Yes. raw_budget is the same table the budget page reads,
+       and its four-character codes ARE the sections. Asking it costs one fast
+       query and replaces a hundred guesses with the real list — and it tells us
+       what each section is called, which a guessed number never could.
+
+       Note what is NOT in it: 4521, 5520, 6200, 6210, 6220, 6230, all of which
+       turned up in the parsed files on 2026-08-23. They are not sections we
+       failed to sweep; they are budget codes in the ministries' own
+       spreadsheets that do not exist in the national budget. See flag_unknown."""
+    year = year or datetime.date.today().year
+    for y in range(year, year - 4, -1):
+        try:
+            rows = bk("SELECT code, title FROM raw_budget "
+                      "WHERE year = %d AND length(code) = 4" % y, 400)
+        except Exception as e:
+            log("  section list for %d failed: %s" % (y, e))
+            continue
+        secs = {}
+        for r in rows:
+            c = str(r.get("code") or "")
+            if len(c) == 4 and c.isdigit() and c != "0000":
+                secs[c] = r.get("title")
+        if secs:
+            log("  %d budget sections, from raw_budget %d" % (len(secs), y))
+            return secs
+    log("  ! could not read the section list — falling back to 0001..0099")
+    return {c: None for c in FALLBACK_SECTIONS}
 
 
 def http_json(url, timeout=120):
@@ -58,9 +93,11 @@ def discover(sections, years, log=print):
        ~4M-row table times out; but ALL the years in ONE query per section,
        because a query per (section, year) is 99x5 round trips to answer 99
        questions."""
-    found = {}
+    found, empty = {}, []
     inlist = ", ".join("'%s'" % y for y in years)
-    for sec in sections:
+    queue = list(sections)
+    while queue:
+        sec = queue.pop(0)
         sql = ('SELECT DISTINCT "report-url" AS url, publisher, '
                '"report-year" AS year, "report-period" AS period '
                'FROM quarterly_contract_spending_reports '
@@ -71,8 +108,15 @@ def discover(sections, years, log=print):
         except Exception as e:                     # one section must not stop the rest
             log("  discover %s failed: %s" % (sec, e))
             continue
+        # A full page is probably a truncated one. Splitting costs ten cheap
+        # queries and cannot lose a url; assuming it was complete can lose a
+        # ministry, and nothing in the output would say so.
+        if len(rows) >= DISCOVER_ROWS and len(sec) < 10:
+            log("  %s filled the page (%d rows) — splitting" % (sec, len(rows)))
+            queue[:0] = [sec + d for d in "0123456789"]
+            continue
         if len(rows) >= DISCOVER_ROWS:
-            log("  ! %s filled the page (%d rows) — there may be more we did not see"
+            log("  ! %s filled the page (%d rows) and cannot be split further"
                 % (sec, len(rows)))
         added = 0
         for r in rows:
@@ -86,8 +130,9 @@ def discover(sections, years, log=print):
             log("  %s → %d rows, %d new urls (running total %d)"
                 % (sec, len(rows), added, len(found)))
         else:
-            log("  %s → nothing. No section by that number publishes a report."
-                % sec)
+            empty.append(sec)
+    if empty:
+        log("  no reports at all under: %s" % " ".join(empty))
     return found
 
 
@@ -386,7 +431,9 @@ if __name__ == "__main__":
     ap.add_argument("--seed", help="ONE-OFF: ask BudgetKey which reports exist "
                     "and write a catalogue to this path, then stop.")
     a = ap.parse_args()
-    secs = [s.strip() for s in a.sections.split(",") if s.strip()] or DEFAULT_SECTIONS
+    secs = [s.strip() for s in a.sections.split(",") if s.strip()]
+    if not secs:
+        secs = sorted(sections_from_budget())
     yrs = [y.strip() for y in a.years.split(",") if y.strip()]
     # both go straight into SQL, and on GitHub they come from a text box
     bad = [v for v in secs + yrs if not v.isdigit()]

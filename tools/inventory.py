@@ -72,9 +72,21 @@ def parsed(dirpath, out):
         return
     out.append("  %-8s %10s %9s %10s" % ("section", "records", "reports", "size"))
     for sec, n, srcs, size in rows:
-        out.append("  %-8s %10d %9d %10s" % (sec, n, srcs, human(size)))
+        # raw_budget's four-digit sections all begin 00 (the rest of the tree is
+        # the C… functional codes). Anything else here is a budget code in a
+        # ministry's spreadsheet that is not in the national budget — real rows
+        # under a code nobody can look up. Flag it; never quietly drop it.
+        odd = "" if sec.startswith("00") else "   <- not a budget section"
+        out.append("  %-8s %10d %9d %10s%s" % (sec, n, srcs, human(size), odd))
     out.append("  %-8s %10d %9s %10s" % ("total", sum(r[1] for r in rows), "",
                                          human(sum(r[3] for r in rows))))
+    strange = [(s, n) for s, n, _, _ in rows if not s.startswith("00")]
+    if strange:
+        out.append("")
+        out.append("  %d codes are not sections of the national budget: %s"
+                   % (len(strange), ", ".join("%s (%d records)" % x for x in strange)))
+        out.append("  These came from the ministries' own files. Not an error on")
+        out.append("  our side and not to be discarded - but nobody can look them up.")
 
 
 def budgetkey(dirpath, out):
