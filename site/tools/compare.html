@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>השוואת מקורות — הכסף שלנו</title>
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 16px 0 6px; }
+  .bar input { font: inherit; padding: 8px 11px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--surface-1); color: var(--ink-1); min-width: 22ch; flex: 1; }
+  .bar button { font: inherit; font-weight: 600; padding: 8px 16px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface-1); color: var(--ink-1); cursor: pointer; }
+  .bar button.go { background: var(--accent-ink); color: #fff; border-color: transparent; }
+  .hint { color: var(--ink-2); font-size: 14px; line-height: 1.65; margin: 0 0 4px; }
+  .res { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin: 14px 0; }
+  .res h3 { margin: 0 0 2px; font-size: 16px; }
+  .sub { color: var(--ink-2); font-size: 13px; margin-bottom: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { padding: 7px 9px; text-align: start; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  thead th { font-size: 12px; color: var(--ink-3); }
+  td.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.disagree td { background: rgba(210, 100, 0, .09); }
+  tr.chosen td { background: rgba(0, 120, 60, .10); }
+  .tag { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+  .tag.pick { background: rgba(0,120,60,.14); color: #1a7f37; }
+  .tag.diff { background: rgba(210,100,0,.16); color: #9a4b00; }
+  .none { color: var(--ink-3); }
+  .why { font-size: 13px; color: var(--ink-2); margin-top: 10px; line-height: 1.6;
+    border-inline-start: 3px solid var(--border); padding-inline-start: 10px; }
+  .err { color: #b42318; }
+  .u { font-size: 12px; color: var(--ink-3); direction: ltr; text-align: left; word-break: break-all; }
+  .tw { overflow-x: auto; max-width: 100%; }
+  table.mx { min-width: 1120px; }
+  table.mx th[data-s="mrg"], table.mx td[data-s="mrg"] {
+    background: rgba(0, 120, 60, .07); font-weight: 600; }
+  table.mx td[data-s="mrg"] .u { font-weight: 400; direction: rtl; text-align: start; }
+  table.mx th, table.mx td { border-inline-start: 1px solid var(--grid); font-size: 13px;
+    vertical-align: top; max-width: 32ch; }
+  table.mx td:first-child, table.mx th:first-child { border-inline-start: 0; white-space: nowrap; }
+  table.mx thead th .u { max-width: 24ch; white-space: normal; text-align: start;
+    direction: rtl; word-break: normal; overflow-wrap: anywhere; }
+  .legend { font-size: 12.5px; color: var(--ink-3); margin: 8px 0 0; line-height: 1.7; }
+  .legend code { background: var(--surface-2, rgba(0,0,0,.05)); border-radius: 4px; padding: 0 5px; }
+  .rawsrc { margin: 12px 0; }
+  .rawsrc table { margin-top: 4px; }
+  .rawsrc td:first-child { width: 30%; }
+  @media (max-width: 760px) { table.mx { min-width: 900px; } }
+</style>
+</head>
+<body>
+<div id="chrome"></div>
+<main class="wrap">
+  <h1 class="tagline">השוואת מקורות</h1>
+  <p class="hint">כל מספר באתר מגיע ממקור מסוים. הדף הזה מראה, להתקשרות אחת, מה
+    <b>כל</b> מקור אומר עליה — שדה מול שדה, לא רק הסכום. שורה שבה המקורות אינם
+    מסכימים מסומנת. אפשר לחפש לפי מספר הזמנה, שם ספק או מילה מהמטרה.</p>
+
+  <div class="bar">
+    <input id="q" placeholder="לדוגמה: 4502539235, או: מילגם, או: הזנה" autocomplete="off">
+    <button class="go" id="go" type="button">חפש</button>
+    <button id="rnd" type="button">התקשרות אקראית</button>
+    <button id="edu" type="button">אקראית מהחינוך</button>
+  </div>
+  <p class="hint" id="disk" style="display:none;color:#b42318;font-weight:600"></p>
+  <p class="hint" id="status"></p>
+  <div id="out"></div>
+  <p class="hint" style="margin-top:22px;font-size:12px;color:var(--ink-3)">
+    גרסת הדף: <b id="build" dir="ltr"></b> — אם המספר הזה ישן, הדפדפן מציג עותק שמור.</p>
+</main>
+
+<script>window.BASE = "../";</script>
+<script src="../config.js"></script>
+<script src="../shared/common.js"></script>
+<script>
+"use strict";
+/* One IIFE: these files share a global scope, and re-declaring a name
+   common.js owns (esc, fetchJson) kills the whole file before it runs. */
+(function () {
+
+/* Bumped on every change to this page. When something looks wrong, the first
+   question is which build is on screen — a cached copy answers differently. */
+const BUILD = "2026-08-23k";
+const API = "https://next.obudget.org/api/query?query=";
+const $ = id => document.getElementById(id);
+const out = $("out"), status = $("status");
+
+const nf = v => v == null ? "—" : Number(v).toLocaleString("he-IL", { maximumFractionDigits: 2 });
+const q = s => String(s).replace(/'/g, "''");
+
+async function sql(text, rows) {
+  const r = await fetch(API + encodeURIComponent(text) + (rows ? "&num_rows=" + rows : ""));
+  if (!r.ok) throw new Error("BudgetKey HTTP " + r.status);
+  const j = await r.json();
+  if (j && (j.success === false || j.error)) throw new Error(String(j.error || "upstream error"));
+  return j.rows || [];
+}
+
+/* Opening the page from disk blocks every local fetch, silently. That is not
+   the same as "we have not downloaded that ministry yet", and saying the wrong
+   one has now confused this twice. */
+const FROM_DISK = location.protocol === "file:";
+const DISK_MSG = "הדף נפתח מהדיסק (file://) — הדפדפן חוסם קריאת קבצים מקומיים. הריצו serve.bat.";
+
+/* our own file, the one built from the ministry's .xlsx */
+const paidCache = {};
+/* The tool reads <section>.full.json — every column the ministry published,
+   under the ministry's own field names. The budget page reads the lean
+   <section>.json instead (paid + volume only), so a visitor never downloads
+   3MB to see one number. One build, two shapes. */
+/* The same purchase order appears under MORE THAN ONE budget code — the charge
+   gets moved, and BudgetKey keeps a row per code. Order 4501119831 has three:
+   0020400312 twice (once with no dates at all) and 0020600138 once. Our file
+   keys on order+code, so only the code the ministry currently uses matches.
+   Falling back to the order alone, and SAYING the code differs, is the honest
+   answer — silently matching would hide a real discrepancy. */
+function findInFile(doc, orderId, code) {
+  if (!doc || !doc.orders) return null;
+  const exact = doc.orders[orderId + ":" + code];
+  if (exact) return { rec: exact, code, exact: true };
+  const pre = String(orderId) + ":";
+  for (const k of Object.keys(doc.orders)) {
+    if (k.indexOf(pre) === 0) return { rec: doc.orders[k], code: k.slice(pre.length), exact: false };
+  }
+  return null;
+}
+
+async function ourFile(section, full) {
+  const name = section + (full ? ".full" : "") + ".json";
+  if (!(name in paidCache)) {
+    try {
+      const r = await fetch("../data/paid/" + name);
+      paidCache[name] = r.ok ? await r.json() : null;
+    } catch (e) { paidCache[name] = null; }
+  }
+  return paidCache[name];
+}
+
+/* ---------- find candidate contracts ---------- */
+async function find(term) {
+  const t = term.trim();
+  if (!t) return [];
+  if (/^\d{6,}$/.test(t)) {
+    return sql(`SELECT order_id, budget_code, supplier_name, entity_name, purpose,
+        volume, executed, payments, min_year, max_year, publisher_name
+      FROM contract_spending WHERE order_id = '${q(t)}'`, 20);
+  }
+  /* NO ORDER BY. There is no index on purpose or supplier_name, so sorting a
+     million rows by volume has to scan and sort the whole table before LIMIT
+     can help — it timed out, and the page reported "nothing found". Without
+     the sort the scan stops as soon as it has 8 matches, and returns at once.
+     The cost is that these are the first 8 found, not the 8 biggest, and the
+     page says so rather than implying a ranking it did not compute. */
+  return sql(`SELECT order_id, budget_code, supplier_name, entity_name, purpose,
+      volume, executed, payments, min_year, max_year, publisher_name
+    FROM contract_spending
+    WHERE supplier_name::text ILIKE '%${q(t)}%' OR purpose ILIKE '%${q(t)}%'`, 8);
+}
+
+/* One contract at random. TABLESAMPLE reads a random slice of the table's
+   pages instead of scanning it, so this is instant where ORDER BY random()
+   would not be. Filtered to contracts over ₪1m — a ₪300 stationery order is
+   a poor thing to audit. */
+async function randomOne() {
+  /* REPEATABLE takes the sampling seed. Without it the SQL text is identical
+     on every click — and BudgetKey caches by query text, so the same row came
+     back every time. A fresh seed changes both which pages are sampled AND the
+     cache key. Verified: seed 7 gives 4500029352, seed 4242 gives 4500631384. */
+  const seed = Math.floor(Math.random() * 1e9) + 1;
+  return sql(`SELECT order_id, budget_code, supplier_name, entity_name, purpose,
+      volume, executed, payments, min_year, max_year, publisher_name, tender_key
+    FROM contract_spending TABLESAMPLE SYSTEM (0.5) REPEATABLE (${seed})
+    WHERE volume > 1000000`, 1);
+}
+
+/* No single source may hold up the page. An earlier version awaited every
+   lookup before drawing anything, so one slow query produced "8 contracts
+   found" above a blank screen. */
+function withTimeout(p, ms, label) {
+  return Promise.race([
+    p,
+    new Promise((_, rej) => setTimeout(
+      () => rej(new Error(label + ": לא ענה תוך " + (ms / 1000) + " שניות")), ms)),
+  ]);
+}
+
+/* ---------- the same contract, as each source records it ----------
+   Every source is fetched WHOLE (select *), because the point of this page is
+   to see everything each one holds, not the one field I decided mattered. */
+
+/* contracts_data has no order_id and no publication number — the only way in
+   is budget line + identical order value. Said out loud in the output. */
+async function fromContractsData(row) {
+  const code = String(row.budget_code || "");
+  if (!/^00\d+$/.test(code) || code.length % 2) return { row: null, note: "אין קוד תקין" };
+  const dotted = code.slice(2).match(/../g).join(".");
+  const v = +row.volume || 0;
+  const rows = await sql(`SELECT * FROM contracts_data
+    WHERE budget_code = '${q(dotted)}' AND volume > ${v - 1} AND volume < ${v + 1}`, 3);
+  return { row: rows[0] || null,
+           note: `הותאם לפי תקנה ${dotted} + היקף זהה — אין מפתח משותף בין הטבלאות` };
+}
+
+/* the raw ingest, newest report first. Sorting happens in the browser: the
+   "report-date" column is unindexed on a multi-million-row table and sorting
+   it server-side is what stalled this page once already. */
+async function fromQuarterly(orderId) {
+  const rows = await sql(`SELECT * FROM quarterly_contract_spending_reports
+    WHERE order_id = '${q(orderId)}'`, 20);
+  const ord = r => (+r["report-year"] || 0) * 10 + (r["report-period"] == null ? 9 : +r["report-period"] || 0);
+  return rows.sort((a, b) => ord(b) - ord(a));
+}
+
+/* the publication register on data.gov.il — a genuinely separate origin.
+   contract_spending reaches it through tender_key: ["569574","exemptions","none"]
+   is a publication number followed by the name of the dataset it points into. */
+/* tender_key is ["<publication number>", "<dataset>", …] and the dataset name
+   decides WHICH data.gov.il register to look in. Hard-coding the exemptions
+   resource meant every tendered contract was looked up in the wrong table.
+   Only 247,141 of 1,036,112 contracts (23.9%) carry a link at all — for the
+   rest "no link" is the true answer, and the column must say that rather than
+   "not found", which reads like a failed lookup. */
+const REGISTERS = {
+  exemptions: { res: "65c8fced-c50c-400e-94fb-ef1a208c43e5", label: "מרשם הפטורים" },
+  tenders:    { res: "7038b3e6-a74d-442e-b16b-466c8196124a", label: "מרשם המכרזים" },
+};
+
+function pubRef(row) {
+  const tk = row.tender_key;
+  const arr = Array.isArray(tk) ? tk : (tk ? [tk] : []);
+  for (const item of arr) {
+    let parsed = item;
+    try {
+      if (typeof item === "string" && item.trim()[0] === "[") parsed = JSON.parse(item);
+    } catch (e) { /* keep the raw string */ }
+    const parts = Array.isArray(parsed) ? parsed : [parsed];
+    const num = String(parts[0] == null ? "" : parts[0]);
+    if (/^\d+$/.test(num)) return { num, set: String(parts[1] || "exemptions") };
+  }
+  return null;
+}
+const pubNumber = (row) => { const r = pubRef(row); return r ? r.num : null; };
+
+async function fromExemptions(row) {
+  const ref = pubRef(row);
+  if (!ref) return { row: null, note: "אין קישור למרשם — tender_key ריק", linked: false };
+  const reg = REGISTERS[ref.set] || REGISTERS.exemptions;
+  const url = `https://data.gov.il/api/3/action/datastore_search?resource_id=${reg.res}` +
+              `&q=${encodeURIComponent(ref.num)}&limit=5`;
+  const via = (window.PROXY_URL || "").replace(/\/?$/, "/") + "b64/" +
+    btoa(unescape(encodeURIComponent(url))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const r = await fetch(window.PROXY_URL ? via : url);
+  if (!r.ok) throw new Error("data.gov.il HTTP " + r.status);
+  const j = await r.json();
+  const recs = (j.result && j.result.records) || [];
+  const hit = recs.find(x => String(x["מספר פרסום"]) === ref.num) || null;
+  return { row: hit, linked: true,
+           note: hit ? `${reg.label} · פרסום ${ref.num}`
+                     : `${reg.label} · פרסום ${ref.num} — לא נמצא במרשם` };
+}
+
+/* ---------- the aligned view ----------
+   Each row is one fact about the contract; each column is a source. Where a
+   source has no such field at all, that is shown as "אין שדה כזה" — different
+   from a field that exists and is empty. */
+const val = (v) => {
+  if (v == null || v === "") return null;
+  if (Array.isArray(v)) return v.length ? v.map(x => String(x)).join(" · ") : null;
+  return String(v);
+};
+const money = (v) => (v == null || v === "" || isNaN(+v)) ? null : nf(+v) + " ₪";
+const dash = (x) => x == null ? null : x;
+
+/* the ministry's own column names, exactly as they appear in the file */
+const X = {
+  supplier: "שם הספק", hp: 'מספר ח"פ', code: "תקנה תקציבית",
+  ministry: "שם חברה", unit: "שם אתר", org: "תאור של ארגון רכש",
+  item: "שם פריט התחייבות", purpose: "מטרת התקשרות",
+  method: "אופן רכישה מקור", exempt: "סיבת פטור",
+  volume: 'ערך ההזמנה כולל מע"מ', paid: 'ב. חשבוניות מצטבר + מע"מ והצמדות במט"מ',
+  period: "ביצוע חשבוניות לתקופת הדוח' במטבע מקומי",
+  ordered: "תאריך יצירת ההזמנה", ends: "סיום תקופת תוקף",
+  pub: "מספר פניית פרסום", order: "הזמנת רכש", supcode: "קוד ספק",
+  optTotal: "סכום אופציה מצטבר במטבע מקומי", contTotal: "סכום התקשרות מצטבר במטבע מקומי",
+};
+const xv = (k) => (r) => r ? val(r[X[k]]) : null;
+const xm = (k) => (r) => r ? money(r[X[k]]) : null;
+
+const FIELDS = [
+  { l: "ספק",              cs: r => val(r.entity_name || r.supplier_name), cd: r => val(r.supplier_entity_name), qr: r => val(r.supplier_name), ours: xv("supplier"), ex: r => val(r["שם ספק"]) },
+  { l: "מספר ח״פ",         cs: r => val(r.company_id), cd: null, qr: r => val(r.company_id), ours: xv("hp"), ex: r => val(r["מספר חפ ספק"]) },
+  { l: "קוד ספק במערכת",   cs: r => val(r.supplier_code), cd: null, qr: r => val(r.supplier_code), ours: xv("supcode"), ex: null },
+  { l: "סוג גוף",          cs: r => val(r.entity_kind), cd: r => val(r.supplier_entity_kind), qr: null, ours: null, ex: null },
+  { l: "משרד",             cs: r => val(r.publisher_name || r.publisher), cd: r => val(r.purchasing_ministry), qr: r => val(r.publisher), ours: xv("ministry"), ex: r => val(r["שם המשרד"]) },
+  { l: "יחידה רוכשת",      cs: r => val(r.purchasing_unit), cd: null, qr: r => val(r.purchasing_unit), ours: r => r ? val(r[X.unit] || r[X.org]) : null, ex: r => val(r["שם יחידה מפרסמת"]) },
+  { l: "תקנה תקציבית",     cs: r => val(r.budget_code), cd: r => val(r.budget_code), qr: r => val(r.budget_code), ours: xv("code"), ex: null },
+  { l: "שם התקנה",         cs: r => val(r.budget_title), cd: null, qr: r => val(r.budget_title), ours: null, ex: null },
+  { l: "שם פריט התחייבות", cs: null, cd: null, qr: null, ours: xv("item"), ex: null },
+  { l: "מטרה",             cs: r => val(r.purpose), cd: r => val(r.purpose), qr: r => val(r.purpose), ours: xv("purpose"), ex: r => val(r["שם הליך"]) },
+  { l: "אופן רכישה",       cs: r => val(r.purchase_method), cd: r => val(r.purchasing_method), qr: r => val(r.purchase_method), ours: xv("method"), ex: r => val(r["סוג הליך"]) },
+  { l: "תקנת הפטור",       cs: r => val(r.exemption_reason), cd: null, qr: r => val(r.exemption_reason), ours: xv("exempt"), ex: r => val(r["תקנה"]) },
+  { l: "היקף",             cs: r => money(r.volume), cd: r => money(r.volume), qr: r => money(r.volume), ours: xm("volume"), ex: r => val(r["היקף כספי"]) },
+  { l: "שולם", key: "paid", cs: r => money(r.executed), cd: r => money(r.executed), qr: r => money(r.executed), ours: xm("paid"), ex: null },
+  { l: "שולם בתקופת הדוח", cs: null, cd: null, qr: null, ours: xm("period"), ex: null },
+  { l: "שולם — לשנה (ממוצע מחושב, לא מדידה)", cs: null, cd: r => money(r.executed_per_year), qr: null, ours: null, ex: null },
+  { l: "סכום אופציה מצטבר", cs: null, cd: null, qr: null, ours: xm("optTotal"), ex: null },
+  { l: "סכום התקשרות מצטבר", cs: null, cd: null, qr: null, ours: xm("contTotal"), ex: null },
+  { l: "תאריך הזמנה",      cs: r => val(r.order_date), cd: r => val(r.order_date), qr: r => val(r.order_date), ours: xv("ordered"), ex: r => val(r["תאריך פרסום"]) },
+  { l: "תחילת התקשרות",    cs: r => val(r.start_date), cd: r => val(r.start_year), qr: r => val(r.start_date), ours: null, ex: r => val(r["תאריך תחילת תקופת התקשרות"]) },
+  { l: "סיום התקשרות",     cs: r => val(r.end_date), cd: r => val(r.end_year), qr: r => val(r.end_date), ours: xv("ends"), ex: r => val(r["תאריך סיום תקופת התקשרות"]) },
+  { l: "שנים מדווחות",     cs: r => val([r.min_year, r.max_year].filter(Boolean).join("–")), cd: r => val([r.start_year, r.end_year].filter(Boolean).join("–")), qr: r => val(r["report-year"]), ours: null, ex: null },
+  { l: "מספר פרסום",       cs: r => val(pubNumber(r)), cd: null, qr: null, ours: xv("pub"), ex: r => val(r["מספר פרסום"]) },
+  { l: "מספר הזמנה",       cs: r => val(r.order_id), cd: null, qr: r => val(r.order_id), ours: xv("order"), ex: null },
+];
+
+/* The lineage matters more than the list. Four of these five are the SAME
+   ministry spreadsheet, read four times over; only data.gov.il is a separate
+   origin. Two columns agreeing is therefore usually not corroboration, and the
+   header of each column says where it sits in the chain. */
+/* ---------- the merged dataset ----------
+   Not "take this row from here and that row from there" — every field is
+   resolved on its own, in the order that field is most trustworthy, and the
+   winner is labelled. A contract present in ONE source only is still a
+   contract; the union is keyed on order_id, which every payment source has.
+
+   The order below is per-field on purpose:
+     ח״פ      — the file is 100% filled, BudgetKey's company_id only 75%
+     מטרה     — BudgetKey truncates it, the file carries the full text
+     שולם     — BudgetKey drops the column on newer reports; the file has it
+     סוג גוף  — ONLY BudgetKey resolves it
+     ספק      — BudgetKey normalises spelling variants to one entity, which is
+                what makes a supplier page possible; the file's raw string is
+                the fallback
+     תחילה    — ONLY contracts_data has a real contract start
+     אישור    — ONLY data.gov.il */
+/* Which fields are money and which are dates. Money obeys the zero rule; dates
+   are forced to one shape no matter how the source wrote them. */
+const KIND = {
+  "היקף": "money", "שולם": "money", "שולם בתקופת הדוח": "money",
+  "סכום אופציה מצטבר": "money", "סכום התקשרות מצטבר": "money",
+  "תאריך הזמנה": "date", "תחילת התקשרות": "date", "סיום התקשרות": "date",
+};
+
+/* Deliberately NOT merged. contracts_data divides the lifetime total by the
+   number of years and calls it a yearly figure. It is arithmetic, not a
+   report, and an invented number must never enter the dataset. */
+const NEVER_MERGE = { "שולם — לשנה (ממוצע מחושב, לא מדידה)": "ממוצע מחושב — לא נכנס למאגר" };
+
+/* 2015-11-04 · 2015-11-04 00:00:00 · 04.11.2015 · 20151104 are one date.
+   Everything becomes YYYY-MM-DD, or stays as written if it is not a date. */
+function canonDate(v) {
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})[-.\/](\d{1,2})[-.\/](\d{1,2})/);
+  if (m) return `${m[1]}-${String(+m[2]).padStart(2,"0")}-${String(+m[3]).padStart(2,"0")}`;
+  m = s.match(/^(\d{1,2})[-.\/](\d{1,2})[-.\/](\d{4})/);
+  if (m) return `${m[3]}-${String(+m[2]).padStart(2,"0")}-${String(+m[1]).padStart(2,"0")}`;
+  m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = s.match(/^(\d{4})$/);                       // a bare year is a year, not a date
+  if (m) return m[1];
+  return s;
+}
+const numOf = (v) => {
+  const n = parseFloat(String(v).replace(/[^\d.\-]/g, ""));
+  return isNaN(n) ? null : n;
+};
+
+const MERGE = {
+  "ספק":              ["cs", "ours", "qr", "ex"],
+  "מספר ח״פ":         ["ours", "cs", "qr", "ex"],
+  "קוד ספק במערכת":   ["ours", "cs", "qr"],
+  "סוג גוף":          ["cs", "cd"],
+  "משרד":             ["cs", "ours", "qr", "ex"],
+  "יחידה רוכשת":      ["ours", "cs", "qr", "ex"],
+  "תקנה תקציבית":     ["cs", "ours", "qr"],
+  "שם התקנה":         ["cs", "qr"],
+  "שם פריט התחייבות": ["ours"],
+  "מטרה":             ["ours", "cs", "qr", "ex"],
+  "אופן רכישה":       ["ours", "cs", "qr", "ex"],
+  "תקנת הפטור":       ["ours", "cs", "qr", "ex"],
+  "היקף":             ["ours", "cs", "qr", "cd"],
+  "שולם":             ["ours", "cs", "qr", "cd"],
+  "שולם בתקופת הדוח": ["ours"],
+  "סכום אופציה מצטבר": ["ours"],
+  "סכום התקשרות מצטבר": ["ours"],
+  "תאריך הזמנה":      ["ours", "cs", "qr", "ex"],
+  "תחילת התקשרות":    ["cd", "ex", "cs"],
+  "סיום התקשרות":     ["ours", "cd", "cs", "ex"],
+  "שנים מדווחות":     ["cs", "cd", "qr"],
+  "מספר פרסום":       ["ours", "cs", "ex"],
+  "מספר הזמנה":       ["cs", "ours", "qr"],
+};
+const SRC_LABEL = { cs: "BudgetKey", cd: "contracts_data", qr: "דוח גולמי",
+                    ours: "קובץ המשרד", ex: "data.gov.il" };
+
+const SRC = [
+  { k: "mrg",  name: "התוצאה הסופית",        note: "מה שיישמר במאגר — ומאיזה מקור" },
+  { k: "cs",   name: "contract_spending",  note: "BudgetKey · מקובץ המשרד · מה שהאתר מציג" },
+  { k: "cd",   name: "contracts_data",     note: "BudgetKey · גזירה מצומצמת מאותו מקור" },
+  { k: "qr",   name: "הדוח שפורסם",         note: "BudgetKey · הקריאה הגולמית של דוח בודד" },
+  { k: "ours", name: "הקובץ שהמשרד פרסם",    note: "הקובץ עצמו, כפי שאנחנו פענחנו אותו" },
+  { k: "ex",   name: "data.gov.il",         note: "מרשם פרסומים — המקור העצמאי היחיד" },
+];
+
+/* the same fact, spelled differently, is not a disagreement: 409961432.74 and
+   "409,961,432.74 ₪" are one number, and "2024-12-04" is "04.12.2024". */
+function norm(x) {
+  if (x == null) return null;
+  const s = String(x).trim();
+  const num = s.replace(/[^\d.\-]/g, "");
+  if (num && /^\-?\d+(\.\d+)?$/.test(num) && /[\d]/.test(s)) {
+    const d = s.match(/(\d{4})[-.\/](\d{1,2})[-.\/](\d{1,2})|(\d{1,2})[-.\/](\d{1,2})[-.\/](\d{4})/);
+    if (d) return d[1] ? `${d[1]}-${(+d[2] + "").padStart(2, "0")}-${(+d[3] + "").padStart(2, "0")}`
+                       : `${d[6]}-${(+d[5] + "").padStart(2, "0")}-${(+d[4] + "").padStart(2, "0")}`;
+    return String(Math.round(parseFloat(num) * 100) / 100);
+  }
+  return s.replace(/\s+/g, " ").replace(/["'״׳]/g, "");
+}
+
+function matrixHtml(row) {
+  const head = `<tr><th>שדה</th>` + SRC.map(x =>
+    `<th data-s="${x.k}">${esc(x.name)}<div class="u">${esc(x.note || "")}</div></th>`).join("") + `</tr>`;
+  const body = FIELDS.map((f, i) =>
+    `<tr data-f="${i}"><td><b>${esc(f.l)}</b></td>` +
+    SRC.map(x => `<td data-s="${x.k}"><span class="none">בודק…</span></td>`).join("") + `</tr>`).join("");
+  return `<div class="tw"><table class="mx"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+}
+
+/* fill one source's column once it answers, then re-mark disagreements */
+function fillColumn(card, key, srcRow, note, err, missing) {
+  if (key === "mrg") return;
+  FIELDS.forEach((f, i) => {
+    const td = card.querySelector(`tr[data-f="${i}"] td[data-s="${key}"]`);
+    if (!td) return;
+    if (err) { td.innerHTML = `<span class="err">${esc(err)}</span>`; return; }
+    const getter = f[key];
+    if (!getter) { td.innerHTML = '<span class="none">אין שדה כזה</span>'; return; }
+    if (!srcRow)  {
+      td.innerHTML = `<span class="none">${esc(missing || "לא נמצא")}</span>`;
+      return;
+    }
+    const v = getter(srcRow);
+    td.innerHTML = v == null ? '<span class="none">ריק</span>' : esc(v);
+    td.dataset.v = v == null ? "" : norm(v);
+  });
+  const th = card.querySelector(`thead th[data-s="${key}"]`);
+  if (th && note) th.querySelector(".u") && (th.querySelector(".u").textContent = note);
+  markDisagreements(card);
+}
+
+/* recomputed after every column fills in, because the winner depends on which
+   sources have answered so far */
+function mergeRow(tr) {
+  const label = tr.querySelector("td b").textContent.trim();
+  const td = tr.querySelector('td[data-s="mrg"]');
+  if (!td) return;
+
+  if (NEVER_MERGE[label]) {
+    td.innerHTML = `<span class="none">${esc(NEVER_MERGE[label])}</span>`;
+    return;
+  }
+  const order = MERGE[label];
+  if (!order) { td.innerHTML = '<span class="none">—</span>'; return; }
+
+  const kind = KIND[label];
+  const cells = order.map(k => ({ k, c: tr.querySelector(`td[data-s="${k}"]`) }))
+                     .filter(x => x.c && x.c.dataset.v);
+
+  let chosen = null, zeroSeen = false;
+  for (const x of cells) {
+    const txt = x.c.textContent.trim();
+    if (kind === "money") {
+      const n = numOf(txt);
+      /* THE ZERO RULE. A zero is a value, but it must never beat a real number
+         from a source further down the list: משרד החינוך's file reports
+         ₪235,298,429 where BudgetKey stores 0. So zeros are held back and only
+         used if nothing anywhere reports a number. */
+      if (n === 0) { zeroSeen = true; continue; }
+      if (n == null) continue;
+    }
+    chosen = { k: x.k, text: kind === "date" ? canonDate(txt) : txt };
+    break;
+  }
+
+  if (chosen) {
+    td.innerHTML = `${esc(chosen.text)}<div class="u">${esc(SRC_LABEL[chosen.k] || chosen.k)}</div>`;
+    td.dataset.v = norm(chosen.text);
+    return;
+  }
+  const pending = order.some(k => {
+    const c = tr.querySelector(`td[data-s="${k}"]`);
+    return c && /בודק/.test(c.textContent);
+  });
+  td.dataset.v = "";
+  /* missing and zero are different facts and must read differently */
+  td.innerHTML = pending ? '<span class="none">בודק…</span>'
+    : zeroSeen ? '<span class="none">0 — כך דווח בכל המקורות</span>'
+               : '<span class="none">אין נתון באף מקור</span>';
+}
+
+function markDisagreements(card) {
+  card.querySelectorAll("tbody tr").forEach(tr => {
+    mergeRow(tr);
+    const seen = [];
+    tr.querySelectorAll('td[data-s]:not([data-s="mrg"])').forEach(td => {
+      if (td.dataset.v) seen.push(td.dataset.v);
+    });
+    const bad = seen.length > 1 && new Set(seen).size > 1;
+    tr.className = bad ? "disagree" : "";
+    if (bad && !tr.querySelector(".tag")) {
+      tr.querySelector("td b").insertAdjacentHTML("afterend",
+        ' <span class="tag diff">חלוקים</span>');
+    }
+  });
+}
+
+function shell(row) {
+  const d = document.createElement("div");
+  d.className = "res";
+  d.innerHTML = `
+    <h3>${esc(row.entity_name || row.supplier_name || "")}</h3>
+    <div class="sub">${esc(row.purpose || "")}<br>
+      הזמנה ${esc(row.order_id)} · תקנה ${esc(row.budget_code)} · ${esc(row.publisher_name || "")}</div>
+    ${matrixHtml(row)}
+    <p class="legend"><b>העמודה הירוקה היא מה שיישמר במאגר</b> — כל שדה נפתר
+      בנפרד, לפי סדר האמינות של אותו שדה, ומתחת לערך רשום מאיזה מקור הוא הגיע.
+      ח״פ יגיע מקובץ המשרד ושם הספק מ-BudgetKey, באותה התקשרות, וזה בסדר.
+      <b>אפס לא גובר על מספר:</b> אם מקור אחד רשם 0 ואחר רשם סכום — הסכום ינצח.
+      תאריכים מיושרים לצורה אחת (YYYY-MM-DD). ממוצעים מחושבים אינם נכנסים.
+      ״אין נתון״ ו״0״ אינם אותו דבר, ולא נחליף אחד בשני.</p>
+    <p class="legend"><b>שימו לב ללידה של כל עמודה:</b> ארבע העמודות הראשונות
+      נגזרות כולן מאותו קובץ שהמשרד פרסם — הסכמה ביניהן אינה אישור, היא הד.
+      רק <b>data.gov.il</b> הוא מרשם נפרד, והוא מקושר רק לכ-24% מההתקשרויות.</p>
+    <p class="legend"><b>איך לקרוא:</b>
+      <code>ריק</code> — לשדה יש מקום במקור והוא ריק ·
+      <code>אין שדה כזה</code> — המקור לא מנהל את השדה הזה בכלל ·
+      <code>לא נמצא</code> — לא מצאנו את ההתקשרות במקור הזה ·
+      <code>0 ₪</code> — המקור באמת רשם אפס.
+      בדף הזה מוצג מה שכתוב במקור, בלי פרשנות: בדף התקציב אפס שמופיע בכל
+      הדיווחים מוצג כ״לא דווח״, כאן הוא מוצג כאפס.</p>
+    <div class="why"></div>
+    <details><summary class="hint">כל השדות הגולמיים, מקור אחר מקור</summary>
+      <div class="raw hint">נטען בלחיצה…</div></details>
+    <details><summary class="hint">כל הדוחות שפורסמו על ההתקשרות</summary>
+      <div class="reps hint">נטען בלחיצה…</div></details>`;
+  out.appendChild(d);
+  return d;
+}
+
+const rawBlock = (title, obj, note) => {
+  if (!obj) return `<div class="rawsrc"><b>${esc(title)}</b> <span class="none">— לא נמצא</span></div>`;
+  const skip = { payments: 1, manof_excerpts: 1, resolved_budget_codes: 1, score: 1 };
+  const rows = Object.keys(obj).filter(k => !skip[k]).map(k =>
+    `<tr><td class="u">${esc(k)}</td><td>${esc(val(obj[k]) == null ? "—" : val(obj[k]))}</td></tr>`).join("");
+  return `<div class="rawsrc"><b>${esc(title)}</b>${note ? ` <span class="u">${esc(note)}</span>` : ""}
+    <table>${rows}</table></div>`;
+};
+
+async function show(row) {
+  const card = shell(row);
+  const section = String(row.budget_code || "").slice(0, 4);
+  const raw = { "contract_spending": row };
+
+  fillColumn(card, "cs", row);
+
+  const qrP = withTimeout(fromQuarterly(row.order_id), 25000, "טבלת הדוחות");
+  qrP.then(qr => { raw["הדוח שפורסם (האחרון)"] = qr[0] || null; fillColumn(card, "qr", qr[0] || null); })
+     .catch(e => fillColumn(card, "qr", null, null, e.message));
+
+  withTimeout(fromContractsData(row), 20000, "contracts_data")
+    .then(cd => { raw["contracts_data"] = cd.row; fillColumn(card, "cd", cd.row, cd.note); })
+    .catch(e => fillColumn(card, "cd", null, null, e.message));
+
+  withTimeout(ourFile(section, true), 20000, "הקובץ שלנו").then(doc => {
+    const found = findInFile(doc, row.order_id, row.budget_code);
+    const hit = found ? found.rec : null;
+    raw["הקובץ שהמשרד פרסם"] = hit;
+    fillColumn(card, "ours", hit,
+               doc ? (found && !found.exact
+                        ? `בקובץ ההזמנה רשומה תחת תקנה ${found.code}, לא ${row.budget_code}`
+                        : null)
+                   : (FROM_DISK ? DISK_MSG : `טרם הורדנו דוח לסעיף ${section}`),
+               null,
+               doc ? "לא בדוח שהורדנו"
+                   : (FROM_DISK ? "לא נגיש מהדיסק" : `אין קובץ לסעיף ${section}`));
+    const cs = +row.executed > 0, ours = hit && +hit[X.paid] > 0;
+    card.querySelector(".why").innerHTML = cs
+      ? "שורת <b>שולם</b>: הסכום של contract_spending הוא שמוצג באתר."
+      : (ours ? "שורת <b>שולם</b>: ל-contract_spending אין סכום, ולכן מוצג הסכום מהקובץ שהמשרד פרסם, מסומן בכוכבית."
+              : "שורת <b>שולם</b>: אף מקור לא מדווח סכום — באתר יופיע ״לא דווח״.");
+  }).catch(e => fillColumn(card, "ours", null, null, e.message));
+
+  withTimeout(fromExemptions(row), 15000, "data.gov.il")
+    .then(ex => { raw["data.gov.il — מרשם הפרסומים"] = ex.row;
+                  fillColumn(card, "ex", ex.row, ex.note, null,
+                             ex.linked ? "לא נמצא במרשם" : "אין קישור"); })
+    .catch(e => fillColumn(card, "ex", null, null, e.message));
+
+  const dets = card.querySelectorAll("details");
+  dets[0].addEventListener("toggle", () => {
+    if (!dets[0].open || dets[0].dataset.done) return;
+    dets[0].dataset.done = "1";
+    dets[0].querySelector(".raw").innerHTML =
+      Object.keys(raw).map(k => rawBlock(k, raw[k])).join("");
+  });
+  dets[1].addEventListener("toggle", async () => {
+    if (!dets[1].open || dets[1].dataset.done) return;
+    dets[1].dataset.done = "1";
+    const box = dets[1].querySelector(".reps");
+    box.textContent = "טוען…";
+    try {
+      const qr = await qrP;
+      box.innerHTML = qr.length
+        ? `<table><thead><tr><th>דוח</th><th class="num">שולם מצטבר</th><th class="num">היקף</th></tr></thead><tbody>`
+          + qr.map(r => `<tr><td>${esc(r["report-title"] || "")}<div class="u">${esc(r["report-url"] || "")}</div></td>
+              <td class="num">${+r.executed > 0 ? nf(r.executed) : '<span class="none">0</span>'}</td>
+              <td class="num">${nf(r.volume)}</td></tr>`).join("") + "</tbody></table>"
+        : "אין רשומות בטבלת הדוחות הגולמית.";
+    } catch (e) { box.innerHTML = `<span class="err">${esc(e.message)}</span>`; }
+  });
+}
+
+async function run() {
+  out.innerHTML = "";
+  status.textContent = "מחפש…";
+  try {
+    const found = await find($("q").value);
+    if (!found.length) {
+      status.innerHTML = "לא נמצאו התקשרויות. חיפוש טקסט הוא על התחלת הסריקה, " +
+        "לא על כל הטבלה — נסו מילה קצרה יותר, שם ספק, מספר הזמנה, או " +
+        "<b>התקשרות אקראית</b>.";
+      return;
+    }
+    const byOrder = /^\d{6,}$/.test($("q").value.trim());
+    status.innerHTML = byOrder && found.length > 1
+      ? `<b>${found.length} שורות לאותה הזמנה.</b> זו התקשרות אחת שנרשמה תחת יותר ` +
+        `מתקנה תקציבית אחת — החיוב הועבר בין תקנות, ו-BudgetKey שומר שורה לכל תקנה. ` +
+        `לפעמים אותה תקנה מופיעה פעמיים. <b>אין לסכם את השורות</b> — זה יכפיל את החוזה.`
+      : `${found.length} התקשרויות (הראשונות שנמצאו, לא הגדולות). ` +
+        `כל אחת מושווית מול כל המקורות.`;
+    found.forEach(show);          // each card draws now and fills itself in
+  } catch (e) {
+    status.innerHTML = `<span class="err">${esc(e.message)}</span>`;
+  }
+}
+
+/* A random contract from a section we DO have a ministry file for, so both
+   sides of the comparison have something in them. Drawn from our own file,
+   then looked up live — the point is to check us, so the live row must come
+   from BudgetKey and not from the file being tested. */
+async function runOurs() {
+  out.innerHTML = ""; status.textContent = "בוחר…";
+  try {
+    if (FROM_DISK) throw new Error(DISK_MSG);
+    const res = await fetch("../data/paid/index.json");
+    if (!res.ok) throw new Error("index.json — HTTP " + res.status);
+    const man = await res.json();
+    const secs = (man && man.sections) || [];
+    if (!secs.length) throw new Error("אין קובצי משרדים באתר הזה — ראו paidcheck");
+    const doc = await ourFile(secs[Math.floor(Math.random() * secs.length)]);
+    const keys = Object.keys((doc && doc.orders) || {});
+    if (!keys.length) throw new Error("הקובץ ריק");
+    const pick = keys[Math.floor(Math.random() * keys.length)].split(":")[0];
+    $("q").value = pick;
+    await run();
+  } catch (e) { status.innerHTML = `<span class="err">${esc(e.message)}</span>`; }
+}
+
+async function runRandom() {
+  out.innerHTML = ""; status.textContent = "בוחר התקשרות אקראית…";
+  try {
+    const rows = await randomOne();
+    if (!rows.length) { status.textContent = "לא הוגרלה התקשרות. נסו שוב."; return; }
+    $("q").value = rows[0].order_id;
+    status.textContent = "התקשרות אקראית. כל אחת מושווית מול כל המקורות.";
+    await show(rows[0]);
+  } catch (e) { status.innerHTML = `<span class="err">${esc(e.message)}</span>`; }
+}
+
+$("rnd").addEventListener("click", runRandom);
+$("edu").addEventListener("click", runOurs);
+$("go").addEventListener("click", run);
+$("q").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
+
+const pre = new URLSearchParams(location.search).get("q");
+if (pre) { $("q").value = pre; run(); }
+
+$("build").textContent = BUILD;
+if (FROM_DISK) { $("disk").style.display = ""; $("disk").textContent = DISK_MSG; }
+if (typeof buildChrome === "function") buildChrome();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+/* =====================================================================
+   Our Money — styling for the budget page only.
+   Shared tokens and components live in style.css.
+   ===================================================================== */
+
+/* ---------- the year bar: sticky, so the control is always within reach ---------- */
+.yearbar { position: sticky; top: var(--topbar-h, 56px); z-index: 20;
+  margin: 0 -20px 20px; padding: 0 20px;
+  background: var(--page); border-bottom: 1px solid var(--border); }
+.yearbar-in { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 9px 0; min-height: 46px; }
+.yearbar label { color: var(--ink-2); font-size: 14px; }
+.yearbar select { background: var(--surface-1); color: var(--ink-1); font-weight: 700;
+  border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; font-size: 16px;
+  font-variant-numeric: tabular-nums; }
+.yearbar select:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+.yearstate { color: var(--ink-3); font-size: 13px; }
+/* a year that just changed gets a brief nudge, so the change is never silent */
+@keyframes yearpulse { from { background: var(--seq-track); } to { background: transparent; } }
+.yearbar.changed .yearbar-in { animation: yearpulse .9s ease-out; }
+@media (prefers-reduced-motion: reduce) { .yearbar.changed .yearbar-in { animation: none; } }
+
+.subhead { font-size: 17px; font-weight: 700; margin: 26px 0 10px;
+  padding-top: 18px; border-top: 1px solid var(--grid); }
+
+/* ---------- the four flows ---------- */
+/* the page's opening line — centred and given room, it is the headline */
+#flowsec > h2 { text-align: center; font-size: clamp(23px, 3.4vw, 32px);
+  line-height: 1.2; margin: 4px 0 20px; text-wrap: balance; }
+@media (max-width: 640px) { #flowsec > h2 { font-size: 22px; margin-bottom: 16px; } }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 13px; }
+.kpi { background: var(--surface-1); border: 1px solid var(--border); border-radius: 11px;
+  padding: 14px 16px 12px; border-top: 3px solid var(--baseline);
+  display: flex; flex-direction: column; gap: 2px; }
+.kpi.tax   { border-top-color: var(--series-1); }
+.kpi.debt  { border-top-color: var(--danger); }
+.kpi.muted { border-top-color: var(--ink-3); }
+.kpi .lbl { font-size: 14px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.kpi .dot { width: 9px; height: 9px; border-radius: 2px; flex: none; background: var(--baseline); }
+.kpi.tax   .dot { background: var(--series-1); }
+.kpi.debt  .dot { background: var(--danger); }
+.kpi.muted .dot { background: var(--ink-3); }
+.kpi .num { font-size: 30px; font-weight: 700; letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  display: flex; align-items: baseline; gap: 5px; }
+.kpi .num .u { font-size: 14.5px; font-weight: 400; color: var(--ink-2); letter-spacing: 0; }
+.kpi.debt .num { color: var(--danger); }
+.kpi .plan { font-size: 13.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.kpi .ask { margin-top: 7px; align-self: flex-start; font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--accent-ink); background: none; border: 0; padding: 2px 0; cursor: pointer;
+  border-bottom: 1px dotted currentColor; }
+.kpi .ask:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; border-radius: 2px; }
+
+/* the popover — a real popup, anchored to the question that opened it */
+.pop { position: fixed; z-index: 40; display: none; max-width: 340px;
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-top: 3px solid var(--series-1); border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.16); padding: 14px 16px 15px; }
+.pop.open { display: block; }
+.pop.red { border-top-color: var(--danger); }
+.pop .popq { font-weight: 700; font-size: 15px; margin: 0 0 6px; padding-inline-end: 20px; }
+.pop .popa { font-size: 15px; color: var(--ink-2); line-height: 1.6; }
+.pop .poppurpose { font-size: 15px; color: var(--ink-1); line-height: 1.55; margin-bottom: 10px; }
+.pop .poprow { display: flex; justify-content: space-between; gap: 16px;
+  font-size: 13.5px; color: var(--ink-2); padding: 3px 0; border-top: 1px solid var(--grid); }
+.pop .poprow b { color: var(--ink-1); font-weight: 600; text-align: end; }
+.pop .popsrc { font-size: 12.5px; color: var(--ink-3); margin-top: 9px;
+  padding-top: 8px; border-top: 1px solid var(--grid); line-height: 1.45; }
+.pop .popx { position: absolute; inset-block-start: 8px; inset-inline-end: 10px;
+  font: inherit; font-size: 14px; line-height: 1; color: var(--ink-3);
+  background: none; border: 0; cursor: pointer; padding: 3px 4px; border-radius: 4px; }
+.pop .popx:hover { color: var(--ink-1); }
+.pop .popx:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+
+.flowsnote { color: var(--ink-3); font-size: 13.5px; margin: 10px 0 0; }
+.reads { color: var(--ink-2); font-size: 14.5px; margin: 14px 0 0; }
+.debtpara { background: var(--surface-1); border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--danger); border-radius: 9px;
+  padding: 16px 18px; margin: 18px 0 0; font-size: 16.5px; line-height: 1.75; }
+
+/* ---------- charts ---------- */
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink-2); margin: 0 0 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+.legend i.plan { background: var(--surface-1); border: 1.5px dashed var(--ink-3); }
+svg.chart { display: block; width: 100%; height: auto; overflow: visible; direction: ltr; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.gridline.base { stroke: var(--baseline); }
+.axis { fill: var(--ink-2); font-size: 12px; }
+.axis.val { font-variant-numeric: tabular-nums; }
+.axis.tiny { font-size: 11px; fill: var(--ink-3); }
+.endlabel { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; fill: var(--danger); }
+.col rect { transition: opacity .12s; }
+.col:hover rect { opacity: .82; }
+.col .hit { cursor: pointer; }
+.col.current .marker { fill: var(--accent-ink); }
+.yearcap { fill: var(--accent-ink); font-size: 11px; font-weight: 700; }
+.hit { fill: transparent; cursor: pointer; }
+
+/* ---------- the tree ---------- */
+.cardhead { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--surface-1); }
+.segbtn { font: inherit; font-size: 14px; color: var(--ink-2); background: none; border: 0; cursor: pointer;
+  padding: 6px 14px; }
+.segbtn + .segbtn { border-inline-start: 1px solid var(--border); }
+.segbtn:hover { color: var(--ink-1); }
+.segbtn.on { background: var(--seq-track); color: var(--accent-ink); font-weight: 600; }
+.segbtn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
+.treecount { color: var(--ink-3); font-size: 13.5px; }
+
+.barrow { display: grid; grid-template-columns: minmax(140px, 220px) 1fr 118px;
+  align-items: center; gap: 10px; padding: 0; margin: 0 0 2px; border: 0; background: none;
+  width: 100%; font: inherit; color: inherit; text-align: start; cursor: pointer; border-radius: 6px; }
+.barrow:hover .bar, .barrow:focus-visible .bar { filter: brightness(1.12); }
+.barrow:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.barrow .name { font-size: 13.5px; color: var(--ink-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 5px 0; }
+.bartrack { position: relative; height: 22px; background: none; border-inline-start: 1px solid var(--baseline); }
+.bar { position: absolute; inset-inline-start: 0; top: 2px; height: 18px; background: var(--series-1);
+  border-start-end-radius: 4px; border-end-end-radius: 4px; min-width: 2px; }
+.barrow .val { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.axisnote { color: var(--ink-3); font-size: 12.5px; margin-top: 10px; }
+.scopenote { color: var(--ink-3); font-size: 12.5px; margin: 10px 0 0; }
+
+.caret { display: inline-block; width: 15px; color: var(--ink-3); font-size: 11px; }
+.kids { margin-inline-start: 20px; border-inline-start: 2px solid var(--grid);
+  padding-inline-start: 10px; margin-top: 2px; margin-bottom: 8px; }
+.kids .note { color: var(--ink-3); font-size: 13px; padding: 4px 0 6px; }
+.pct { color: var(--ink-3); }
+.showall { margin-top: 10px; }
+
+/* ---------- who was paid out of one budget line ---------- */
+.paidline { margin: 6px 0 4px; }
+.paidbtn { font: inherit; font-size: 13px; font-weight: 600; color: var(--accent-ink);
+  background: none; border: 0; padding: 3px 0; cursor: pointer;
+  border-bottom: 1px dotted currentColor; }
+.paidbtn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; border-radius: 2px; }
+.paidbtn.on { color: var(--ink-1); border-bottom-color: transparent; }
+.whopaid { padding: 6px 0 10px; min-width: 0; }
+.wp-note { font-size: 12.5px; color: var(--ink-3); margin-top: 8px; }
+.whopaid .tw { margin-top: 0; max-width: 100%; }
+.whopaid table { font-size: 13px; }
+.whopaid th, .whopaid td { padding: 6px 10px; white-space: nowrap; }
+.whopaid td:first-child { white-space: normal; min-width: 16ch; }
+
+/* On a phone seven columns need 542px in a 312px well. Hiding columns loses
+   the money; a sideways scroll hides it behind a gesture nobody discovers.
+   So on narrow screens each contract becomes a labelled card — every column
+   still there, each carrying its own header. */
+@media (max-width: 700px) {
+  .whopaid thead { display: none; }
+  .whopaid table, .whopaid tbody, .whopaid tr, .whopaid td { display: block; width: auto; }
+  .whopaid tr { padding: 9px 4px; border-bottom: 1px solid var(--grid); }
+  .whopaid tbody tr:last-child { border-bottom: 0; }
+  .whopaid td { border: 0; padding: 2px 6px; white-space: normal; text-align: start; }
+  .whopaid td.num { text-align: start; }
+  .whopaid td:first-child { min-width: 0; font-weight: 600; }
+  .whopaid td[data-l]::before { content: attr(data-l) ": "; color: var(--ink-3); font-weight: 400; }
+  .whopaid td:empty { display: none; }
+  .whopaid td:last-child { margin-top: 4px; }
+}
+.fromreport { color: var(--accent-ink); font-weight: 700; margin-inline-start: 2px; cursor: help; }
+.purposebtn { font: inherit; font-size: 12px; font-weight: 600; color: var(--accent-ink);
+  background: none; border: 1px solid var(--border); border-radius: 6px;
+  padding: 2px 9px; cursor: pointer; white-space: nowrap; }
+.purposebtn:hover { border-color: var(--accent-ink); }
+.purposebtn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+.ekind { color: var(--ink-3); font-size: 11.5px; white-space: nowrap; }
+.info-i { font: inherit; font-size: 11px; font-weight: 700; line-height: 1;
+  color: var(--ink-3); background: none; border: 1px solid var(--baseline);
+  border-radius: 50%; width: 15px; height: 15px; padding: 0; cursor: pointer;
+  vertical-align: 1px; }
+.info-i:hover { color: var(--accent-ink); border-color: var(--accent-ink); }
+.info-i:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+.method { font-size: 11.5px; color: var(--ink-2); background: var(--surface-2, var(--grid));
+  border-radius: 4px; padding: 1px 6px; display: inline-block; white-space: nowrap; }
+/* bought without a tender — marked, but with words, never colour alone */
+button.method.open { color: var(--danger); background: none; border: 1px solid var(--danger);
+  font-weight: 600; font-family: inherit; cursor: pointer; padding: 1px 7px; }
+button.method.open:hover { background: var(--surface-2, transparent); }
+button.method.open:focus-visible { outline: 2px solid var(--danger); outline-offset: 1px; }
+
+/* ---------- data table behind a toggle ---------- */
+details.tabletoggle { margin-top: 16px; }
+details.tabletoggle summary { cursor: pointer; font-size: 14px; color: var(--accent-ink); font-weight: 600; }
+.tw { overflow-x: auto; margin-top: 12px; border: 1px solid var(--border); border-radius: 9px; }
+.tw table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.tw th, .tw td { padding: 7px 13px; text-align: start; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+.tw thead th { font-size: 12px; color: var(--ink-3); font-weight: 600; border-bottom: 1px solid var(--baseline); }
+.tw td.num, .tw th.num { text-align: end; font-variant-numeric: tabular-nums; }
+.tw tbody tr:last-child td { border-bottom: none; }
+.tw tbody tr.current td { background: var(--seq-track); }
+.yearbtn { font: inherit; font-size: 14px; font-weight: 600; color: var(--accent-ink);
+  background: none; border: 0; padding: 2px 6px; margin: -2px -6px; cursor: pointer;
+  border-radius: 5px; font-variant-numeric: tabular-nums; }
+.yearbtn:hover { background: var(--seq-track); }
+.yearbtn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+.yearbtn[aria-current="true"] { color: var(--ink-1); cursor: default; }
+.yearbtn[aria-current="true"]:hover { background: none; }
+.tw td.yr { padding-block: 4px; }
+
+/* ---------- tooltip ---------- */
+#tip { position: fixed; z-index: 30; display: none; max-width: 300px;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12); padding: 10px 12px; font-size: 13px; pointer-events: none; }
+#tip .t { font-weight: 600; margin-bottom: 4px; }
+#tip .r { display: flex; justify-content: space-between; gap: 16px; color: var(--ink-2); }
+#tip .r b { color: var(--ink-1); font-weight: 500; font-variant-numeric: tabular-nums; }
+#tip .r.tt { border-top: 1px solid var(--grid); margin-top: 5px; padding-top: 5px; }
+
+@media (max-width: 640px) {
+  .kpis { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kpi { padding: 12px 13px 10px; }
+  .kpi .num { font-size: 23px; }
+  .kpi .num .u { font-size: 12.5px; }
+  .barrow { grid-template-columns: minmax(0, 1fr) 92px; row-gap: 2px; padding: 4px 0 6px; }
+  .barrow .name { grid-column: 1 / -1; white-space: normal; line-height: 1.35; padding: 2px 0 0; }
+  .bartrack { height: 14px; }
+  .bar { height: 12px; top: 1px; }
+  .barrow .val { font-size: 12px; }
+  .kids { margin-inline-start: 8px; padding-inline-start: 8px; }
+  .pop { max-width: calc(100vw - 24px); }
+  /* the bleed must equal .wrap's padding, which drops to 14px here — at -20px
+     the bar hung 6px past each edge and the WHOLE PAGE scrolled sideways */
+  .yearbar { margin-inline: -14px; }
+  .yearbar-in { padding: 7px 0; min-height: 42px; }
+  .subhead { margin-top: 20px; }
+}

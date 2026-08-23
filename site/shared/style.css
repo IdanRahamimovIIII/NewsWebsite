@@ -1,0 +1,165 @@
+/* =====================================================================
+   Our Money — shared stylesheet (design system + common components)
+   Page-specific styles live in a small <style> block inside each page.
+   ===================================================================== */
+
+/* ---------- design tokens ---------- */
+:root {
+  color-scheme: light;
+  --surface-1: #fcfcfb;      /* card / chart surface */
+  --page:      #f9f9f7;      /* page plane */
+  --ink-1:     #0b0b0b;      /* primary text */
+  --ink-2:     #52514e;      /* secondary text */
+  --ink-3:     #898781;      /* muted / axis */
+  --grid:      #e1e0d9;      /* hairline */
+  --baseline:  #c3c2b7;
+  --border:    rgba(11,11,11,0.10);
+  --series-1:  #2a78d6;      /* the single data hue */
+  --seq-track: #cde2fb;      /* light step of the ramp (meter track) */
+  --accent-ink:#1c5cab;      /* darker step for interactive text */
+  --danger:    #d03b3b;
+  /* status colors — used ONLY for for/against/passed semantics, with labels */
+  --for: #0ca30c; --against: #d03b3b; --abstain: #898781;
+  --for-ink: #006300; --against-ink: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --page:      #0d0d0d;
+    --ink-1:     #ffffff;
+    --ink-2:     #c3c2b7;
+    --ink-3:     #898781;
+    --grid:      #2c2c2a;
+    --baseline:  #383835;
+    --border:    rgba(255,255,255,0.10);
+    --series-1:  #3987e5;
+    --seq-track: #104281;
+    --accent-ink:#86b6ef;
+    --danger:    #e66767;
+    --for: #0ca30c; --against: #d03b3b; --abstain: #898781;
+    --for-ink: #0ca30c; --against-ink: #e66767;
+  }
+}
+
+/* ---------- base ---------- */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink-1);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.55;
+}
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px 80px; }
+
+/* ---------- site header bar (filled by common.js) ---------- */
+header.topbar {
+  position: sticky; top: 0; z-index: 30;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+}
+.tbwrap {
+  max-width: 1200px; margin: 0 auto; padding: 10px 20px;
+  display: flex; align-items: center; gap: 8px 20px; flex-wrap: wrap;
+}
+.brand { font-size: 19px; font-weight: 700; color: var(--ink-1);
+  text-decoration: none; letter-spacing: -0.01em; white-space: nowrap; }
+.langbtn {
+  border: 1px solid var(--border); background: var(--page); color: var(--ink-1);
+  border-radius: 8px; padding: 5px 13px; font-size: 13.5px; cursor: pointer;
+  margin-inline-start: auto;
+}
+.langbtn:hover { border-color: var(--baseline); }
+nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+nav.tabs a { text-decoration: none; font-size: 14.5px; padding: 7px 15px; border-radius: 999px;
+  color: var(--ink-2); border: 1px solid transparent; }
+nav.tabs a.active { background: color-mix(in srgb, var(--series-1) 12%, transparent);
+  color: var(--accent-ink); font-weight: 600; }
+nav.tabs a:not(.active):hover { color: var(--accent-ink); }
+/* the page's own headline — every page fills this slot with one line saying
+   what the page is. Centred and given room: it is a title, not a caption. */
+.tagline { color: var(--ink-1); font-weight: 600; text-align: center; text-wrap: balance;
+  font-size: clamp(19px, 2.6vw, 26px); line-height: 1.3; letter-spacing: -0.01em;
+  max-width: 34ch; margin: 26px auto 24px; }
+
+/* ---------- cards & text ---------- */
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 24px;
+  margin-bottom: 22px;
+}
+h2 { font-size: 18px; margin: 0 0 4px; }
+.hint { color: var(--ink-2); font-size: 14px; margin: 0 0 16px; }
+.explain p { font-size: 14.5px; color: var(--ink-2); margin: 10px 0; }
+.explain b { color: var(--ink-1); }
+
+/* ---------- states ---------- */
+.loading { color: var(--ink-3); font-size: 14px; padding: 8px 0; }
+.error { color: var(--danger); font-size: 14px; padding: 8px 0; }
+.stale { opacity: 0.45; transition: opacity .2s; }
+
+/* ---------- tables ---------- */
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: start; color: var(--ink-2); font-weight: 500; border-bottom: 1px solid var(--grid); padding: 6px 8px; white-space: nowrap; }
+td { border-bottom: 1px solid var(--grid); padding: 7px 8px; vertical-align: top; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink-1); }
+
+/* ---------- search row ---------- */
+.searchrow { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.searchrow input {
+  flex: 1 1 260px; background: var(--page); color: var(--ink-1);
+  border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 15px;
+}
+.searchrow button {
+  background: var(--series-1); color: #fff; border: 0; border-radius: 8px;
+  padding: 9px 20px; font-size: 15px; cursor: pointer;
+}
+.searchrow button:hover { filter: brightness(1.1); }
+
+/* ---------- small round buttons (filters, chips) ---------- */
+.chipbtn {
+  border: 1px solid var(--border); background: var(--page); color: var(--ink-1);
+  border-radius: 999px; padding: 4px 14px; font-size: 13px; cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.chipbtn:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
+.chipbtn.on { background: var(--series-1); border-color: var(--series-1); color: #fff; }
+.votechip {
+  border: 1px solid var(--border); background: var(--page); color: var(--ink-1);
+  border-radius: 999px; padding: 3px 12px; font-size: 12.5px; cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.votechip:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
+.votechip.on { background: var(--series-1); border-color: var(--series-1); color: #fff; }
+
+/* ---------- drill-down panel ---------- */
+.drill { margin-top: 12px; border-top: 1px solid var(--grid); padding-top: 14px; display: none; }
+.drill h3 { font-size: 15.5px; margin: 0 0 6px; }
+.backbtn { border: 0; background: none; color: var(--accent-ink); cursor: pointer; font-size: 13.5px; padding: 0; margin-bottom: 10px; }
+
+/* ---------- footer ---------- */
+footer { color: var(--ink-3); font-size: 13px; border-top: 1px solid var(--grid); padding-top: 16px; margin-top: 30px; }
+footer a { color: var(--accent-ink); }
+
+/* ---------- phones ---------- */
+@media (max-width: 640px) {
+  .wrap { padding: 0 14px 56px; }
+  .tbwrap { padding: 8px 14px 6px; }
+  .brand { font-size: 17px; }
+  .langbtn { padding: 4px 10px; font-size: 12.5px; }
+  nav.tabs { order: 3; flex-basis: 100%; flex-wrap: nowrap; overflow-x: auto;
+    padding-bottom: 6px; scrollbar-width: none; }
+  nav.tabs a { padding: 5px 12px; font-size: 13.5px; white-space: nowrap; }
+  .tagline { font-size: 18.5px; margin: 18px auto 16px; max-width: none; }
+  .card { padding: 16px 14px; border-radius: 10px; margin-bottom: 14px; }
+  h2 { font-size: 16.5px; }
+  .hint { font-size: 13.5px; }
+  table { font-size: 12.5px; }
+  th, td { padding: 6px 6px; }
+  .searchrow input { font-size: 16px; } /* 16px stops iPhone from zooming into the field */
+  .searchrow button { padding: 9px 16px; }
+}

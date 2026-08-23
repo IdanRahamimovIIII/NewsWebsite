@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הכסף שלנו — בדיקת חיפוש</title>
+<link rel="stylesheet" href="../shared/style.css">
+<link rel="stylesheet" href="../votes/votes.css">
+<style>
+  .res { font-size: 14px; }
+  .res .row { display: flex; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--grid); align-items: baseline; }
+  .res .st { width: 26px; flex: none; font-weight: 700; }
+  .res .ok { color: var(--for-ink); } .res .bad { color: var(--against-ink); }
+  .res .name { flex: 1; }
+  .res .info { color: var(--ink-2); font-size: 12.5px; direction: ltr; text-align: left; }
+  .sum { font-size: 17px; font-weight: 700; margin: 14px 0 6px; }
+  #app { display: none; }
+</style>
+</head>
+<body>
+<header class="topbar"></header>
+<div class="wrap">
+  <div class="card">
+    <h2>בדיקת חיפוש — על הנתונים האמיתיים</h2>
+    <p class="hint">
+      הדף מריץ את החיפושים האמיתיים של עמוד ההצבעות מול הנתונים החיים, בודק את
+      התוצאות, ושולח את הדוח ל‑Worker שלך — כך שקלוד יכול לקרוא בדיוק מה נשבר
+      בלי שתעתיקי כלום. שום דבר אישי לא נשמר, רק שורות הצלחה/כישלון.
+    </p>
+    <div style="margin:14px 0"><button class="big" id="run" onclick="runAll()">הרצת הבדיקות</button></div>
+    <div class="sum" id="sum">מוכן.</div>
+    <div class="res" id="out"></div>
+  </div>
+  <div class="hint" style="margin-top:14px"><span id="stamp"></span></div>
+</div>
+
+<!-- the real page, hidden: the tests drive these exact controls -->
+<div id="app">
+<header class="topbar"></header>
+<div class="wrap">
+
+  <!-- two rooms, one topic: plenum votes / bills in process -->
+  <nav class="subtabs">
+    <button id="st-votes" class="on" onclick="setTab('votes')" data-i18n="subtabVotes"></button>
+    <button id="st-bills" onclick="setTab('bills')" data-i18n="subtabBills"></button>
+  </nav>
+
+  <!-- TAB 1: plenum votes -->
+  <div class="card" id="votesTab">
+    <h2 data-i18n="pageTitle"></h2>
+    <p class="hint" data-i18n="pageHint"></p>
+    <div class="searchrow">
+      <input id="q" data-i18n-ph="searchPh" onkeydown="if(event.key==='Enter')doSearch()">
+      <button onclick="doSearch()" data-i18n="searchBtn"></button>
+    </div>
+    <div class="filterrow">
+      <button class="advtoggle" style="margin-inline-start:0" onclick="toggleAdv()"><span data-i18n="advToggle"></span> ▾</button>
+    </div>
+
+    <div class="advpanel" id="advpanel" style="display:none">
+      <div class="advgrid">
+        <label><span data-i18n="advMk"></span><input id="advmk" data-i18n-ph="bInitPh" onkeydown="if(event.key==='Enter')doSearch()"></label>
+        <label><span data-i18n="advInit"></span><input id="advinit" data-i18n-ph="bInitPh" onkeydown="if(event.key==='Enter')doSearch()"></label>
+        <label><span data-i18n="bType"></span>
+          <select id="advtype" onchange="doSearch()">
+            <option value="all" data-i18n="allOpt"></option>
+            <option value="54" data-i18n="typePrivate"></option>
+            <option value="53" data-i18n="typeGov"></option>
+          </select></label>
+        <label><span data-i18n="advFrom"></span><input type="date" id="advfrom" onchange="doSearch()"></label>
+        <label><span data-i18n="advTo"></span><input type="date" id="advto" onchange="doSearch()"></label>
+        <label><span data-i18n="advResult"></span>
+          <select id="advresult" onchange="doSearch()">
+            <option value="all" data-i18n="allOpt"></option>
+            <option value="passed" data-i18n="passedOpt"></option>
+            <option value="failed" data-i18n="failedOpt"></option>
+          </select></label>
+      </div>
+      <div style="margin-top:10px"><button class="votechip" onclick="advClear()" data-i18n="clearShort"></button></div>
+    </div>
+    <div id="results" style="display:none"></div>
+    <div id="votes"><div class="loading" data-i18n="loading"></div></div>
+  </div>
+
+  <!-- TAB 2: bills in the legislative process -->
+  <div class="card" id="billsTab" style="display:none">
+    <h2 data-i18n="bTitle"></h2>
+    <p class="hint" data-i18n="bHint"></p>
+    <div class="searchrow">
+      <input id="bq" data-i18n-ph="bPh" onkeydown="if(event.key==='Enter')runBSearch()">
+      <button onclick="runBSearch()" data-i18n="searchBtn"></button>
+    </div>
+    <div class="advgrid" style="margin-bottom:12px">
+      <label><span data-i18n="bInit"></span><input id="binit" data-i18n-ph="bInitPh" onkeydown="if(event.key==='Enter')runBSearch()"></label>
+      <label><span data-i18n="bType"></span>
+        <select id="btype" onchange="runBSearch()">
+          <option value="all" data-i18n="allOpt"></option>
+          <option value="54" data-i18n="typePrivate"></option>
+          <option value="53" data-i18n="typeGov"></option>
+        </select></label>
+      <label><span data-i18n="bStatus"></span>
+        <select id="bstatus" onchange="runBSearch()"><option value="all"></option></select></label>
+      <label><span data-i18n="advFrom"></span><input type="date" id="bfrom" onchange="runBSearch()"></label>
+      <label><span data-i18n="advTo"></span><input type="date" id="bto" onchange="runBSearch()"></label>
+    </div>
+    <div id="blist"><div class="loading" data-i18n="loading"></div></div>
+  </div>
+
+  <footer>
+    <span data-i18n="credit"></span>
+    <a href="https://knesset.gov.il/Odata/ParliamentInfo.svc/" target="_blank" rel="noopener">Knesset OData</a> ·
+    <a href="https://oknesset.org" target="_blank" rel="noopener">Open Knesset</a>
+    · <span id="pagever"></span>
+    <div id="debug" style="margin-top:6px"></div>
+  </footer>
+</div>
+</div>
+
+<script>window.BASE = "../";</script>
+<script src="../config.js"></script>
+<script src="../votes/votes.strings.js"></script>
+<script src="../shared/common.js"></script>
+<script src="../votes/votes.data.js"></script>
+<script src="../votes/votes.search.js"></script>
+<script src="../votes/votes.bills.js"></script>
+<script src="../votes/votes.view.js"></script>
+<script src="selftest.js"></script>
+</body>
+</html>

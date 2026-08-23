@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הכסף שלנו — בדיקה עצמית | QA</title>
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .qa { font-size: 14px; }
+  .qa .row { display: flex; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--grid); align-items: baseline; }
+  .qa .st { width: 26px; flex: none; }
+  .qa .ok { color: var(--for-ink); } .qa .bad { color: var(--against-ink); } .qa .warn { color: #b07d10; }
+  .qa .name { flex: 1; }
+  .qa .info { color: var(--ink-2); font-size: 12.5px; }
+  .sum { font-size: 17px; font-weight: 700; margin: 14px 0 4px; }
+  code { direction: ltr; unicode-bidi: embed; font-size: 12px; }
+</style>
+</head>
+<body>
+<header class="topbar"></header>
+<div class="wrap">
+  <div class="card">
+    <h2>בדיקה עצמית של האתר (QA)</h2>
+    <p class="hint">הדף מריץ בדיקות אוטומטיות מול הנתונים החיים — מהדפדפן שלך, שרואה את כל המקורות. בסיום, צלמו או העתיקו את הדוח.</p>
+    <div class="sum" id="sum">מריץ בדיקות…</div>
+    <div class="qa" id="out"></div>
+  </div>
+  <footer><span id="stamp"></span><div id="debug" style="margin-top:6px"></div></footer>
+</div>
+
+<script>window.BASE = "../";</script>
+<script src="../config.js"></script>
+<script>
+window.PAGE = "qa";
+window.PAGE_STR = { he: {}, en: {} };
+</script>
+<script src="../shared/common.js"></script>
+<script>
+"use strict";
+const KAPI = "https://knesset.gov.il/WebSiteApi/knessetapi/Votes/";
+const PARL = "https://knesset.gov.il/Odata/ParliamentInfo.svc/";
+const kapi = (p, b) => viaRelay(KAPI + p, b);
+const od = async (base, path) => {
+  const j = await viaRelay(base + path + (path.includes("?") ? "&" : "?") + "$format=json");
+  return (j && (j.value || (j.d && (j.d.results || j.d)))) || [];
+};
+const rowsOf = j => !j ? [] : (Array.isArray(j) ? j : (j.Table || []));
+
+const results = [];
+function report(status, name, info) {
+  results.push(status);
+  const el = document.createElement("div");
+  el.className = "row";
+  el.innerHTML = `<span class="st ${status === "✔" ? "ok" : status === "⚠" ? "warn" : "bad"}">${status}</span>
+    <span class="name">${name}</span><span class="info">${info || ""}</span>`;
+  document.getElementById("out").appendChild(el);
+  const ok = results.filter(s => s === "✔").length, warn = results.filter(s => s === "⚠").length,
+        bad = results.filter(s => s === "✘").length;
+  document.getElementById("sum").textContent = `✔ ${ok} תקינות · ⚠ ${warn} אזהרות · ✘ ${bad} כשלים`;
+}
+async function test(name, fn) {
+  try {
+    const r = await fn();
+    report(r && r.warn ? "⚠" : "✔", name, r && r.info || "");
+  } catch (e) {
+    report("✘", name, String(e.message).slice(0, 160));
+  }
+}
+const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
+const day = n => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+
+async function run() {
+  document.getElementById("stamp").textContent = "נבדק: " + new Date().toLocaleString("he-IL");
+
+  /* ---------- infrastructure ---------- */
+  await test("ממסר (relay) מוגדר ופעיל", async () => {
+    assert(PROXY, "PROXY_URL ריק ב-config.js");
+    const r = await fetch(PROXY + "/data/votes");
+    assert(r.ok, "‎/data/votes החזיר " + r.status);
+    return { info: PROXY };
+  });
+
+  let snapVotes = null;
+  await test("מאגר עצמי: votes טרי", async () => {
+    const j = await (await fetch(PROXY + "/data/votes")).json();
+    assert(j && j.data && Array.isArray(j.data.rows), "מבנה לא צפוי");
+    snapVotes = j.data.rows;
+    const ageH = Math.round((Date.now() - j.t) / 36e5 * 10) / 10;
+    assert(ageH < 13, "עותק ישן: " + ageH + " שעות");
+    return { info: j.data.rows.length + " הצבעות · עודכן לפני " + ageH + " שעות" };
+  });
+
+  await test("מאגר עצמי: bills", async () => {
+    const j = await (await fetch(PROXY + "/data/bills")).json();
+    assert(j.data && j.data.statuses && j.data.statuses.length > 20, "רשימת סטטוסים חסרה");
+    return { info: j.data.statuses.length + " סטטוסים, " + (j.data.bills || []).length + " הצעות" };
+  });
+
+  await test("מאגר עצמי: verdicts", async () => {
+    const j = await (await fetch(PROXY + "/data/verdicts")).json();
+    assert(j.data && Array.isArray(j.data.data) && j.data.data.length, "אין פסיקה");
+    const r = j.data.data[0];
+    assert(r.CaseName && r.VerdictsDtString && r.PathForWeb, "שדות חסרים");
+    return { info: j.data.data.length + " מסמכים, האחרון: " + r.VerdictsDtString };
+  });
+
+  await test("מאגר עצמי: budget", async () => {
+    const r = await fetch(PROXY + "/data/budget");
+    if (!r.ok) return { warn: true, info: "עדיין נופל (BudgetKey עמוס) — סטטוס " + r.status };
+    const j = await r.json();
+    assert(j.data && j.data.sections && j.data.sections.length > 10, "מעט מדי סעיפים");
+    return { info: "שנה " + j.data.year + ", " + j.data.sections.length + " סעיפים" };
+  });
+
+  /* ---------- votes: search-result correctness ---------- */
+  let rows = [];
+  await test("הצבעות חיות: 120 יום אחרונים", async () => {
+    rows = rowsOf(await kapi("GetVotesHeaders", { SearchType: 1, FromDate: day(120), ToDate: day(0) }));
+    assert(rows.length > 0, "0 הצבעות (גם בפגרה אמורות להיות מ-120 יום)");
+    assert(rows[0].VoteId && rows[0].ItemTitle && rows[0].VoteDate, "שדות חסרים");
+    return { info: rows.length + " הצבעות גולמיות" };
+  });
+
+  let groups = [];
+  await test("קיבוץ הסתייגויות: עקבי", async () => {
+    const byKey = {};
+    rows.forEach(r => {
+      const k = (r.VoteDateStr || "") + "|" + (r.ItemTitle || "");
+      (byKey[k] = byKey[k] || []).push(r);
+    });
+    groups = Object.values(byKey);
+    assert(groups.length <= rows.length, "קיבוץ הגדיל את המספר?!");
+    const multi = groups.filter(g => g.length > 1).length;
+    return { info: rows.length + " הצבעות → " + groups.length + " חוקים (" + multi + " עם הסתייגויות)" };
+  });
+
+  await test("פירוט הצבעה: מספרים מסתדרים", async () => {
+    const g = groups.sort((a, b) => b.length - a.length)[0];
+    const last = g.slice().sort((a, b) => String(b.VoteDate).localeCompare(String(a.VoteDate)))[0];
+    const j = await kapi("GetVoteDetails/" + last.VoteId);
+    const hdr = (j.VoteHeader && j.VoteHeader[0]) || {};
+    assert(hdr.VoteId === last.VoteId, "VoteId לא תואם");
+    assert(typeof hdr.IsForAccepted === "boolean", "אין תוצאה (IsForAccepted)");
+    const counters = (j.VoteCounters || []).reduce((a, c) => a + (+c.countOfResult || 0), 0);
+    const details = (j.VoteDetails || []).length;
+    assert(details > 0, "אין פירוט מצביעים");
+    assert(Math.abs(counters - details) <= 121, "פער מוזר בין מונים לפירוט");
+    return { info: `"${(hdr.ItemTitle || "").slice(0, 40)}…" · מונים ${counters} · שורות ${details} · ${hdr.IsForAccepted ? "התקבלה" : "לא התקבלה"}` };
+  });
+
+  /* ---------- person search ---------- */
+  let mk = null;
+  await test("מדריך חברי כנסת + חיפוש שם (בשני הסדרים)", async () => {
+    const cmb = await kapi("GetVotesCmbData");
+    assert(cmb.MKS && cmb.MKS.length > 100, "מדריך קטן מדי: " + (cmb.MKS || []).length);
+    const find = q => {
+      const w = q.split(/\s+/);
+      return cmb.MKS.filter(m => w.every(x => (m.Name || "").includes(x)));
+    };
+    const a = find("לפיד יאיר"), b = find("יאיר לפיד");
+    assert(a.length && b.length && a[0].Name === b[0].Name, "סדר מילים משנה את התוצאה");
+    mk = a.sort((x, y) => y.KnessetId - x.KnessetId)[0];
+    return { info: mk.Name + " (כנסת " + mk.KnessetId + ")" };
+  });
+
+  await test("רשומת הצבעה אישית: מוצלבת מול פירוט אמיתי", async () => {
+    const rec = rowsOf(await kapi("GetVotesHeaders", { SearchType: 2, KnessetNum: mk.KnessetId, MkId: mk.Id }));
+    assert(rec.length > 0, "רשומה ריקה");
+    const j = await kapi("GetVoteDetails/" + rec[0].VoteId);
+    const surname = mk.Name.split(/\s+/)[0];
+    const found = (j.VoteDetails || []).some(d => (d.MkName || "").includes(surname));
+    assert(found, "חבר הכנסת לא מופיע בפירוט ההצבעה שברשומה שלו!");
+    return { info: rec.length + " הצבעות ברשומה · הצלבה תקינה" };
+  });
+
+  /* ---------- bills tab ---------- */
+  let statuses = {};
+  await test("הצעות חוק: חיפוש שם + סטטוסים נפתרים", async () => {
+    (await od(PARL, "KNS_Status()?$top=200")).forEach(s => statuses[s.StatusID] = s.Desc);
+    const bills = await od(PARL, "KNS_Bill()?$filter=substringof('חוק',Name) eq true&$orderby=LastUpdatedDate desc&$top=20");
+    assert(bills.length > 0, "0 תוצאות לחיפוש 'חוק'");
+    const resolved = bills.filter(b => statuses[b.StatusID]).length;
+    assert(resolved / bills.length > 0.8, "סטטוסים לא נפתרים: " + resolved + "/" + bills.length);
+    return { info: bills.length + " תוצאות · " + resolved + " עם סטטוס קריא" };
+  });
+
+  await test("סינון לפי סטטוס ספציפי: מחזיר רק אותו", async () => {
+    const anyBill = (await od(PARL, "KNS_Bill()?$orderby=LastUpdatedDate desc&$top=1"))[0];
+    const id = anyBill.StatusID;
+    const filtered = await od(PARL, `KNS_Bill()?$filter=StatusID eq ${id}&$orderby=LastUpdatedDate desc&$top=15`);
+    assert(filtered.length > 0, "0 תוצאות לסינון");
+    assert(filtered.every(b => b.StatusID === id), "חדרו סטטוסים אחרים!");
+    return { info: `"${(statuses[id] || id + "")}" · ${filtered.length} תוצאות, כולן תואמות` };
+  });
+
+  await test("סינון תאריכים: מכבד את הטווח", async () => {
+    const from = day(30);
+    const bills = await od(PARL, `KNS_Bill()?$filter=LastUpdatedDate ge datetime'${from}T00:00:00'&$orderby=LastUpdatedDate desc&$top=20`);
+    assert(bills.length > 0, "0 תוצאות בטווח 30 יום");
+    const bad = bills.filter(b => String(b.LastUpdatedDate).slice(0, 10) < from);
+    assert(!bad.length, bad.length + " תוצאות מחוץ לטווח");
+    return { info: bills.length + " תוצאות, כולן בטווח" };
+  });
+
+  await test("מסלול חקיקה של הצעה: נפתח", async () => {
+    const b = (await od(PARL, "KNS_Bill()?$orderby=LastUpdatedDate desc&$top=1"))[0];
+    const item = await viaRelay("https://knesset.gov.il/WebSiteApi/knessetapi/LegislationItem/GetLegislationBillItem?ItemId=" + b.BillID);
+    assert(item && item.general, "אין נתוני הצעה");
+    return { info: (item.general.Name || "").slice(0, 45) + "… · " + (((item.sessionAndDocs || {}).Sessions) || []).length + " תחנות" };
+  });
+
+  /* ---------- the frozen archive (pre-13.7.2021 votes) ---------- */
+  await test("ארכיון הצבעות ישן (עד 2021): עונה", async () => {
+    const rows = await od("https://knesset.gov.il/Odata/Votes.svc/",
+      "View_vote_rslts_hdr_Approved()?$filter=vote_date ge datetime'2019-01-01T00:00:00' and vote_date le datetime'2019-03-01T00:00:00'&$orderby=vote_date desc&$top=10");
+    assert(rows.length > 0, "0 הצבעות בארכיון לטווח 2019");
+    const r = rows[0];
+    assert(r.vote_id && r.sess_item_dscr !== undefined && typeof r.is_accepted === "number", "שדות ארכיון חסרים");
+    const members = await od("https://knesset.gov.il/Odata/Votes.svc/",
+      `vote_rslts_kmmbr_shadow()?$filter=vote_id eq ${r.vote_id}&$top=5`);
+    assert(members.length > 0, "אין פירוט מצביעים בארכיון");
+    return { info: rows.length + " הצבעות ב-2019 · פירוט: " + members[0].kmmbr_name };
+  });
+
+  /* ---------- court ---------- */
+  await test("בית המשפט: חיפוש טקסט חי", async () => {
+    const j = await (await fetch(PROXY + "/preset/verdicts?from=" + day(30) + "&to=" + day(-1) + "&q=" + encodeURIComponent("ממשלת ישראל"))).json();
+    assert(j && Array.isArray(j.data), "מבנה לא צפוי");
+    return { info: j.data.length + " תוצאות ל'ממשלת ישראל' (30 יום)" };
+  });
+
+  document.getElementById("sum").textContent += " — הבדיקה הסתיימה. אפשר לצלם ולשלוח לקלוד.";
+}
+
+buildChrome();
+run();
+</script>
+</body>
+</html>

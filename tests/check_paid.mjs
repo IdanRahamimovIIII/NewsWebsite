@@ -1,0 +1,17 @@
+import { chromium } from 'playwright';
+import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
+const DIR='/tmp/new/site', PORT=8944;
+const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json'};
+const srv=http.createServer((q,s)=>{const f=path.join(DIR,decodeURIComponent(q.url.split('?')[0]).replace(/^\/+/,'')||'index.html');
+ fs.readFile(f,(e,b)=>{ if(e){s.writeHead(404);s.end('no');return;} s.writeHead(200,{'Content-Type':MIME[path.extname(f)]||'text/plain'});s.end(b);});});
+await new Promise(r=>srv.listen(PORT,r));
+const br=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
+const p=await br.newPage({viewport:{width:900,height:800}});
+p.on('response',r=>{if(r.status()>=400)console.log('HTTP',r.status(),r.url());});
+p.on('pageerror',e=>console.log('PAGEERROR:',e.message));
+p.on('console',m=>{if(m.type()==='error')console.log('CONSOLE:',m.text());});
+await p.goto(`http://localhost:${PORT}/tools/paidcheck.html`);
+await p.waitForTimeout(1200);
+console.log((await p.textContent('#out')).replace(/\s+/g,' ').slice(0,400));
+await p.screenshot({path:'/tmp/new/tests/paidcheck.png',fullPage:true});
+await br.close(); srv.close();

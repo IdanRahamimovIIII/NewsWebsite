@@ -1,0 +1,29 @@
+# ---------------------------------------------------------------------------
+#  הכסף שלנו — what does NOT belong in the repository
+# ---------------------------------------------------------------------------
+
+# The ministries' spreadsheets are BUILD INPUTS, not source. The workflow
+# caches them between runs; 82 files a quarter in git history would bloat the
+# repo forever to store something we can re-download in a minute.
+reports/*.xlsx
+reports/manifest.json
+
+# a stray copy in the project root — it belongs in reports\
+/repository-of-answers_*.xlsx
+
+# LibreOffice / Excel leave these behind while a file is open
+.~lock.*#
+~$*
+*.tmp
+
+# node
+node_modules/
+package-lock.json
+
+# leftovers from tidy-up.bat
+_old_delete_me/
+*.log
+
+# NOTE: site/data/**  IS committed on purpose. Those JSON files are what the
+# site actually reads, and what the monthly workflow updates. That is the
+# point of putting this on GitHub.

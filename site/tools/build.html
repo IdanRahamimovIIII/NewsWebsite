@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הכסף שלנו — בניית מאגר ההצבעות</title>
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .bar { height: 12px; border-radius: 99px; background: var(--surface-2, #e6e9ee); overflow: hidden; margin: 12px 0 6px; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--series-1); transition: width .25s; }
+  .stat { display: flex; flex-wrap: wrap; gap: 8px 26px; margin: 14px 0; font-size: 14px; }
+  .stat b { font-variant-numeric: tabular-nums; }
+  .logbox { max-height: 240px; overflow: auto; border: 1px solid var(--grid); border-radius: 10px;
+    padding: 10px 12px; font-size: 12.5px; color: var(--ink-2); line-height: 1.7; direction: ltr; text-align: left; }
+  .steps { font-size: 14px; line-height: 1.9; }
+  .steps li { margin-bottom: 4px; }
+  button.big { font-size: 15px; padding: 10px 22px; }
+</style>
+</head>
+<body>
+<header class="topbar"></header>
+<div class="wrap">
+  <div class="card">
+    <h2>בניית מאגר ההצבעות שלנו</h2>
+    <p class="hint">
+      ה־API של הכנסת יודע לענות רק על "אילו הצבעות היו בין תאריך לתאריך". כדי שאפשר יהיה
+      לחפש בכל ההיסטוריה — 2003 ועד היום — אנחנו אוספים פעם אחת את כל ההצבעות אל האחסון
+      שלכם ב־Cloudflare, ומחפשים בעותק שלנו. התהליך רץ בצעדים קטנים, בערך שתי דקות.
+      אפשר לעצור ולהמשיך בכל רגע — הוא זוכר איפה היה.
+    </p>
+
+    <div id="pre" class="hint" style="margin:14px 0">בודק מה כבר קיים…</div>
+
+    <div class="bar"><i id="barfill"></i></div>
+    <div class="stat">
+      <span>שלב: <b id="phase">—</b></span>
+      <span>הצבעות במאגר: <b id="rows">0</b></span>
+      <span>שנים: <b id="years">0</b></span>
+      <span>טווח: <b id="cover">—</b></span>
+      <span>גודל משוער: <b id="size">0</b></span>
+    </div>
+
+    <div style="margin:14px 0; display:flex; gap:10px; flex-wrap:wrap">
+      <button class="big" id="go" onclick="toggleRun()">התחלת הבנייה</button>
+      <button class="votechip" onclick="refreshMeta()">רענון מצב</button>
+      <button class="votechip" id="finish" style="display:none" onclick="finishIndex()">סיום וניקוי המאגר</button>
+      <button class="votechip" id="resume" style="display:none" onclick="resumeArchive()">השלמת הארכיון (2003–2021)</button>
+      <button class="votechip" onclick="rebuild()">בנייה מחדש מאפס</button>
+    </div>
+
+    <div class="logbox" id="log"></div>
+
+    <h3 style="margin-top:22px">אם משהו לא עובד</h3>
+    <ol class="steps">
+      <li>ודאו ש‑worker.js העדכני (גרסה 7) הודבק ב‑Cloudflare ונלחץ <b>Deploy</b>.</li>
+      <li>ודאו שה‑KV מחובר: Settings → Bindings → שם המשתנה <code>DATA</code>.</li>
+      <li>אם מופיעה שגיאה חוזרת — לחצו "התחלת הבנייה" שוב; התהליך ממשיך מהמקום שנעצר.</li>
+      <li>בסיום, פתחו את דף ההצבעות וחפשו משהו ישן (למשל: חוק ההסדרים) — התוצאות אמורות
+        להגיע מכל השנים, מיד.</li>
+    </ol>
+  </div>
+  <footer><span id="stamp"></span><div id="debug" style="margin-top:6px"></div></footer>
+</div>
+
+<script>window.BASE = "../";</script>
+<script src="../config.js"></script>
+<script>
+window.PAGE = "build";
+window.PAGE_STR = { he: {}, en: {} };
+</script>
+<script src="../shared/common.js"></script>
+<script>
+"use strict";
+/* The harvest driver: one small request per step, paced so we never hit
+   Cloudflare's "one write per second to the same key" rule. */
+
+let running = false, stopReq = false, meta = null;
+const $ = id => document.getElementById(id);
+const fmt = n => (+n || 0).toLocaleString("he-IL");
+
+function log(msg, cls) {
+  const d = document.createElement("div");
+  d.textContent = new Date().toLocaleTimeString("he-IL") + "  " + msg;
+  if (cls) d.style.color = cls === "bad" ? "var(--against-ink)" : "var(--for-ink)";
+  $("log").prepend(d);
+}
+
+/* rough progress: the modern sweep is ~42 steps, the archive ~88 */
+function progress(m) {
+  if (!m) return 0;
+  if (m.done) return 1;
+  const startMs = Date.parse("2021-07-14"), nowMs = Date.now();
+  if (m.phase === "modern") {
+    const cur = Date.parse(m.modernFrom || "2021-07-14");
+    return 0.3 * Math.max(0, Math.min(1, (cur - startMs) / (nowMs - startMs)));
+  }
+  if (m.phase === "archive")
+    return 0.3 + 0.6 * Math.max(0, Math.min(1, (m.archiveSkip || 0) / 36000));
+  const yrs = Object.keys(m.years || {}).length || 1;
+  return 0.9 + 0.1 * (1 - (m.compactLeft || []).length / yrs);
+}
+
+function paint() {
+  const m = meta || {};
+  $("barfill").style.width = (progress(m) * 100).toFixed(1) + "%";
+  $("phase").textContent = m.done ? "הושלם ✔"
+    : m.phase === "archive" ? "ארכיון (2003–2021)"
+    : m.phase === "modern" ? "הצבעות 2021→היום"
+    : m.phase === "compact" ? "סידור המאגר" : "—";
+  $("rows").textContent = fmt(m.rows);
+  $("years").textContent = Object.keys(m.years || {}).length;
+  $("size").textContent = m.rows ? (m.rows * 110 / 1048576).toFixed(1) + " MB" : "0";
+  $("go").textContent = running ? "עצירה" : (m.done ? "הבנייה הושלמה — הרצה נוספת" : (m.rows ? "המשך הבנייה" : "התחלת הבנייה"));
+  // honest coverage line: which years the index actually holds
+  const ys = Object.keys(m.years || {}).map(Number).sort((a, b) => a - b);
+  const miss = missingYears(m);
+  $("cover").textContent = ys.length ? `${ys[0]}–${ys[ys.length - 1]}` + (miss.length ? ` (חסרות: ${miss.join(", ")})` : "") : "—";
+  // an interrupted sweep over a complete archive only needs the tidy-up pass
+  $("resume").style.display = (m.done && miss.length > 6) ? "" : "none";
+  $("finish").style.display = (!m.done && m.phase === "archive" && miss.length === 0) ? "" : "none";
+  if (m.done && miss.length > 6)
+    $("pre").innerHTML = '<span class="error">חסרות שנים בארכיון: ' + miss.slice(0, 6).join(", ") +
+      (miss.length > 6 ? "…" : "") + '</span> — לחצו ״השלמת הארכיון״ (אחרי הדבקת worker.js העדכני).';
+  else if (!m.done && m.phase === "archive" && miss.length === 0)
+    $("pre").innerHTML = 'כל השנים כבר במאגר — החיפוש עובד. נותר רק לסגור את הבנייה: לחצו ״סיום וניקוי המאגר״ (כחצי דקה).';
+  $("stamp").textContent = m.updated ? "עודכן: " + new Date(m.updated).toLocaleString("he-IL") : "";
+}
+
+/* which years between 2004 and 2020 are missing from the index */
+function missingYears(m) {
+  const have = m && m.years ? m.years : {};
+  const out = [];
+  for (let y = 2004; y <= 2020; y++) if (!have[y]) out.push(y);
+  return out;
+}
+
+async function finishIndex() {
+  const r = await fetch(PROXY + "/build/votes?finish=1");
+  const j = await r.json().catch(() => ({}));
+  if (j.error) { log("שגיאה: " + j.error, "bad"); return; }
+  if (j.phase !== "compact") {
+    log("ה‑Worker שמותקן עדיין ישן — הדביקו את worker.js ולחצו Deploy", "bad");
+    return;
+  }
+  meta = j; log("מסיים ומנקה כפילויות…", "ok"); paint(); run();
+}
+
+async function resumeArchive() {
+  const r = await fetch(PROXY + "/build/votes?resume=archive");
+  const j = await r.json().catch(() => ({}));
+  if (j.error) { log("שגיאה: " + j.error, "bad"); return; }
+  meta = j; log("ממשיך את איסוף הארכיון מ‑2003", "ok"); paint(); run();
+}
+
+async function refreshMeta() {
+  try {
+    const r = await fetch(PROXY + "/data/votesmeta");
+    if (r.status === 501) { $("pre").innerHTML = '<span class="error">חסר חיבור KV בשם DATA ב‑Cloudflare — ראו README.</span>'; return; }
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    meta = await r.json();
+    if (meta.v !== 7) {
+      $("pre").innerHTML = '<span class="error">ה‑Worker שמותקן אינו גרסה 7 — הדביקו את worker.js העדכני ולחצו Deploy.</span>';
+      return;
+    }
+    $("pre").textContent = meta.done
+      ? "המאגר בנוי ומוכן. אפשר לסגור את הדף."
+      : (meta.rows ? "בנייה שהתחילה ולא הסתיימה — אפשר להמשיך." : "המאגר עדיין ריק. לחצו ״התחלת הבנייה״.");
+    paint();
+  } catch (e) {
+    $("pre").innerHTML = '<span class="error">אין קשר ל‑Worker: ' + e.message + '</span>';
+  }
+}
+
+async function step() {
+  const r = await fetch(PROXY + "/build/votes");
+  const j = await r.json().catch(() => ({ error: "HTTP " + r.status }));
+  if (j.error) throw new Error(j.error);
+  meta = j;
+  return j;
+}
+
+async function run() {
+  running = true; stopReq = false; paint();
+  let fails = 0;
+  while (running && !stopReq) {
+    try {
+      const j = await step();
+      fails = 0;
+      log(`${j.step} · +${j.added} · סה״כ ${fmt(j.rows)}`);
+      paint();
+      if (j.done) { log("הבנייה הושלמה ✔", "ok"); break; }
+    } catch (e) {
+      fails++;
+      log("שגיאה: " + e.message + (fails < 4 ? " — מנסה שוב" : " — עוצר"), "bad");
+      if (fails >= 4) break;
+      await new Promise(r => setTimeout(r, 3000));
+      continue;
+    }
+    await new Promise(r => setTimeout(r, 1200));  // one write per second, per key
+  }
+  running = false; paint();
+}
+
+function toggleRun() { if (running) { stopReq = true; log("עוצר…"); } else run(); }
+
+async function rebuild() {
+  const key = prompt("בנייה מחדש מוחקת את המאגר הקיים ומתחילה מ‑2021.\nהקלידו את מילת האישור (ברירת מחדל: rebuild)", "rebuild");
+  if (!key) return;
+  const r = await fetch(PROXY + "/build/votes?reset=1&key=" + encodeURIComponent(key));
+  const j = await r.json().catch(() => ({}));
+  if (j.error) { log("שגיאה: " + j.error, "bad"); return; }
+  meta = j; log("אופס ואותחל מחדש", "ok"); paint(); run();
+}
+
+applyLang();
+refreshMeta();
+</script>
+</body>
+</html>
