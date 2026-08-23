@@ -43,7 +43,7 @@
  *   GET  /preset/<name>?params                 — named upstream queries
  *   any of the above + &wrap=1                 — wrap response for diagnostics
  *   any of the above + &head=1                 — status/type/size only, no body
- *   /preset/reports                            — newest procurement report per ministry
+ *   /preset/reports?sec=0020[&n=3000]          — which reports exist, one section
  */
 
 const ALLOWED = (host) =>
@@ -79,6 +79,9 @@ const iso = (d) => d + "T00:00:00.000Z";
 const day = (offsetDays) => new Date(Date.now() + offsetDays * 864e5).toISOString().slice(0, 10);
 const seg = (t, op) => [{ Text: t || "", textOperator: op, option: "2", Inverted: false, Synonym: false, NearDistance: 3, MatchOrder: false }];
 
+/* digits only. These land inside SQL and the caller is the open internet. */
+const digits = (s, fallback) => (String(s || "").replace(/\D/g, "") || fallback);
+
 /* ---------- named upstream queries ---------- */
 const PRESETS = {
   // Supreme Court verdicts published between p.from and p.to
@@ -106,19 +109,31 @@ const PRESETS = {
       lan: Number(p.lan || 1),
     }),
   }),
-  /* The NEWEST procurement report each publisher has filed — the list the
-     data refresh works from. DISTINCT ON over a few million rows is far too
-     long to pass through the /b64/ path (the WebFetch proxy 403s past ~248
-     chars), so it lives here as a named query instead of being reassembled
-     by every caller. Returns one row per publisher: the report's url, year,
-     period and date. */
-  reports: () => ({
-    url: "https://next.obudget.org/api/query?num_rows=200&query=" + encodeURIComponent(
-      `SELECT DISTINCT ON (publisher) publisher, "report-url" AS url,
-         "report-year" AS year, "report-period" AS period, "report-date" AS date
-       FROM quarterly_contract_spending_reports
-       WHERE "report-url" IS NOT NULL
-       ORDER BY publisher, "report-date" DESC NULLS LAST`),
+  /* Which procurement reports exist, for ONE budget section.
+       /preset/reports?sec=0020
+
+     The SQL lives here so the caller's address stays about sixty characters:
+     Claude's fetch refuses a relay URL much past 248, and this query in the
+     /b64/ form comes to 343.
+
+     WHY sec= AND NOT ALL AT ONCE: the previous version of this preset asked
+     for DISTINCT ON (publisher) across the whole table and it TIMES OUT —
+     tested 2026-08-23, "Read timeout while fetching the URL". That table has
+     roughly four million rows and sorting all of them to pick one per
+     publisher is too much work for one request. Filtered to a section it is
+     an index range and answers in seconds; the same query ran fine inside
+     GitHub Actions. So: one call per section, 0001..0099.
+
+     Returns one row per (url, publisher, year, period) — the caller decides
+     what to keep. */
+  reports: (p) => ({
+    url: "https://next.obudget.org/api/query?num_rows=" + digits(p.n, "3000") +
+      "&query=" + encodeURIComponent(
+        'SELECT DISTINCT "report-url" AS url, publisher, ' +
+        '"report-year" AS year, "report-period" AS period ' +
+        "FROM quarterly_contract_spending_reports " +
+        "WHERE budget_code LIKE '" + digits(p.sec, "0020") + "%' " +
+        'AND "report-url" IS NOT NULL'),
   }),
   // Knesset plenum votes between p.from and p.to (current system)
   votes: (p) => ({

@@ -25,7 +25,7 @@ usage:
   fetch_reports.py --out reports --manifest reports/manifest.json
   fetch_reports.py --out reports --sections 0020,0024 --years 2025,2024
 """
-import argparse, datetime, json, os, re, sys, time
+import argparse, datetime, hashlib, json, os, re, sys, time
 import urllib.parse, urllib.request
 
 API = "https://next.obudget.org/api/query"
@@ -74,13 +74,20 @@ def discover(sections, years, log=print):
         if len(rows) >= DISCOVER_ROWS:
             log("  ! %s filled the page (%d rows) — there may be more we did not see"
                 % (sec, len(rows)))
+        added = 0
         for r in rows:
             u = (r.get("url") or "").strip()
             if u and u not in found:
                 found[u] = {"publisher": r.get("publisher"),
                             "year": r.get("year"), "period": r.get("period")}
+                added += 1
         if rows:
-            log("  %s → %d urls (running total %d)" % (sec, len(rows), len(found)))
+            # rows are per (url, publisher, year, period): 88 rows was 11 urls
+            log("  %s → %d rows, %d new urls (running total %d)"
+                % (sec, len(rows), added, len(found)))
+        else:
+            log("  %s → nothing. No section by that number publishes a report."
+                % sec)
     return found
 
 
@@ -121,8 +128,14 @@ def filename_for(url, meta):
     if m:
         return m.group(1) + ".xlsx"
     pub = re.sub(r"[^\w֐-׿]+", "-", (meta.get("publisher") or "unknown"))[:40]
-    return "%s_%s_%s.xlsx" % (pub.strip("-"), meta.get("period") or "x",
-                              meta.get("year") or "0000")
+    # The first run produced "unknown_1_2024.xlsx" from a report with no
+    # publisher recorded. A second nameless publisher would land on that exact
+    # filename and overwrite it — one ministry silently replacing another. The
+    # url's own fingerprint makes the name unique without making it opaque.
+    tag = hashlib.sha1(url.encode("utf-8")).hexdigest()[:6]
+    return "%s_%s_%s_%s.xlsx" % (pub.strip("-") or "unknown",
+                                 meta.get("period") or "x",
+                                 meta.get("year") or "0000", tag)
 
 
 def head(url, timeout=60):
@@ -146,6 +159,80 @@ def next_quarter(year, period):
     return (year + 1, 1) if period >= 4 else (year, period + 1)
 
 
+def prev_quarter(year, period):
+    return (year - 1, 4) if period <= 1 else (year, period - 1)
+
+
+# ---------------------------------------------------------------- the catalogue
+
+def load_catalogue(path):
+    """One known-good report URL per publisher, checked into the repo.
+
+       Mercy's point, and she is right: the address is static except for the
+       quarter and the year. Asking BudgetKey every month which reports exist
+       makes a monthly job depend on a third party's index — the same index we
+       already caught lagging four quarters behind משרד החינוך. With one real
+       URL per ministry we can walk the calendar ourselves, in both directions,
+       and never call BudgetKey at all.
+
+       The catalogue is a plain file you can read and edit. When a ministry
+       changes its naming, the fix is one line in it."""
+    with open(path, encoding="utf-8") as fh:
+        doc = json.load(fh)
+    return doc.get("publishers") or []
+
+
+def walk_quarters(url, year, period, log=print, today=None, back=40, misses_allowed=4):
+    """{url: meta} — every quarter that really exists, walking the calendar
+       forward to today and backward through the archive from one known URL."""
+    found, today = {}, (today or datetime.date.today())
+    limit = (today.year, (today.month - 1) // 3 + 1)
+    base = (int(year), int(period))
+
+    size = head(url)
+    if size and size >= REAL_XLSX_MIN:
+        found[url] = {"year": str(base[0]), "period": str(base[1])}
+
+    for step, stop in ((next_quarter, lambda yp: yp > limit),
+                       (prev_quarter, lambda yp: yp[0] < limit[0] - back // 4)):
+        y, p, misses = base[0], base[1], 0
+        while True:
+            y, p = step(y, p)
+            if stop((y, p)):
+                break
+            guess = bump_url(url, base[0], base[1], y, p)
+            if not guess:
+                break
+            size = head(guess)
+            if size and size >= REAL_XLSX_MIN:
+                found[guess] = {"year": str(y), "period": str(p)}
+                misses = 0
+                log("    + Q%d %d (%d KB)" % (p, y, size // 1024))
+            else:
+                misses += 1
+                if misses >= misses_allowed:
+                    break
+            time.sleep(0.3)
+    return found
+
+
+def from_catalogue(entries, log=print, today=None):
+    """{url: meta} for every report every catalogued publisher has published."""
+    found = {}
+    for e in entries:
+        pub = e.get("publisher") or "?"
+        url, year, period = e.get("url"), e.get("year"), e.get("period")
+        if not (url and year and period):
+            log("  ! %s has no seed url — skipped" % pub)
+            continue
+        log("  %s" % pub)
+        got = walk_quarters(url, year, period, log=log, today=today)
+        for u, m in got.items():
+            found.setdefault(u, dict(m, publisher=pub))
+        log("    %d reports" % len(got))
+    return found
+
+
 def bump_url(url, year, period, new_year, new_period):
     """gov.il names a report <slug>_<quarter>_<year> and repeats it in the path.
        Swapping both numbers is a real address — Mercy checked this by hand
@@ -154,21 +241,23 @@ def bump_url(url, year, period, new_year, new_period):
     return url.replace(old, new) if old in url else None
 
 
-def probe_newer(url, meta, log=print, today=None):
-    """BudgetKey's index lags: for משרד החינוך it stopped at Q1 2025 while the
-       ministry has gone on publishing. Rather than accept a stale report, walk
-       the quarters forward from the newest one BudgetKey knows and ask the
-       server. This asks, it does not assume: a quarter counts only if the file
-       is really there and is really a file."""
+def probe_forward(url, meta, log=print, today=None):
+    """{url: meta} for EVERY quarter published after the newest one BudgetKey
+       has indexed — not just the newest of them.
+
+       BudgetKey's index lags: for משרד החינוך it stopped at Q1 2025 while the
+       ministry has gone on publishing. This asks, it does not assume: a quarter
+       counts only if the file is really there and is really a file."""
+    out = {}
     try:
         year, period = int(meta.get("year")), int(meta.get("period"))
     except (TypeError, ValueError):
-        return url, meta
+        return out
     if "/BlobFolder/" not in url:            # only gov.il names files this way
-        return url, meta
+        return out
     today = today or datetime.date.today()
     limit = (today.year, (today.month - 1) // 3 + 1)
-    best, misses = (url, meta), 0
+    misses = 0
     while True:
         year, period = next_quarter(year, period)
         if (year, period) > limit:
@@ -178,7 +267,7 @@ def probe_newer(url, meta, log=print, today=None):
             break
         size = head(guess)
         if size and size >= REAL_XLSX_MIN:
-            best = (guess, dict(meta, year=str(year), period=str(period)))
+            out[guess] = dict(meta, year=str(year), period=str(period))
             misses = 0
             log("    + %s Q%d %d is published too (%d KB)"
                 % (meta.get("publisher") or "?", period, year, size // 1024))
@@ -187,7 +276,7 @@ def probe_newer(url, meta, log=print, today=None):
             if misses >= 4:                  # a year of silence: stop guessing
                 break
         time.sleep(0.3)
-    return best
+    return out
 
 
 def download(url, path, timeout=300):
@@ -203,30 +292,50 @@ def download(url, path, timeout=300):
     return len(data)
 
 
-def run(out_dir, manifest_path, sections, years, limit=None, log=print):
+def run(out_dir, manifest_path, sections, years, limit=None, log=print, catalogue=None):
     os.makedirs(out_dir, exist_ok=True)
     manifest = {}
     if manifest_path and os.path.exists(manifest_path):
         with open(manifest_path, encoding="utf-8") as fh:
             manifest = json.load(fh)
 
+    if catalogue:
+        # THE MONTHLY PATH. No BudgetKey, no third-party index: one seed URL per
+        # ministry, and the calendar walked from it in both directions.
+        entries = load_catalogue(catalogue)
+        log("walking the calendar for %d catalogued publishers…" % len(entries))
+        found = from_catalogue(entries, log=log)
+        blocked = {}
+        log("%d reports to fetch in total" % len(found))
+        return _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log)
+
     log("discovering reports for %d sections × %d years…" % (len(sections), len(years)))
     all_found = discover(sections, years, log=log)
     log("%d distinct report urls" % len(all_found))
-    found, blocked = newest_per_publisher(all_found, log=log)
-    log("%d ministries reachable, %d not" % (len(found), len(blocked)))
 
-    # BudgetKey's index lags behind the ministries. Ask the server whether a
-    # newer quarter is sitting there before settling for the indexed one.
-    log("checking whether a newer quarter is already published…")
-    ahead = {}
-    for url, meta in sorted(found.items()):
-        u2, m2 = probe_newer(url, meta, log=log)
-        ahead[u2] = m2
-    newer = sum(1 for u in ahead if u not in found)
-    log("%d ministries had a newer report than BudgetKey knows about" % newer)
-    found = ahead
+    # EVERY report we can reach, not one per ministry.
+    # This used to keep only the newest report per publisher, on the reasoning
+    # that its payment column is cumulative so it answers the same question.
+    # That reasoning is wrong twice over: education's Q2 2025 file is 295 KB
+    # against Q1's 663 KB, so a later report can list FEWER contracts than an
+    # earlier one; and a single snapshot cannot say what was paid in a given
+    # year, which needs the whole series. Collecting is not the place to decide
+    # what matters.
+    found = {u: m for u, m in all_found.items() if reachable(u)}
+    newest, blocked = newest_per_publisher(all_found, log=log)
+    log("%d reports reachable, %d ministries unreachable" % (len(found), len(blocked)))
 
+    # BudgetKey's index lags behind the ministries: walk forward from each
+    # ministry's newest indexed report and collect every quarter published since.
+    log("checking for quarters published since BudgetKey last looked…")
+    for url, meta in sorted(newest.items()):
+        for u2, m2 in probe_forward(url, meta, log=log).items():
+            found.setdefault(u2, m2)
+    log("%d reports to fetch in total" % len(found))
+    return _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log)
+
+
+def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log):
     got = skipped = failed = 0
     for i, (url, meta) in enumerate(sorted(found.items())):
         if limit and got >= limit:
@@ -272,6 +381,10 @@ if __name__ == "__main__":
     # or defence, whose latest indexed reports are older than that.
     ap.add_argument("--years", default="2026,2025,2024,2023,2022")
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--catalogue", help="the checked-in list of seed urls. "
+                    "With this, BudgetKey is never contacted.")
+    ap.add_argument("--seed", help="ONE-OFF: ask BudgetKey which reports exist "
+                    "and write a catalogue to this path, then stop.")
     a = ap.parse_args()
     secs = [s.strip() for s in a.sections.split(",") if s.strip()] or DEFAULT_SECTIONS
     yrs = [y.strip() for y in a.years.split(",") if y.strip()]
@@ -279,5 +392,26 @@ if __name__ == "__main__":
     bad = [v for v in secs + yrs if not v.isdigit()]
     if bad:
         sys.exit("sections and years must be digits only, got: %s" % ", ".join(bad))
-    res = run(a.out, a.manifest or os.path.join(a.out, "manifest.json"), secs, yrs, a.limit)
+
+    if a.seed:
+        # The only thing we ever need BudgetKey for: the first real URL per
+        # ministry. Run this by hand when a ministry is added; after that the
+        # catalogue is the source and the calendar does the rest.
+        found = discover(secs, yrs, log=print)
+        newest, blocked = newest_per_publisher(found, log=print)
+        pubs = []
+        for url, meta in sorted(newest.items()):
+            pubs.append({"publisher": meta.get("publisher"), "url": url,
+                         "year": meta.get("year"), "period": meta.get("period")})
+        for pub, url in sorted(blocked.items()):
+            pubs.append({"publisher": pub, "url": url, "year": None, "period": None,
+                         "note": "host refuses a server — needs a url we can reach"})
+        os.makedirs(os.path.dirname(a.seed) or ".", exist_ok=True)
+        with open(a.seed, "w", encoding="utf-8") as fh:
+            json.dump({"publishers": pubs}, fh, ensure_ascii=False, indent=1)
+        print("wrote %d publishers to %s" % (len(pubs), a.seed))
+        sys.exit(0 if pubs else 1)
+
+    res = run(a.out, a.manifest or os.path.join(a.out, "manifest.json"),
+              secs, yrs, a.limit, catalogue=a.catalogue)
     sys.exit(1 if res["found"] == 0 else 0)

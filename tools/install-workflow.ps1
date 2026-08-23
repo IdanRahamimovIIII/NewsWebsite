@@ -1,5 +1,5 @@
 ﻿# =====================================================================
-#  install-workflow.ps1 - creates .github\workflows\refresh-data.yml
+#  install-workflow.ps1 - creates the files under .github\workflows\
 #
 #  Windows Explorer refuses to create a folder whose name starts with a dot,
 #  which makes ".github" oddly hard to make by hand. This does it for you.
@@ -15,8 +15,10 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $dir  = Join-Path $root ".github\workflows"
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
+$enc  = New-Object System.Text.UTF8Encoding $false
+$made = @()
 
-$yml = @'
+$yml1 = @'
 # Collects the ministries' quarterly procurement reports, parses them, and
 # rebuilds the merged dataset.
 #
@@ -37,7 +39,7 @@ on:
   workflow_dispatch:            # and on demand, from the Actions tab
     inputs:
       sections:
-        description: "budget sections, comma separated (blank = all)"
+        description: "budget sections, comma separated (blank = all 99)"
         default: ""
       years:
         description: "report years to look in"
@@ -66,7 +68,19 @@ jobs:
           key: reports-${{ github.run_id }}
           restore-keys: reports-
 
-      - name: fetch the reports that changed
+      # WHY BUDGETKEY IS STILL ASKED WHERE THE REPORTS ARE (2026-08-23):
+      # we tried to drop it. The plan was one seed url per ministry plus the
+      # calendar, since education's report is at
+      #   .../BlobFolder/.../education_1_2025/he/education_1_2025.xlsx
+      # and swapping the date works. It does not generalise. Real urls from
+      # other ministries look like
+      #   .../BlobFolder/dynamiccollectorresultitem/health_1/he/<hebrew> 4 - 2020.xlsx
+      #   .../BlobFolder/dynamiccollectorresultitem/tourism_201/he/repository-of-answers_...xlsx
+      # where health_1 is an item id, not a quarter, and the filename is free
+      # text. There is no pattern to walk. The addresses have to be looked up,
+      # and BudgetKey's report index is the only list of them we can reach.
+      # It is used HERE for addresses only. No BudgetKey DATA is collected.
+      - name: ask where the reports are, and fetch the ones that changed
         run: |
           python3 tools/fetch_reports.py \
             --out reports \
@@ -74,29 +88,30 @@ jobs:
             --sections "${{ inputs.sections }}" \
             --years "${{ inputs.years || '2026,2025,2024,2023,2022' }}"
 
+      # oldest first, so the newest report has the last word on a cumulative
+      # figure. An alphabetical shell loop got this right by luck and wrong by
+      # the same luck.
       - name: parse every report into site/data/paid
         run: |
-          shopt -s nullglob
-          for f in reports/*.xlsx; do
-            echo "-- $f"
-            python3 tools/parse_report.py "$f" site/data/paid || echo "  parse failed, continuing"
-          done
+          python3 tools/parse_all.py \
+            --reports reports \
+            --out site/data/paid
 
-      # THE SECOND SOURCE. Without this the "merge" is one spreadsheet wearing
-      # a different hat: the first run reported "file only: 2455, BudgetKey
-      # only: 0, both: 0". A union needs two sides.
-      - name: pull the contract_spending rows
-        run: |
-          python3 tools/fetch_budgetkey.py \
-            --sections "${{ inputs.sections }}" \
-            --out build/budgetkey.json
+      # WHERE THE COMBINING WOULD GO.
+      # It is deliberately not here yet. Each source stays whole and separate
+      # until collection is finished: 82 ministries, every quarter they have
+      # published, every column each source carries. Merging a fraction of the
+      # data teaches us to merge that fraction well, and the decisions are not
+      # reversible without re-downloading everything.
+      # build_dataset.py exists and its 35 tests run below. It is not wired in.
 
-      - name: build the merged dataset
+      - name: what have we collected so far
         run: |
-          python3 tools/build_dataset.py \
-            --files site/data/paid \
-            --budgetkey build/budgetkey.json \
-            --out site/data/contracts
+          python3 tools/inventory.py \
+            --reports reports \
+            --parsed site/data/paid \
+            --budgetkey build/raw \
+            --out site/data/inventory.txt
 
       # the rules are not decoration  -  a refresh that breaks one must not ship
       - name: the eight rules must still hold
@@ -117,14 +132,17 @@ jobs:
           fi
 
 '@
+$p1 = Join-Path $dir "refresh-data.yml"
+[System.IO.File]::WriteAllText($p1, $yml1, $enc)
+$made += $p1
 
-$path = Join-Path $dir "refresh-data.yml"
-[System.IO.File]::WriteAllText($path, $yml, (New-Object System.Text.UTF8Encoding $false))
 
 Write-Host ""
-Write-Host "  created: $path" -ForegroundColor Green
-Write-Host "  ($((Get-Item $path).Length) bytes)"
+foreach ($f in $made) {
+  Write-Host ("  created: " + $f) -ForegroundColor Green
+  Write-Host ("  (" + (Get-Item $f).Length + " bytes)")
+}
 Write-Host ""
-Write-Host "  Next: in GitHub Desktop you should see .github/workflows/refresh-data.yml"
-Write-Host "  in the changes list. Commit it and push."
+Write-Host "  Next: in GitHub Desktop you should see the files under"
+Write-Host "  .github/workflows/ in the changes list. Commit them and push."
 Write-Host ""

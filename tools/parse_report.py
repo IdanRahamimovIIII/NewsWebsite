@@ -79,6 +79,7 @@ def main(src, outdir, source_url=""):
         it = ws.iter_rows(values_only=True)
         hdr_raw = next(it)
         cols = find_cols(hdr_raw)
+        paid_hdr = norm(hdr_raw[cols["paid"]])   # the ministry's own spelling
         for r in it:
             oid = norm(r[cols["order"]])
             if not oid: continue
@@ -88,20 +89,18 @@ def main(src, outdir, source_url=""):
             key = oid + ":" + code
             paid, vol = num(r[cols["paid"]]), num(r[cols["vol"]])
             rows += 1
-            if paid <= 0: continue
-            paid_rows += 1
-            sec = by_section.setdefault(code[:4], {})
-            if key in sec:
-                # one order can be split across rows; the report repeats the
-                # cumulative figure, so take the largest rather than summing
-                dupes += 1
-                if paid <= sec[key][0]: continue
-            sec[key] = [round(paid, 2), round(vol, 2)]
 
-            # …and the WHOLE row, for the comparison tool. The lean file above
-            # is what the budget page loads; this one is what an auditor needs.
-            # Keys stay as the ministry spelled them — renaming them would hide
-            # exactly the thing someone checking us wants to see.
+            # THE WHOLE ROW, for the merge and the comparison tool — written
+            # for EVERY row, including the ones with no payment figure.
+            # This used to sit below the `paid <= 0` skip, which threw away 924
+            # of education's 3,488 rows before anything could look at them. A
+            # blank payment column is not a contract that does not exist: its
+            # ח"פ, its full purpose, its publication number are all still there,
+            # and BudgetKey may well have the payment the file is missing.
+            # Rule 5 — never let one source's silence delete the row.
+            # Keys stay as the ministry spelled them: renaming them would hide
+            # exactly the thing someone checking us wants to see. An empty cell
+            # is left ABSENT rather than written as 0 (rule 8).
             full = full_by_section.setdefault(code[:4], {})
             rec = {}
             for h, v in zip(hdr_raw, r):
@@ -113,7 +112,18 @@ def main(src, outdir, source_url=""):
                     txt = norm(v)
                     if txt and txt != "0.00" and txt != "0":
                         rec[hk] = txt
-            full[key] = rec
+            if key not in full or paid >= num(full[key].get(paid_hdr)):
+                full[key] = rec
+
+            if paid <= 0: continue
+            paid_rows += 1
+            sec = by_section.setdefault(code[:4], {})
+            if key in sec:
+                # one order can be split across rows; the report repeats the
+                # cumulative figure, so take the largest rather than summing
+                dupes += 1
+                if paid <= sec[key][0]: continue
+            sec[key] = [round(paid, 2), round(vol, 2)]
 
     os.makedirs(outdir, exist_ok=True)
     for sec, orders in sorted(by_section.items()):
@@ -157,7 +167,7 @@ def main(src, outdir, source_url=""):
         json.dump({"sections": secs}, f, ensure_ascii=False, separators=(",", ":"))
     print(f"  index.json  sections: {', '.join(secs)}")
     print(f"{os.path.basename(src)}: rows {rows}, with a paid figure {paid_rows}, "
-          f"repeated keys {dupes}")
+          f"without one {rows - paid_rows} (kept), repeated keys {dupes}")
 
 if __name__ == "__main__":
     a = sys.argv[1:]
