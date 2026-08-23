@@ -25,7 +25,7 @@ usage:
   fetch_reports.py --out reports --manifest reports/manifest.json
   fetch_reports.py --out reports --sections 0020,0024 --years 2025,2024
 """
-import argparse, json, os, re, sys, time
+import argparse, datetime, json, os, re, sys, time
 import urllib.parse, urllib.request
 
 API = "https://next.obudget.org/api/query"
@@ -49,29 +49,38 @@ def bk(sql, rows=200):
     return doc.get("rows") or []
 
 
+DISCOVER_ROWS = 3000
+
+
 def discover(sections, years, log=print):
     """{url: {publisher, year, period}} — every report URL BudgetKey knows for
-       those sections and years. Per section because DISTINCT ON times out."""
+       those sections and years. Per section because DISTINCT ON over the whole
+       ~4M-row table times out; but ALL the years in ONE query per section,
+       because a query per (section, year) is 99x5 round trips to answer 99
+       questions."""
     found = {}
+    inlist = ", ".join("'%s'" % y for y in years)
     for sec in sections:
-        for year in years:
-            sql = ('SELECT DISTINCT "report-url" AS url, publisher, '
-                   '"report-year" AS year, "report-period" AS period '
-                   'FROM quarterly_contract_spending_reports '
-                   "WHERE budget_code LIKE '%s%%' AND \"report-year\" = '%s' "
-                   'AND "report-url" IS NOT NULL' % (sec, year))
-            try:
-                rows = bk(sql, 400)
-            except Exception as e:                 # one section must not stop the rest
-                log("  discover %s/%s failed: %s" % (sec, year, e))
-                continue
-            for r in rows:
-                u = (r.get("url") or "").strip()
-                if u and u not in found:
-                    found[u] = {"publisher": r.get("publisher"),
-                                "year": r.get("year"), "period": r.get("period")}
-            if rows:
-                log("  %s %s → %d urls (running total %d)" % (sec, year, len(rows), len(found)))
+        sql = ('SELECT DISTINCT "report-url" AS url, publisher, '
+               '"report-year" AS year, "report-period" AS period '
+               'FROM quarterly_contract_spending_reports '
+               "WHERE budget_code LIKE '%s%%' AND \"report-year\" IN (%s) "
+               'AND "report-url" IS NOT NULL' % (sec, inlist))
+        try:
+            rows = bk(sql, DISCOVER_ROWS)
+        except Exception as e:                     # one section must not stop the rest
+            log("  discover %s failed: %s" % (sec, e))
+            continue
+        if len(rows) >= DISCOVER_ROWS:
+            log("  ! %s filled the page (%d rows) — there may be more we did not see"
+                % (sec, len(rows)))
+        for r in rows:
+            u = (r.get("url") or "").strip()
+            if u and u not in found:
+                found[u] = {"publisher": r.get("publisher"),
+                            "year": r.get("year"), "period": r.get("period")}
+        if rows:
+            log("  %s → %d urls (running total %d)" % (sec, len(rows), len(found)))
     return found
 
 
@@ -130,6 +139,57 @@ def head(url, timeout=60):
         return None
 
 
+REAL_XLSX_MIN = 20000        # gov.il's block page is ~5.7 KB; a report is ~600 KB+
+
+
+def next_quarter(year, period):
+    return (year + 1, 1) if period >= 4 else (year, period + 1)
+
+
+def bump_url(url, year, period, new_year, new_period):
+    """gov.il names a report <slug>_<quarter>_<year> and repeats it in the path.
+       Swapping both numbers is a real address — Mercy checked this by hand
+       before we relied on it."""
+    old, new = "_%d_%d" % (period, year), "_%d_%d" % (new_period, new_year)
+    return url.replace(old, new) if old in url else None
+
+
+def probe_newer(url, meta, log=print, today=None):
+    """BudgetKey's index lags: for משרד החינוך it stopped at Q1 2025 while the
+       ministry has gone on publishing. Rather than accept a stale report, walk
+       the quarters forward from the newest one BudgetKey knows and ask the
+       server. This asks, it does not assume: a quarter counts only if the file
+       is really there and is really a file."""
+    try:
+        year, period = int(meta.get("year")), int(meta.get("period"))
+    except (TypeError, ValueError):
+        return url, meta
+    if "/BlobFolder/" not in url:            # only gov.il names files this way
+        return url, meta
+    today = today or datetime.date.today()
+    limit = (today.year, (today.month - 1) // 3 + 1)
+    best, misses = (url, meta), 0
+    while True:
+        year, period = next_quarter(year, period)
+        if (year, period) > limit:
+            break
+        guess = bump_url(url, int(meta["year"]), int(meta["period"]), year, period)
+        if not guess:
+            break
+        size = head(guess)
+        if size and size >= REAL_XLSX_MIN:
+            best = (guess, dict(meta, year=str(year), period=str(period)))
+            misses = 0
+            log("    + %s Q%d %d is published too (%d KB)"
+                % (meta.get("publisher") or "?", period, year, size // 1024))
+        else:
+            misses += 1
+            if misses >= 4:                  # a year of silence: stop guessing
+                break
+        time.sleep(0.3)
+    return best
+
+
 def download(url, path, timeout=300):
     req = urllib.request.Request(url, headers=UA)
     with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -155,6 +215,17 @@ def run(out_dir, manifest_path, sections, years, limit=None, log=print):
     log("%d distinct report urls" % len(all_found))
     found, blocked = newest_per_publisher(all_found, log=log)
     log("%d ministries reachable, %d not" % (len(found), len(blocked)))
+
+    # BudgetKey's index lags behind the ministries. Ask the server whether a
+    # newer quarter is sitting there before settling for the indexed one.
+    log("checking whether a newer quarter is already published…")
+    ahead = {}
+    for url, meta in sorted(found.items()):
+        u2, m2 = probe_newer(url, meta, log=log)
+        ahead[u2] = m2
+    newer = sum(1 for u in ahead if u not in found)
+    log("%d ministries had a newer report than BudgetKey knows about" % newer)
+    found = ahead
 
     got = skipped = failed = 0
     for i, (url, meta) in enumerate(sorted(found.items())):
@@ -195,10 +266,18 @@ if __name__ == "__main__":
     ap.add_argument("--out", required=True)
     ap.add_argument("--manifest")
     ap.add_argument("--sections", default="")
-    ap.add_argument("--years", default="2026,2025,2024")
+    # five years back, not two: the newest report a ministry has published can
+    # be years old, and newest_per_publisher only ever takes the latest one it
+    # is shown. Asking 2026,2025 alone found education and NOTHING for health
+    # or defence, whose latest indexed reports are older than that.
+    ap.add_argument("--years", default="2026,2025,2024,2023,2022")
     ap.add_argument("--limit", type=int)
     a = ap.parse_args()
     secs = [s.strip() for s in a.sections.split(",") if s.strip()] or DEFAULT_SECTIONS
     yrs = [y.strip() for y in a.years.split(",") if y.strip()]
+    # both go straight into SQL, and on GitHub they come from a text box
+    bad = [v for v in secs + yrs if not v.isdigit()]
+    if bad:
+        sys.exit("sections and years must be digits only, got: %s" % ", ".join(bad))
     res = run(a.out, a.manifest or os.path.join(a.out, "manifest.json"), secs, yrs, a.limit)
     sys.exit(1 if res["found"] == 0 else 0)

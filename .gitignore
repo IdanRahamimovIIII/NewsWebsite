@@ -11,6 +11,10 @@ reports/manifest.json
 # a stray copy in the project root — it belongs in reports\
 /repository-of-answers_*.xlsx
 
+# the raw contract_spending pull. Also a build input: hundreds of MB of the
+# same rows the API will hand us again next month.
+build/
+
 # LibreOffice / Excel leave these behind while a file is open
 .~lock.*#
 ~$*
@@ -19,6 +23,12 @@ reports/manifest.json
 # node
 node_modules/
 package-lock.json
+
+# python leaves these next to any module it imports — the test runs on GitHub
+# will make tools/__pycache__ every time
+__pycache__/
+*.pyc
+.venv/
 
 # leftovers from tidy-up.bat
 _old_delete_me/

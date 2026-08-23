@@ -326,4 +326,10 @@ if __name__ == "__main__":
     ap.add_argument("--budgetkey", help="json of contract_spending rows")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
-    build(a.files, a.budgetkey, a.out)
+    out = build(a.files, a.budgetkey, a.out)
+    # Asking for a second source and getting nothing is not a smaller dataset,
+    # it is a WRONG one: every BudgetKey-only field goes empty and every
+    # BudgetKey-only contract disappears, silently, behind a green tick.
+    if a.budgetkey and not any(c.get("sources") and "bk" in c["sources"] for c in out):
+        sys.exit("no contract took a single field from BudgetKey — "
+                 "the merge had only one source; refusing to call this a build")

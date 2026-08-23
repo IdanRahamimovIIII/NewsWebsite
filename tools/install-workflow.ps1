@@ -41,7 +41,7 @@ on:
         default: ""
       years:
         description: "report years to look in"
-        default: "2026,2025"
+        default: "2026,2025,2024,2023,2022"
 
 permissions:
   contents: write
@@ -50,9 +50,9 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: pip install openpyxl
@@ -60,7 +60,7 @@ jobs:
       # the reports themselves are build inputs, not web content  -  they are
       # cached between runs rather than committed to the repo
       - name: restore the downloaded reports
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: reports
           key: reports-${{ github.run_id }}
@@ -72,7 +72,7 @@ jobs:
             --out reports \
             --manifest reports/manifest.json \
             --sections "${{ inputs.sections }}" \
-            --years "${{ inputs.years || '2026,2025' }}"
+            --years "${{ inputs.years || '2026,2025,2024,2023,2022' }}"
 
       - name: parse every report into site/data/paid
         run: |
@@ -82,12 +82,27 @@ jobs:
             python3 tools/parse_report.py "$f" site/data/paid || echo "  parse failed, continuing"
           done
 
+      # THE SECOND SOURCE. Without this the "merge" is one spreadsheet wearing
+      # a different hat: the first run reported "file only: 2455, BudgetKey
+      # only: 0, both: 0". A union needs two sides.
+      - name: pull the contract_spending rows
+        run: |
+          python3 tools/fetch_budgetkey.py \
+            --sections "${{ inputs.sections }}" \
+            --out build/budgetkey.json
+
       - name: build the merged dataset
-        run: python3 tools/build_dataset.py --files site/data/paid --out site/data/contracts
+        run: |
+          python3 tools/build_dataset.py \
+            --files site/data/paid \
+            --budgetkey build/budgetkey.json \
+            --out site/data/contracts
 
       # the rules are not decoration  -  a refresh that breaks one must not ship
       - name: the eight rules must still hold
-        run: python3 tests/test_merge.py
+        run: |
+          python3 tests/test_merge.py
+          python3 tests/test_fetch.py
 
       - name: commit whatever changed
         run: |
