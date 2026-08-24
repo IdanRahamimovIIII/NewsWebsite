@@ -2,13 +2,71 @@
 
 Notes from Claude to Claude (and Mercy) for future chats about this project.
 
-## START HERE (updated 2026-08-23)
+## START HERE (updated 2026-08-24)
 
 **2026-08-23: the work moved to COLLECTION.** The monthly GitHub
 Actions job downloads the ministries' reports; the merge step is
 deliberately unwired until collection is finished. Four wrong
 assumptions of mine were retracted that day — read
 "COLLECTION PIPELINE" below before touching anything in tools/.
+
+**2026-08-24: collection state, from site/data/inventory.txt (committed by
+the job — read it before re-measuring anything):** 1,734 report files,
+552 MB, 77 publishers, 535,179 parsed records across site/data/paid.
+Three holes remain, in size order: (1) 1,181 reports on hosts that refuse a
+server — mostly foi.gov.il, 2015–2020; a browser can open them; (2) 79
+downloads FAILED (48×404, 15×403, 16×not-an-xlsx — the no-PK ones may be
+legitimate old .xls files our PK check rejects, unverified); (3) the
+BudgetKey side not collected at all yet — fetch_budgetkey.py exists but
+build/raw is empty and it is not in the workflow. Mercy picked (2), the 79
+failures, as the next task. The blocker was that failed.json and
+unreachable.json lived only in the Actions cache, so the workflow now copies
+them + manifest.json into `site/data/collection/` on every run.
+
+**2026-08-24, later — the 79 failures read from the run LOG, and the recovery
+routes built (all tested offline, 69 assertions in tests/test_fetch.py, up
+from 52):**
+
+- **Many "failures" are DEAD TWINS, not missing reports.** BudgetKey indexes
+  the same report under several addresses, and in the log a large share of
+  the 48 404s sit right next to a twin that downloaded fine (משרד-האוצר_3_2018:
+  one ↓, one ✘; same for מנהל הרכב, הדיור הממשלתי, מנהלת הגמלאות, ניצולי
+  השואה…). fetch_reports now marks such a failure `covered_by <file>` in
+  failed.json and prints how many of the failures are noise vs. real holes.
+- **The 16 "not an xlsx (no PK header)" are most likely Excel's OLD format**
+  (.xls, OLE2, header D0 CF 11 E0), not block pages: they cluster exactly
+  where old files would — משרד החוץ 2019–20, תיאום הפעולות בשטחים 2016–17,
+  קליטת עליה 2015–16. The PK check was rejecting real government reports and
+  claiming they were HTML. `classify()` now accepts OLE2, saves as `.xls`,
+  parse_report reads it via xlrd (workflow installs xlrd; xlwt only for the
+  test), and a rejected file's error prints its ACTUAL first bytes so nobody
+  ever has to guess this again. Unverified against the live files until the
+  next run proves it.
+- **THE ALTERNATIVE ROUTE: the Wayback Machine.** web.archive.org serves
+  everyone and crawled both foi.gov.il and gov.il for years. `--wayback`
+  (workflow input, default yes) tries `https://web.archive.org/web/2id_/<url>`
+  for every direct failure AND for all 1,181 foi.gov.il urls — the whole
+  2015–2020 archive hole. Rules baked in: a recovered file is stamped
+  `via: "wayback"` + snapshot timestamp in the manifest (R3 — an archived
+  number must say where it came from); a snapshot is final, fetched once,
+  never re-checked; a good local copy is NEVER replaced by an older snapshot
+  when its live url dies. Coverage is unknown until the run — whatever the
+  archive lacks stays in failed.json with BOTH errors recorded. NOTE: this
+  sandbox cannot reach web.archive.org (robots + egress proxy), so the route
+  could not be probed from here; GitHub Actions can. Expect the first wayback
+  pass to add roughly 1–2.5 hours to the run (1,181 × ~2–4s, politely paced).
+- Other routes weighed: **gov.il's DynamicCollector JSON API** (the Angular
+  report pages load their file list from an XHR — an authoritative
+  per-ministry list, independent of BudgetKey's lagging index; needs one
+  DevTools capture from Mercy on any ministry's reports page, F12 → Network →
+  the request that returns the file list → Copy as cURL). **Reconstructing an
+  unreachable report from BudgetKey's tables — REJECTED by Mercy 2026-08-24:**
+  "do not combine the data with data from BudgetKey, we will do it later.
+  Getting data from BudgetKey is not a problem; the problem is getting it
+  from other sources." So BudgetKey stays addresses-only in collection, no
+  BudgetKey rows ever stand in for a ministry file, and the effort goes where
+  the difficulty is: the primary sources. **Claude driving Mercy's browser**
+  stays the fallback for whatever wayback misses.
 
 **What Mercy is working on next: `index.html` — התקציב.** In her words it is
 "the most important part of all of it and the main reason I wanted to make the

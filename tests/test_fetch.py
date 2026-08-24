@@ -173,7 +173,7 @@ R.head = lambda u, timeout=60: 700000 if u in FOUND else None
 grabbed = []
 def fake_download(u, p, timeout=300):
     grabbed.append(os.path.basename(p))
-    return 700000
+    return 700000, p
 R.download = fake_download
 with tempfile.TemporaryDirectory() as d:
     res = R.run(d, os.path.join(d, "m.json"), ["0020"], ["2025"], log=lambda *a: None)
@@ -292,6 +292,164 @@ except Exception:
     made = False
 ok("urllib will accept every one of them", made)
 
+
+
+print("\nthe bytes decide what a file is (the 16 rejected .xls reports):")
+PK   = b"PK\x03\x04" + b"\0" * 6000
+OLE2 = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\0" * 6000
+HTML = b"<!DOCTYPE html><html>" + b" " * 6000
+ok("a PK header is an xlsx", R.classify(PK) == "xlsx")
+ok("an OLE2 header is an xls — a real report, not a block page",
+   R.classify(OLE2) == "xls")
+ok("HTML is neither", R.classify(HTML) is None)
+ok("a tiny file is rejected whatever its header", R.classify(b"PK") is None)
+with tempfile.TemporaryDirectory() as d:
+    n, path = R._save(OLE2, os.path.join(d, "report.xlsx"))
+    ok("an OLE2 file is saved with an .xls name, not a lying .xlsx",
+       path.endswith("report.xls"), path)
+    ok("and it is really on disk", os.path.getsize(path) == len(OLE2))
+    try:
+        R._save(HTML, os.path.join(d, "wall.xlsx"))
+        rejected = None
+    except Exception as e:
+        rejected = str(e)
+    ok("a block page is rejected AND the error shows the actual bytes",
+       rejected and "DOCTYPE" in rejected, rejected)
+
+print("\nthe wayback fallback:")
+HEB = "https://foi.gov.il/sites/default/files/\u05e8\u05d1\u05e2\u05d5\u05df 4 - 2020.xlsx"
+w = R.wayback_url(HEB)
+ok("the wayback url wraps the ENCODED original",
+   w.startswith("https://web.archive.org/web/2id_/https://foi.gov.il/") and " " not in w, w)
+
+FOUND_WB = {
+    "https://www.gov.il/BlobFolder/a/dead_1_2019/f.xlsx":
+        {"publisher": "\u05d7\u05d5\u05e5", "year": "2019", "period": "1"},
+    "https://foi.gov.il/sites/default/files/old.xlsx":
+        {"publisher": "\u05e8\u05d5\u05d4\u05f4\u05de", "year": "2016", "period": "2", "wayback_only": True},
+    "https://www.gov.il/BlobFolder/a/alive_2_2019/f.xlsx":
+        {"publisher": "\u05d7\u05d5\u05e5", "year": "2019", "period": "2"},
+}
+_d2, _h2, _w2 = R.download, R.head, R.wayback_fetch
+direct_tried, wb_tried = [], []
+def dl2(u, p, timeout=300):
+    direct_tried.append(u)
+    if "dead" in u:
+        raise RuntimeError("HTTP Error 404: Not Found")
+    return 700000, p
+def wb2(u, p, timeout=120):
+    wb_tried.append(u)
+    if "old.xlsx" in u:
+        return 600000, p[:-1], "20180101000000"      # becomes .xls
+    raise RuntimeError("no snapshot")
+R.download, R.head, R.wayback_fetch = dl2, (lambda u, timeout=60: None), wb2
+with tempfile.TemporaryDirectory() as d:
+    man = {}
+    res = R._download_all(dict(FOUND_WB), {}, d, man, os.path.join(d, "m.json"),
+                          None, lambda *a: None, wayback=True)
+ok("a url the host refuses outright is never tried directly",
+   not any("foi.gov.il" in u for u in direct_tried), direct_tried)
+ok("both it and the dead url go through the archive", len(wb_tried) == 2, wb_tried)
+recovered = man.get("https://foi.gov.il/sites/default/files/old.xlsx") or {}
+ok("a recovered file is stamped via=wayback — an archived number must say so",
+   recovered.get("via") == "wayback" and recovered.get("snapshot") == "20180101000000",
+   recovered)
+ok("the failure that even wayback missed records BOTH errors",
+   res["failed"] == 1, res)
+R.download, R.head, R.wayback_fetch = _d2, _h2, _w2
+
+print("\na dead twin of a report we hold is noise, not a hole:")
+FOUND_TWIN = {
+    "https://www.gov.il/old-host/finance_3_2018/f.xlsx":
+        {"publisher": "\u05d0\u05d5\u05e6\u05e8", "year": "2018", "period": "3"},
+    "https://www.gov.il/new-host/finance_3_2018/f.xlsx":
+        {"publisher": "\u05d0\u05d5\u05e6\u05e8", "year": "2018", "period": "3"},
+}
+def dl3(u, p, timeout=300):
+    if "old-host" in u:
+        raise RuntimeError("HTTP Error 404: Not Found")
+    return 700000, p
+R.download, R.head = dl3, (lambda u, timeout=60: None)
+with tempfile.TemporaryDirectory() as d:
+    man = {}
+    res = R._download_all(dict(FOUND_TWIN), {}, d, man, os.path.join(d, "m.json"),
+                          None, lambda *a: None, wayback=False)
+    with open(os.path.join(d, "failed.json"), encoding="utf-8") as fh:
+        fj = json.load(fh)
+ok("the dead twin is marked covered_by the file that downloaded",
+   list(fj.values())[0].get("covered_by", "").startswith("finance_3_2018"),
+   fj)
+ok("and the run counts it", res.get("covered") == 1, res)
+R.download, R.head = _d2, _h2
+
+print("\nan archived snapshot is final — never fetched twice:")
+def dl4(u, p, timeout=300):
+    raise AssertionError("a wayback-sourced file must not be re-downloaded")
+R.download = dl4
+R.head = lambda u, timeout=60: None
+R.wayback_fetch = dl4
+with tempfile.TemporaryDirectory() as d:
+    with open(os.path.join(d, "old.xls"), "wb") as fh:
+        fh.write(b"\xd0\xcf\x11\xe0" + b"\0" * 6000)
+    man = {"https://foi.gov.il/x/old.xlsx":
+           {"file": "old.xls", "bytes": 6004, "publisher": "x",
+            "year": "2016", "period": "2", "via": "wayback", "snapshot": "2018"}}
+    res = R._download_all(
+        {"https://foi.gov.il/x/old.xlsx":
+         {"publisher": "x", "year": "2016", "period": "2", "wayback_only": True}},
+        {}, d, man, os.path.join(d, "m.json"), None, lambda *a: None, wayback=True)
+ok("it is skipped as unchanged", res["skipped"] == 1 and res["failed"] == 0, res)
+R.download, R.head, R.wayback_fetch = _d2, _h2, _w2
+
+print("\na file we hold is kept when its url dies:")
+def dl5(u, p, timeout=300):
+    raise RuntimeError("HTTP Error 404: Not Found")
+def wb5(u, p, timeout=120):
+    raise AssertionError("must not fetch an older snapshot over a good copy")
+R.download, R.head, R.wayback_fetch = dl5, (lambda u, timeout=60: None), wb5
+with tempfile.TemporaryDirectory() as d:
+    with open(os.path.join(d, "held_1_2019.xlsx"), "wb") as fh:
+        fh.write(b"PK" + b"\0" * 6000)
+    man = {"https://www.gov.il/a/held_1_2019/f.xlsx":
+           {"file": "held_1_2019.xlsx", "bytes": 6002, "publisher": "x",
+            "year": "2019", "period": "1"}}
+    res = R._download_all(
+        {"https://www.gov.il/a/held_1_2019/f.xlsx":
+         {"publisher": "x", "year": "2019", "period": "1"}},
+        {}, d, man, os.path.join(d, "m.json"), None, lambda *a: None, wayback=True)
+ok("kept, not failed, not re-fetched from the archive",
+   res["skipped"] == 1 and res["failed"] == 0, res)
+R.download, R.head, R.wayback_fetch = _d2, _h2, _w2
+
+print("\nparsing the old format (.xls):")
+try:
+    import xlwt
+    HAVE_XLWT = True
+except ImportError:
+    HAVE_XLWT = False
+if HAVE_XLWT:
+    import parse_report as P
+    with tempfile.TemporaryDirectory() as d:
+        xls = os.path.join(d, "r.xls")
+        wb = xlwt.Workbook()
+        sh = wb.add_sheet("data")
+        hdr = ["\u05d4\u05d6\u05de\u05e0\u05ea \u05e8\u05db\u05e9",
+               "\u05ea\u05e7\u05e0\u05d4 \u05ea\u05e7\u05e6\u05d9\u05d1\u05d9\u05ea",
+               "\u05e2\u05e8\u05da \u05d4\u05d4\u05d6\u05de\u05e0\u05d4",
+               "\u05d1. \u05d7\u05e9\u05d1\u05d5\u05e0\u05d9\u05d5\u05ea \u05de\u05e6\u05d8\u05d1\u05e8"]
+        for c, h in enumerate(hdr):
+            sh.write(0, c, h)
+        for c, v in enumerate(["4500000001", "20670205", 1000.5, 400.25]):
+            sh.write(1, c, v)
+        wb.save(xls)
+        out = os.path.join(d, "out")
+        P.main(xls, out, "https://example/he/x_1_2019/x_1_2019.xls")
+        with open(os.path.join(out, "0020.json"), encoding="utf-8") as fh:
+            doc = json.load(fh)
+    ok("an .xls report parses end to end",
+       doc["orders"].get("4500000001:0020670205") == [400.25, 1000.5], doc["orders"])
+else:
+    print("  (xlwt not installed — .xls round-trip not exercised here)")
 
 print("\ncollection must never quietly shrink:")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))

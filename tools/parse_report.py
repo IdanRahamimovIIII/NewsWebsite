@@ -58,6 +58,28 @@ def find_cols(hdr):
                          % (missing, [norm(h) for h in hdr]))
     return out
 
+def sheets_of(src):
+    """[(sheet_name, rows_iterator), …] — decided by the BYTES, not the
+       extension. Ministries published in Excel's old OLE2 format (.xls) into
+       ~2020 (משרד החוץ, תיאום הפעולות בשטחים among others); openpyxl cannot
+       open those, and the fetcher used to reject them as block pages. xlrd is
+       imported only when an .xls actually appears, so nothing breaks where it
+       is not installed and no .xls exists."""
+    with open(src, "rb") as fh:
+        head = fh.read(4)
+    if head[:2] == b"PK":
+        wb = openpyxl.load_workbook(src, read_only=True, data_only=True)
+        return [(name, wb[name].iter_rows(values_only=True))
+                for name in wb.sheetnames]
+    if head == b"\xd0\xcf\x11\xe0":
+        import xlrd                     # pip install xlrd — the workflow does
+        wb = xlrd.open_workbook(src)
+        return [(sh.name, (tuple(sh.row_values(i)) for i in range(sh.nrows)))
+                for sh in wb.sheets()]
+    raise SystemExit("%s is neither xlsx nor xls (starts %s)"
+                     % (os.path.basename(src), head.hex()))
+
+
 VINTAGE = re.compile(r"[_/]([a-z\-]+)_([1-4])_(20\d\d)")
 
 def report_vintage(text):
@@ -72,12 +94,11 @@ def main(src, outdir, source_url=""):
        own section — the education file carries 7 rows under 0054 — and the
        page loads by section, so the shape on disk has to follow the tree,
        not the ministry."""
-    wb = openpyxl.load_workbook(src, read_only=True, data_only=True)
     by_section, full_by_section, rows, paid_rows, dupes = {}, {}, 0, 0, 0
-    for sh in wb.sheetnames:
-        ws = wb[sh]
-        it = ws.iter_rows(values_only=True)
-        hdr_raw = next(it)
+    for sh, it in sheets_of(src):
+        hdr_raw = next(it, None)
+        if hdr_raw is None:
+            continue                                  # an empty sheet
         cols = find_cols(hdr_raw)
         paid_hdr = norm(hdr_raw[cols["paid"]])   # the ministry's own spelling
         for r in it:

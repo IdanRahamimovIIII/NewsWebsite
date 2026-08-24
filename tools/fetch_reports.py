@@ -352,20 +352,82 @@ def probe_forward(url, meta, log=print, today=None):
     return out
 
 
+def classify(data):
+    """\"xlsx\", \"xls\" or None — decided by the bytes, not the extension.
+
+       THE 16 \"not an xlsx\" FAILURES (run of 2026-08-24): the check demanded a
+       PK header, but Excel's OLD format (.xls, OLE2, used by ministries into
+       ~2020 — משרד החוץ, תיאום הפעולות בשטחים) starts D0 CF 11 E0 instead. A
+       legitimate government report was being rejected as a block page, and the
+       error message even asserted it was probably HTML. When rejecting, say
+       what the bytes actually were, so nobody has to guess again."""
+    if len(data) < 5000:
+        return None
+    if data[:2] == b"PK":
+        return "xlsx"
+    if data[:4] == b"\xd0\xcf\x11\xe0":
+        return "xls"
+    return None
+
+
+def _reject(data):
+    head = data[:24]
+    try:
+        shown = head.decode("utf-8", "replace").strip() or head.hex()
+    except Exception:
+        shown = head.hex()
+    return RuntimeError("not a spreadsheet (%d bytes, starts %r)"
+                        % (len(data), shown))
+
+
+def _save(data, path):
+    """Write, fixing the extension to match the actual format. Returns
+       (bytes, final_path). parse_all reads both .xlsx and .xls, and openpyxl
+       cannot open an OLE2 file handed to it with an .xlsx name."""
+    kind = classify(data)
+    if kind is None:
+        raise _reject(data)
+    if kind == "xls" and path.lower().endswith(".xlsx"):
+        path = path[:-5] + ".xls"
+    with open(path, "wb") as fh:
+        fh.write(data)
+    return len(data), path
+
+
 def download(url, path, timeout=300):
     req = urllib.request.Request(encode_url(url), headers=UA)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         data = r.read()
-    if len(data) < 5000:
-        raise RuntimeError("suspiciously small (%d bytes) — probably a block page" % len(data))
-    if data[:2] != b"PK":
-        raise RuntimeError("not an xlsx (no PK header) — probably an HTML block page")
-    with open(path, "wb") as fh:
-        fh.write(data)
-    return len(data)
+    return _save(data, path)
 
 
-def run(out_dir, manifest_path, sections, years, limit=None, log=print, catalogue=None):
+WAYBACK = "https://web.archive.org/web/2id_/"
+
+
+def wayback_url(url):
+    """The Internet Archive's copy of a url, as raw original bytes.
+       \"2id_\" = the snapshot closest to timestamp 2… (i.e. the latest one),
+       id_ = identity: the archived bytes, no banner injected."""
+    return WAYBACK + encode_url(url)
+
+
+def wayback_fetch(url, path, timeout=120):
+    """The alternative route. foi.gov.il refuses a server and some gov.il
+       addresses are simply gone (404) — but the Wayback Machine crawled both
+       hosts for years, and web.archive.org serves everyone. A recovered file
+       is stamped via=\"wayback\" in the manifest: a number from an archived
+       copy must never look like one read from the government's own server."""
+    req = urllib.request.Request(wayback_url(url), headers=UA)
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        data = r.read()
+        final = r.geturl()          # …/web/<timestamp>id_/<url> after redirect
+    m = re.search(r"/web/(\d{4,14})", final or "")
+    n, path = _save(data, path)
+    return n, path, (m.group(1) if m else "?")
+
+
+def run(out_dir, manifest_path, sections, years, limit=None, log=print,
+        catalogue=None, wayback=False):
     os.makedirs(out_dir, exist_ok=True)
     manifest = {}
     if manifest_path and os.path.exists(manifest_path):
@@ -380,7 +442,8 @@ def run(out_dir, manifest_path, sections, years, limit=None, log=print, catalogu
         found = from_catalogue(entries, log=log)
         blocked = {}
         log("%d reports to fetch in total" % len(found))
-        return _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log)
+        return _download_all(found, blocked, out_dir, manifest, manifest_path,
+                             limit, log, wayback=wayback)
 
     log("discovering reports for %d sections × %d years…" % (len(sections), len(years)))
     all_found = discover(sections, years, log=log)
@@ -417,6 +480,14 @@ def run(out_dir, manifest_path, sections, years, limit=None, log=print, catalogu
     with open(os.path.join(out_dir, "unreachable.json"), "w", encoding="utf-8") as fh:
         json.dump(skipped, fh, ensure_ascii=False, indent=1)
 
+    # THE ALTERNATIVE ROUTE to those 1,181: the Wayback Machine crawled
+    # foi.gov.il for years, and web.archive.org serves everyone. Try each
+    # blocked url through the archive instead of writing the years off.
+    if wayback and skipped:
+        log("trying the %d blocked urls through the Wayback Machine…" % len(skipped))
+        for u, m in skipped.items():
+            found.setdefault(u, dict(m, wayback_only=True))
+
     # BudgetKey's index lags behind the ministries: walk forward from each
     # ministry's newest indexed report and collect every quarter published since.
     log("checking for quarters published since BudgetKey last looked…")
@@ -424,10 +495,12 @@ def run(out_dir, manifest_path, sections, years, limit=None, log=print, catalogu
         for u2, m2 in probe_forward(url, meta, log=log).items():
             found.setdefault(u2, m2)
     log("%d reports to fetch in total" % len(found))
-    return _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log)
+    return _download_all(found, blocked, out_dir, manifest, manifest_path,
+                         limit, log, wayback=wayback)
 
 
-def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log):
+def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log,
+                  wayback=False):
     got = skipped = failed = 0
     failures = {}
     for i, (url, meta) in enumerate(sorted(found.items())):
@@ -439,23 +512,87 @@ def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log):
         # re-download all 82 for nothing
         name = prev.get("file") or filename_for(url, meta)
         path = os.path.join(out_dir, name)
-        size = head(url)
-        if size and prev.get("bytes") == size and os.path.exists(path):
+        archive_only = bool(meta.get("wayback_only"))
+
+        # an archived snapshot never changes, and the live host refuses us
+        # anyway — once a wayback copy is on disk, it is final
+        if prev.get("via") == "wayback" and prev.get("file") and \
+                os.path.exists(os.path.join(out_dir, prev["file"])):
             skipped += 1
-            continue                              # unchanged since last run
-        try:
-            n = download(url, path)
-            manifest[url] = {"file": name, "bytes": n, "publisher": meta.get("publisher"),
-                             "year": meta.get("year"), "period": meta.get("period")}
-            got += 1
-            log("  ↓ %s  (%d KB)" % (name, n // 1024))
-        except Exception as e:
-            failed += 1
-            failures[url] = {"file": name, "publisher": meta.get("publisher"),
-                             "year": meta.get("year"), "period": meta.get("period"),
-                             "error": str(e)[:200]}
-            log("  ✘ %s — %s" % (name, e))
-        time.sleep(0.5)                           # be a polite guest
+            continue
+        if not archive_only:
+            size = head(url)
+            if size and prev.get("bytes") == size and os.path.exists(path):
+                skipped += 1
+                continue                          # unchanged since last run
+
+        err = None
+        if not archive_only:
+            try:
+                n, real_path = download(url, path)
+            except Exception as e:
+                err = str(e)[:200]
+                # the url died AFTER we already downloaded its file: keep the
+                # copy we have. Falling through to wayback here could replace
+                # a good file with an OLDER snapshot of it.
+                if prev.get("bytes") and os.path.exists(path):
+                    skipped += 1
+                    log("  = %s — url now fails (%s), keeping the copy we hold"
+                        % (name, err))
+                    time.sleep(0.5)
+                    continue
+            else:
+                name = os.path.basename(real_path)
+                manifest[url] = {"file": name, "bytes": n,
+                                 "publisher": meta.get("publisher"),
+                                 "year": meta.get("year"), "period": meta.get("period")}
+                got += 1
+                log("  ↓ %s  (%d KB)" % (name, n // 1024))
+                time.sleep(0.5)                   # be a polite guest
+                continue
+
+        # THE SECOND CHANCE: the Wayback Machine. Tried for every direct
+        # failure and for every url on a host that refuses servers outright.
+        wb_err = None
+        if wayback:
+            try:
+                n, real_path, snap = wayback_fetch(url, path)
+                name = os.path.basename(real_path)
+                manifest[url] = {"file": name, "bytes": n,
+                                 "publisher": meta.get("publisher"),
+                                 "year": meta.get("year"), "period": meta.get("period"),
+                                 "via": "wayback", "snapshot": snap}
+                got += 1
+                log("  ⚑ %s  (%d KB, Wayback Machine %s)" % (name, n // 1024, snap[:8]))
+                time.sleep(1.5)                   # the archive is a public good
+                continue
+            except Exception as e:
+                wb_err = str(e)[:200]
+
+        failed += 1
+        failures[url] = {"file": name, "publisher": meta.get("publisher"),
+                         "year": meta.get("year"), "period": meta.get("period"),
+                         "error": err or "host refuses a server"}
+        if wb_err is not None:
+            failures[url]["wayback"] = wb_err
+        log("  ✘ %s — %s%s" % (name, err or "host refuses a server",
+                               (" · wayback: " + wb_err) if wb_err else ""))
+        time.sleep(0.5)
+
+    # A DEAD ADDRESS IS NOT ALWAYS A MISSING REPORT. BudgetKey indexes the
+    # same report under several urls (foi.gov.il + gov.il, old and new hosts),
+    # and in the 2026-08-24 run a large share of the 79 "failures" were dead
+    # twins of files that downloaded fine under another address. Say which,
+    # so the failure list shows the real hole and not the noise.
+    have = {}
+    for m in manifest.values():
+        have[(m.get("publisher"), str(m.get("year")), str(m.get("period")))] = m.get("file")
+    covered = 0
+    for f in failures.values():
+        twin = have.get((f.get("publisher"), str(f.get("year")), str(f.get("period"))))
+        if twin:
+            f["covered_by"] = twin
+            covered += 1
 
     if manifest_path:
         with open(manifest_path, "w", encoding="utf-8") as fh:
@@ -473,8 +610,12 @@ def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log):
         log("failures by kind:")
         for k, n in sorted(kinds.items(), key=lambda x: -x[1]):
             log("  %5d  %s" % (n, k))
+        if covered:
+            log("%d of the %d failed urls are duplicate addresses of reports "
+                "already on disk (marked covered_by in failed.json)"
+                % (covered, failed))
     return {"downloaded": got, "skipped": skipped, "failed": failed,
-            "found": len(found), "blocked": blocked}
+            "found": len(found), "blocked": blocked, "covered": covered}
 
 
 if __name__ == "__main__":
@@ -492,6 +633,10 @@ if __name__ == "__main__":
                     "With this, BudgetKey is never contacted.")
     ap.add_argument("--seed", help="ONE-OFF: ask BudgetKey which reports exist "
                     "and write a catalogue to this path, then stop.")
+    ap.add_argument("--wayback", action="store_true",
+                    help="when a url fails or its host refuses servers, try "
+                         "the Wayback Machine's copy (recovered files are "
+                         "stamped via=wayback in the manifest)")
     a = ap.parse_args()
     secs = [s.strip() for s in a.sections.split(",") if s.strip()]
     if not secs:
@@ -522,5 +667,5 @@ if __name__ == "__main__":
         sys.exit(0 if pubs else 1)
 
     res = run(a.out, a.manifest or os.path.join(a.out, "manifest.json"),
-              secs, yrs, a.limit, catalogue=a.catalogue)
+              secs, yrs, a.limit, catalogue=a.catalogue, wayback=a.wayback)
     sys.exit(1 if res["found"] == 0 else 0)

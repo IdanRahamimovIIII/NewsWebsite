@@ -42,7 +42,10 @@ def ordered(reports_dir, manifest_path, log=print):
 
     items = []
     for name in sorted(os.listdir(reports_dir)):
-        if not name.lower().endswith(".xlsx"):
+        # .xls too: ministries published in Excel's OLD format into ~2020
+        # (משרד החוץ, תיאום הפעולות בשטחים among others), and the fetcher now
+        # keeps those instead of rejecting them as block pages
+        if not name.lower().endswith((".xlsx", ".xls")):
             continue
         url, meta = by_file.get(name, ("", {}))
         try:

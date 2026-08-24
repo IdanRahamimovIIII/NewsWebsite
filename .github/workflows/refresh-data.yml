@@ -24,6 +24,9 @@ on:
       years:
         description: "report years to look in"
         default: "2026,2025,2024,2023,2022"
+      wayback:
+        description: "try the Wayback Machine for blocked and dead urls (yes/no)"
+        default: "yes"
 
 permissions:
   contents: write
@@ -37,7 +40,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - run: pip install openpyxl
+      # xlrd reads the OLD Excel format (.xls) some ministries used into ~2020;
+      # xlwt exists only so the tests can build one to parse
+      - run: pip install openpyxl xlrd xlwt
 
       # the reports themselves are build inputs, not web content  -  they are
       # cached between runs rather than committed to the repo
@@ -61,13 +66,22 @@ jobs:
       # derivable - they have to be looked up, and BudgetKey's report index is
       # the only list of them we found a way to reach.
       # It is used HERE for addresses only. No BudgetKey DATA is collected.
+      # --wayback: the alternative route, measured 2026-08-24. foi.gov.il
+      # refuses every server (1,181 reports, 2015-2020) and some gov.il
+      # addresses are dead (404/403) - but the Internet Archive crawled both
+      # hosts for years and web.archive.org serves everyone. Every recovered
+      # file is stamped via=wayback in the manifest, because a number from an
+      # archived copy must never look like one read from the live server.
+      # An archived snapshot never changes, so each url is recovered ONCE and
+      # skipped forever after; only the still-missing ones are retried monthly.
       - name: ask where the reports are, and fetch the ones that changed
         run: |
           python3 tools/fetch_reports.py \
             --out reports \
             --manifest reports/manifest.json \
             --sections "${{ inputs.sections }}" \
-            --years "${{ inputs.years || '2026,2025,2024,2023,2022' }}"
+            --years "${{ inputs.years || '2026,2025,2024,2023,2022' }}" \
+            ${{ (inputs.wayback || 'yes') != 'no' && '--wayback' || '' }}
 
       # oldest first, so the newest report has the last word on a cumulative
       # figure. An alphabetical shell loop got this right by luck and wrong by
@@ -93,6 +107,20 @@ jobs:
             --parsed site/data/paid \
             --budgetkey build/raw \
             --out site/data/inventory.txt
+
+      # the failure lists are DATA, not logs. failed.json (per url: what went
+      # wrong) and unreachable.json (the foi.gov.il hole) exist only in the
+      # Actions cache, so nobody outside a run can read them - which is how 79
+      # failures stayed a number in a report instead of 79 addresses someone
+      # could check. Copy them into the repo beside the inventory. The manifest
+      # comes too: it is the record of what was collected, and the cache it
+      # lives in is evicted after 7 unused days.
+      - name: keep the failure lists where they can be read
+        run: |
+          mkdir -p site/data/collection
+          cp reports/failed.json      site/data/collection/ 2>/dev/null || true
+          cp reports/unreachable.json site/data/collection/ 2>/dev/null || true
+          cp reports/manifest.json    site/data/collection/ 2>/dev/null || true
 
       # the rules are not decoration  -  a refresh that breaks one must not ship
       - name: the eight rules must still hold
