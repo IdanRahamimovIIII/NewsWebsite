@@ -65,8 +65,124 @@ from 52):**
   Getting data from BudgetKey is not a problem; the problem is getting it
   from other sources." So BudgetKey stays addresses-only in collection, no
   BudgetKey rows ever stand in for a ministry file, and the effort goes where
-  the difficulty is: the primary sources. **Claude driving Mercy's browser**
+  the difficulty is: the primary sources. NUANCE added by Mercy 2026-08-24,
+  after the wayback pass showed some files are gone from the whole internet:
+  for a report that neither the live host nor the archive nor a browser can
+  produce, "we will just have to hope BudgetKey have it" — its
+  row-per-contract-per-report copy is the accepted LAST resort, at merge
+  time, labelled as such. Not during collection. **Claude driving Mercy's browser**
   stays the fallback for whatever wayback misses.
+
+**2026-08-24: ORIGIN B PROBED LIVE AND ITS COLLECTOR BUILT** (while the big
+wayback run was going — Mercy asked "what other sources of contractor data").
+
+- Both register resources answer through the relay: `exemptions` 165,705
+  records / 23 fields, `tenders` 14,205 / 18 fields — the counts EXACTLY as
+  measured 2026-08-22. Now the reason, **measured, not assumed:** the CKAN
+  package metadata for both says they were **"manually updated" through
+  2021-01-31**. The data.gov.il register is a FROZEN snapshot — Origin B's
+  history, not its present. This also explains recent contracts resolving to
+  nothing through `tender_key`.
+- **The live continuation is the procurement portal (mr.gov.il / gov.il
+  tenders), an Angular app** — reaching its file/record API needs a one-time
+  DevTools capture from Mercy (same as the gov.il DynamicCollector one).
+  Until then, post-2021 authorisation data is NOT collected anywhere.
+- **RULE (Mercy, mid-build): files the running workflow uses are FROZEN —
+  new capability goes in NEW files.** First drafts of this touched
+  inventory.py / test_fetch.py / install-workflow.ps1; all three were
+  reverted to exactly the state the running pipeline was generated from.
+  Origin B is therefore fully self-contained:
+  `tools/fetch_publications.py` (pulls both resources WHOLE — every field,
+  pages by rows actually returned, dedupes only exact `_id` repeats, fails
+  loudly on a short pull, prints the newest תאריך פרסום so staleness is
+  measured every run) · `tests/test_publications.py` (10 assertions, its own
+  harness) · `.github/workflows/collect-publications.yml`, written by
+  `install-publications-workflow.bat` at the repo root. That workflow is
+  manual-only, shares no files with refresh-data.yml, and COMMITS NOTHING —
+  the register lands as a `publications-register` artifact (90 days;
+  re-run to regenerate; the permanent home is Mercy's call later). It can
+  run anytime without touching the monthly pipeline.
+- A CKAN sweep for מכרזים/התקשרויות found nothing else new for contracts:
+  the two registers, עיריית באר-שבע's municipal tenders (out of scope for
+  now), and unrelated sets. data.gov.il holds no other contractor source.
+
+**2026-08-24, EVENING — MERCY EXPORTED THE REGISTER FROM THE PORTAL ITSELF,
+and it SUPERSEDES the frozen data.gov.il copy.** No DevTools capture was
+needed: mr.gov.il has an export button, and she used it. On disk, kept out
+of git (folders are in .gitignore):
+
+- `Tenders-07082026\פלט מכרזים_B.xls` — **24,572 tenders, 2009 → 2026**
+  (newest פרסום 2026-09-08; a few carry future dates, status עתידי), against
+  data.gov.il's 14,205 frozen at 2021-01. Same 17 columns incl. שם ספק זוכה
+  and the supplier's ח"פ. Converted: `mr-tenders.json` beside it, 10.1 MB.
+- `Exemptions-07082026\פלט פטורים_B.xls` — **456 MB, VERIFIED (zipped to
+  24 MB by Mercy, staged, stream-parsed): 239,549 exemption publications,
+  2005 → 2026-08-06** (the folder name is the export date, 07/08/2026),
+  against data.gov.il's 165,705 frozen rows. All 22 real columns present;
+  fill rates measured: תקנה 100%, לינק לטקסטים 100%, היקף כספי 128,572
+  (54%). 14 rows carry פרסום year 1901 — the usual junk-date placeholder.
+  Converted: `mr-exemptions.json.gz` beside it (15.8 MB; the raw JSON is
+  140 MB — over the 20 MB/file commit cap, so only the .gz crossed the
+  bridge; gunzip to use). The 24 MB zip in the folder is the transport copy.
+- **THE FORMAT LIES TWICE** (measured): extension .xls, content is
+  SpreadsheetML 2003 XML; declaration says encoding="utf-16", bytes are
+  UTF-8 with BOM. `tools/parse_portal_export.py` (new file) handles both and
+  converts to compact JSON — every column, portal's own spellings, rows as
+  arrays (Hebrew keys per row would double the exemptions file). It STREAMS
+  (byte-patch the encoding lie into a temp copy, then iterparse row by row)
+  because 456 MB does not fit an in-memory parse. Dates are DD.MM.YYYY with
+  DOTS — a regex expecting slashes silently finds nothing.
+- Consequence: the data.gov.il `collect-publications` workflow is now a
+  historical CROSS-CHECK at best (its copy is a strict subset by date);
+  whether to bother running it is Mercy's call. The portal export is Origin
+  B's real source.
+- **AUTOMATION SOLVED THE SAME EVENING.** Mercy pasted the portal page she
+  had exported from — mr.gov.il/ilgstorefront/he/news/details/230920201036 —
+  and it is a news page where מינהל הרכש publishes the export zips MONTHLY
+  ("updated monthly", currently 07.08.2026), with direct media links
+  (`/ilgstorefront/medias/Tenders-DDMMYYYY.zip?context=<token>`). The page
+  ANSWERS A PLAIN SERVER FETCH (verified via WebFetch — no session, no bot
+  wall on this path, unlike foi.gov.il). So: `tools/fetch_portal_registers.py`
+  re-reads the page each run (the context token rotates — links are never
+  remembered), downloads whatever dated zips it carries, converts via
+  parse_portal_export, skips months already collected (manifest, cached).
+  `tests/test_portal.py`, 12 assertions. Workflow
+  `collect-portal-registers.yml` — monthly cron on the 12th (portal updates
+  ~7th–8th) + manual; commits nothing (artifact `portal-registers`), so its
+  schedule can never collide with the refresh push. Both Origin-B workflows
+  are written by `install-publications-workflow.bat` — one double-click,
+  then commit+push AFTER the big run finishes. Caveat: server-side fetch of
+  the ZIP itself is verified only for the page, not the binary — the first
+  Actions run is the proof; if the media path turns out bot-walled, fall
+  back to Mercy's quarterly manual export, which works today.
+- STILL TRUE about refresh-data.yml: its final `git push` fails if anything
+  lands on main while it runs — push nothing until a run finishes. A
+  `git pull --rebase` hardening was drafted and NOT applied (frozen files).
+  Queue it for after the current run.
+
+**2026-08-24, NIGHT — THE FIRST WAYBACK RUN HIT GITHUB'S 6-HOUR CEILING AND
+WAS KILLED.** Read the log before concluding anything:
+
+- **The route WORKS.** Hundreds of ⚑ recoveries in the partial log, roughly
+  half to two-thirds of attempts. The .xls acceptance worked live (משרד
+  החוץ's old-format files came back as .xls), and טלויזיה חינוכית — a
+  ministry with NO reachable report — was recovered from the archive.
+- **Why it died:** web.archive.org rate-limits a steady client — seen as
+  slow reads, `timed out`, SSL handshake timeouts, connection resets — and
+  wayback_fetch's 120s timeout turned each throttled url into two lost
+  minutes. 1,181 archive attempts at that price blew the 6h job ceiling; a
+  KILLED job runs nothing afterwards (no parse, no commit, cache save
+  uncertain), so the run's downloads may be partly or wholly lost. The
+  manifest-based design makes this survivable: everything is re-resumable.
+- **Fixes applied (2026-08-24, all suites green: 74+35+12+10):**
+  wayback timeout 120s → **30s**; `_download_all` now processes DIRECT
+  downloads before any wayback attempt (the cheap, high-value work must
+  never queue behind the slow archive); and `--deadline-minutes` makes the
+  fetch stop CLEANLY on a time budget — manifest + failure lists written,
+  parse/tests/commit/cache all run, remainder continues next run. The
+  workflow passes `--deadline-minutes 240` with `timeout-minutes: 300` on
+  the step. Expect the backlog to drain over 2–3 runs. Mercy re-runs with
+  the same inputs (12 years, wayback yes) after committing these fixes.
 
 **What Mercy is working on next: `index.html` — התקציב.** In her words it is
 "the most important part of all of it and the main reason I wanted to make the

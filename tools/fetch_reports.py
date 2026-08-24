@@ -411,12 +411,17 @@ def wayback_url(url):
     return WAYBACK + encode_url(url)
 
 
-def wayback_fetch(url, path, timeout=120):
+def wayback_fetch(url, path, timeout=30):
     """The alternative route. foi.gov.il refuses a server and some gov.il
        addresses are simply gone (404) — but the Wayback Machine crawled both
        hosts for years, and web.archive.org serves everyone. A recovered file
        is stamped via=\"wayback\" in the manifest: a number from an archived
-       copy must never look like one read from the government's own server."""
+       copy must never look like one read from the government's own server.
+
+       timeout=30, not 120 — measured 2026-08-24: the first full wayback pass
+       hit the archive's rate limiting as slow reads and dropped handshakes,
+       and at 120s per hang the pass alone blew GitHub's 6-hour job ceiling.
+       A timed-out url is simply retried next run."""
     req = urllib.request.Request(wayback_url(url), headers=UA)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         data = r.read()
@@ -427,7 +432,15 @@ def wayback_fetch(url, path, timeout=120):
 
 
 def run(out_dir, manifest_path, sections, years, limit=None, log=print,
-        catalogue=None, wayback=False):
+        catalogue=None, wayback=False, deadline_minutes=0):
+    # THE TIME BUDGET (2026-08-24): GitHub kills a job at 6 hours, and a killed
+    # job runs NOTHING after the fetch — no parse, no commit, and possibly no
+    # cache save, so hours of downloads can simply evaporate. The budget makes
+    # the fetch stop CLEANLY with time to spare: manifest and failure lists are
+    # written, the later steps run, the cache is saved, and whatever was not
+    # reached continues next run from the manifest. Everything is resumable —
+    # a deadline never loses work, it only splits it across runs.
+    deadline = (time.time() + deadline_minutes * 60) if deadline_minutes else None
     os.makedirs(out_dir, exist_ok=True)
     manifest = {}
     if manifest_path and os.path.exists(manifest_path):
@@ -443,7 +456,7 @@ def run(out_dir, manifest_path, sections, years, limit=None, log=print,
         blocked = {}
         log("%d reports to fetch in total" % len(found))
         return _download_all(found, blocked, out_dir, manifest, manifest_path,
-                             limit, log, wayback=wayback)
+                             limit, log, wayback=wayback, deadline=deadline)
 
     log("discovering reports for %d sections × %d years…" % (len(sections), len(years)))
     all_found = discover(sections, years, log=log)
@@ -496,15 +509,27 @@ def run(out_dir, manifest_path, sections, years, limit=None, log=print,
             found.setdefault(u2, m2)
     log("%d reports to fetch in total" % len(found))
     return _download_all(found, blocked, out_dir, manifest, manifest_path,
-                         limit, log, wayback=wayback)
+                         limit, log, wayback=wayback, deadline=deadline)
 
 
 def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log,
-                  wayback=False):
+                  wayback=False, deadline=None):
     got = skipped = failed = 0
     failures = {}
-    for i, (url, meta) in enumerate(sorted(found.items())):
+    stopped_early = False
+    # direct downloads FIRST, the wayback grind last: the archive is slow and
+    # rate-limited, and on a bounded run the cheap, high-value work — this
+    # quarter's new reports — must never queue behind it
+    items = sorted(found.items(),
+                   key=lambda kv: (bool(kv[1].get("wayback_only")), kv[0]))
+    for i, (url, meta) in enumerate(items):
         if limit and got >= limit:
+            break
+        if deadline is not None and time.time() >= deadline:
+            stopped_early = True
+            log("time budget reached with %d urls still to try — stopping "
+                "cleanly so parsing, tests, commit and the cache save all "
+                "run; the rest continues next run" % (len(items) - i))
             break
         prev = manifest.get(url) or {}
         # trust the manifest's own filename over recomputing it: if the naming
@@ -615,7 +640,8 @@ def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log,
                 "already on disk (marked covered_by in failed.json)"
                 % (covered, failed))
     return {"downloaded": got, "skipped": skipped, "failed": failed,
-            "found": len(found), "blocked": blocked, "covered": covered}
+            "found": len(found), "blocked": blocked, "covered": covered,
+            "stopped_early": stopped_early}
 
 
 if __name__ == "__main__":
@@ -633,6 +659,10 @@ if __name__ == "__main__":
                     "With this, BudgetKey is never contacted.")
     ap.add_argument("--seed", help="ONE-OFF: ask BudgetKey which reports exist "
                     "and write a catalogue to this path, then stop.")
+    ap.add_argument("--deadline-minutes", type=int, default=0,
+                    help="stop fetching cleanly after this many minutes so the "
+                         "rest of the job (parse, tests, commit, cache save) "
+                         "still runs; 0 = no budget. Work is resumable.")
     ap.add_argument("--wayback", action="store_true",
                     help="when a url fails or its host refuses servers, try "
                          "the Wayback Machine's copy (recovered files are "
@@ -667,5 +697,6 @@ if __name__ == "__main__":
         sys.exit(0 if pubs else 1)
 
     res = run(a.out, a.manifest or os.path.join(a.out, "manifest.json"),
-              secs, yrs, a.limit, catalogue=a.catalogue, wayback=a.wayback)
+              secs, yrs, a.limit, catalogue=a.catalogue, wayback=a.wayback,
+              deadline_minutes=a.deadline_minutes)
     sys.exit(1 if res["found"] == 0 else 0)

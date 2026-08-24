@@ -95,13 +95,23 @@ jobs:
       # archived copy must never look like one read from the live server.
       # An archived snapshot never changes, so each url is recovered ONCE and
       # skipped forever after; only the still-missing ones are retried monthly.
+      #
+      # --deadline-minutes 240: the lesson of the first wayback pass. GitHub
+      # kills a job at 6 hours, and a killed job runs NOTHING afterwards - no
+      # parse, no commit, maybe no cache save, so hours of downloads simply
+      # evaporated. Now the fetch stops CLEANLY at 4h (direct downloads always
+      # first, the slow archive grind last), everything downloaded is parsed,
+      # committed and cached, and the remainder continues next run from the
+      # manifest. A big backlog drains over 2-3 runs instead of dying at 6h.
       - name: ask where the reports are, and fetch the ones that changed
+        timeout-minutes: 300
         run: |
           python3 tools/fetch_reports.py \
             --out reports \
             --manifest reports/manifest.json \
             --sections "${{ inputs.sections }}" \
             --years "${{ inputs.years || '2026,2025,2024,2023,2022' }}" \
+            --deadline-minutes 240 \
             ${{ (inputs.wayback || 'yes') != 'no' && '--wayback' || '' }}
 
       # oldest first, so the newest report has the last word on a cumulative

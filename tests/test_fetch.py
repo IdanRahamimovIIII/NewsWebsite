@@ -421,6 +421,41 @@ ok("kept, not failed, not re-fetched from the archive",
    res["skipped"] == 1 and res["failed"] == 0, res)
 R.download, R.head, R.wayback_fetch = _d2, _h2, _w2
 
+print("\nthe time budget stops cleanly, and direct work goes first:")
+import time as _time
+def dl6(u, p, timeout=300):
+    order6.append(("direct", u))
+    return 700000, p
+def wb6(u, p, timeout=30):
+    order6.append(("wayback", u))
+    return 600000, p, "20200101000000"
+R.download, R.head, R.wayback_fetch = dl6, (lambda u, timeout=60: None), wb6
+FOUND6 = {
+    "https://foi.gov.il/a-archive.xlsx":
+        {"publisher": "x", "year": "2016", "period": "1", "wayback_only": True},
+    "https://www.gov.il/z-direct/f_1_2026.xlsx":
+        {"publisher": "y", "year": "2026", "period": "1"},
+}
+order6 = []
+with tempfile.TemporaryDirectory() as d:
+    res = R._download_all(dict(FOUND6), {}, d, {}, os.path.join(d, "m.json"),
+                          None, lambda *a: None, wayback=True)
+ok("the direct url is fetched BEFORE the archive one, whatever the alphabet says",
+   order6 and order6[0][0] == "direct", order6)
+ok("with no deadline nothing stops early", res.get("stopped_early") is False, res)
+
+order6 = []
+with tempfile.TemporaryDirectory() as d:
+    res = R._download_all(dict(FOUND6), {}, d, {}, os.path.join(d, "m.json"),
+                          None, lambda *a: None, wayback=True,
+                          deadline=_time.time() - 1)
+    wrote = os.path.exists(os.path.join(d, "failed.json"))
+ok("a deadline already passed means nothing is attempted",
+   order6 == [] and res["stopped_early"] is True, (order6, res))
+ok("the failure lists are still written on an early stop", wrote)
+ok("an early stop is not counted as failures", res["failed"] == 0, res)
+R.download, R.head, R.wayback_fetch = _d2, _h2, _w2
+
 print("\nparsing the old format (.xls):")
 try:
     import xlwt

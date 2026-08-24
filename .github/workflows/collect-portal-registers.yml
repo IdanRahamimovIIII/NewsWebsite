@@ -1,0 +1,59 @@
+# Collects Origin B from the procurement portal ITSELF - the monthly export
+# files (Tenders-DDMMYYYY.zip / Exemptions-DDMMYYYY.zip) that minhal
+# harechesh publishes on its news page. Found 2026-08-24 when Mercy exported
+# them by hand; the page answers a plain server fetch, no session needed,
+# so this can run unattended. These files SUPERSEDE the data.gov.il register
+# (frozen at 2021-01): measured 07.08.2026 content is tenders 24,572 rows
+# 2009-2026 and exemptions 239,549 rows 2005-2026.
+#
+# The download links carry a rotating ?context= token, so every run re-reads
+# the page and follows whatever dated links it carries today. A month
+# already collected (same date in the manifest, cached between runs) is
+# skipped. Commits NOTHING to git - results land as an artifact - so its
+# schedule can never collide with the monthly refresh push.
+name: collect portal registers
+
+on:
+  schedule:
+    - cron: "43 4 12 * *"     # the portal updates around the 7th-8th; the
+                              # 12th leaves slack, 04:43 UTC off the hour
+  workflow_dispatch:          # and on demand
+
+permissions:
+  contents: read              # it never writes back to the repository
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # keeps the manifest + converted JSON between runs, so an unchanged
+      # month costs one page read and nothing else
+      - name: restore what was already collected
+        uses: actions/cache@v5
+        with:
+          path: build/portal
+          key: portal-${{ github.run_id }}
+          restore-keys: portal-
+
+      # no network in these tests - they gate the pull, not depend on it
+      - name: the collector's own tests first
+        run: python3 tests/test_portal.py
+
+      - name: read the news page and collect whatever is new
+        run: python3 tools/fetch_portal_registers.py --out build/portal
+
+      # ~150 MB of JSON belongs in a download, not in git history
+      - name: keep the registers as a downloadable artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: portal-registers
+          path: |
+            build/portal/*.json
+          retention-days: 90
+          if-no-files-found: error

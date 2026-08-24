@@ -47,3 +47,9 @@ _old_delete_me/
 # The full files are still produced and still downloadable — the workflow
 # uploads them as a build artifact. They just do not live in git.
 site/data/paid/*.full.json
+
+# raw register exports from mr.gov.il (Mercy downloads them by hand - the
+# portal does not serve robots) and the JSON they convert to. Hundreds of MB;
+# they live on disk, never in git history.
+/Exemptions-*/
+/Tenders-*/
