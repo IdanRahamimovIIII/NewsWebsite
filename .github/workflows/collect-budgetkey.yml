@@ -1,0 +1,63 @@
+# Collects the BudgetKey side of the contracts dataset, RAW and WHOLE:
+# every contract_spending row for every budget section, every column except
+# the two rule-7 computed averages. This is the merge's second input -
+# supplier identity resolution (entity_id), the payments[] history for
+# ministries whose files we do not hold, entity kinds, tender_key.
+#
+# Section by section into build/raw/<section>.json, cached between runs, so
+# the collection is RESUMABLE: a section already on disk is skipped, a
+# failed section is named and retried next run, and a 4-hour budget stops
+# the run cleanly long before GitHub's 6-hour kill.
+#
+# Kept SEPARATE per Mercy's rule - nothing is combined here. Commits
+# NOTHING to git; results land as the budgetkey-raw artifact.
+#
+# NOTE FOR MERGE-WIRING DAY: the refresh workflow will need this cache
+# (restore-keys: budgetkey-) so build_dataset.py can read build/raw.
+name: collect budgetkey
+
+on:
+  schedule:
+    - cron: "37 3 25 * *"     # the 25th monthly - fresh before the 1st's merge
+  workflow_dispatch:          # and on demand
+
+permissions:
+  contents: read              # it never writes back to the repository
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: restore what was already collected
+        uses: actions/cache@v5
+        with:
+          path: build/raw
+          key: budgetkey-${{ github.run_id }}
+          restore-keys: budgetkey-
+
+      # no network in these tests - they gate the pull, not depend on it
+      - name: the collector's own tests first
+        run: python3 tests/test_budgetkey_all.py
+
+      - name: collect every section, resumably
+        timeout-minutes: 300
+        run: |
+          python3 tools/fetch_budgetkey_all.py \
+            --out build/raw \
+            --deadline-minutes 240
+
+      # ~1.5 GB of JSON belongs in a download, not in git history
+      - name: keep the raw pull as a downloadable artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: budgetkey-raw
+          path: build/raw/*.json
+          retention-days: 90
+          if-no-files-found: warn
