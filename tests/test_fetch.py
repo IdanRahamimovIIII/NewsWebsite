@@ -456,6 +456,45 @@ ok("the failure lists are still written on an early stop", wrote)
 ok("an early stop is not counted as failures", res["failed"] == 0, res)
 R.download, R.head, R.wayback_fetch = _d2, _h2, _w2
 
+print("\nthe circuit breaker rests a refusing archive:")
+def dl7(u, p, timeout=300):
+    raise RuntimeError("HTTP Error 404: Not Found")
+wb_calls = []
+def wb7(u, p, timeout=30):
+    wb_calls.append(u)
+    raise RuntimeError("<urlopen error [Errno 111] Connection refused>")
+R.download, R.head, R.wayback_fetch = dl7, (lambda u, timeout=60: None), wb7
+MANY = {"https://www.gov.il/a/x_%d_2019/f.xlsx" % i:
+        {"publisher": "x", "year": "2019", "period": "1"} for i in range(30)}
+with tempfile.TemporaryDirectory() as d:
+    res = R._download_all(dict(MANY), {}, d, {}, os.path.join(d, "m.json"),
+                          None, lambda *a: None, wayback=True)
+    with open(os.path.join(d, "failed.json"), encoding="utf-8") as fh:
+        fj = json.load(fh)
+ok("after %d straight refusals the archive is left alone" % R.WB_REFUSALS_LIMIT,
+   len(wb_calls) == R.WB_REFUSALS_LIMIT, len(wb_calls))
+ok("the skipped urls say WHY wayback was not tried",
+   any("not tried" in (f.get("wayback") or "") for f in fj.values()),
+   list(fj.values())[-1])
+ok("every url is still recorded as failed and retries next run",
+   res["failed"] == 30, res)
+
+wb_calls.clear()
+flips = {"n": 0}
+def wb8(u, p, timeout=30):
+    wb_calls.append(u)
+    flips["n"] += 1
+    if flips["n"] % 2:
+        raise RuntimeError("<urlopen error [Errno 111] Connection refused>")
+    raise RuntimeError("HTTP Error 404: NOT FOUND")
+R.wayback_fetch = wb8
+with tempfile.TemporaryDirectory() as d:
+    res = R._download_all(dict(MANY), {}, d, {}, os.path.join(d, "m.json"),
+                          None, lambda *a: None, wayback=True)
+ok("a clean 404 is an ANSWER and resets the breaker — no false trip",
+   len(wb_calls) == 30, len(wb_calls))
+R.download, R.head, R.wayback_fetch = _d2, _h2, _w2
+
 print("\nparsing the old format (.xls):")
 try:
     import xlwt

@@ -184,6 +184,35 @@ WAS KILLED.** Read the log before concluding anything:
   the step. Expect the backlog to drain over 2–3 runs. Mercy re-runs with
   the same inputs (12 years, wayback yes) after committing these fixes.
 
+**2026-08-24, RUN 2 (with the fixes) — the machinery worked; the WORLD
+pushed back. Read this before judging any future run's failures:**
+
+- Machinery: the killed run's cache HAD survived (1,704 skips). The
+  keep-the-copy guard protected every held file whose url died. Budget
+  stopped cleanly at 4h with 444 urls left. Accounting: 715 "failed", of
+  which **544 are dead twins already on disk (covered_by)** — the real hole
+  is ~170, most retryable. 101 new downloads, all essentially wayback ⚑
+  (more .xls among them).
+- **gov.il answered 403 to EVERY url this run** — including hundreds that
+  served fine two days earlier, and every probe_forward head-check (so no
+  new quarters were discovered this run). A blanket block of the runner,
+  almost certainly a reaction to three heavy sweeps in ~48 hours. NOT
+  per-file, NOT permanent damage: every held file was kept by the guard.
+  Do not conclude "gov.il blocks Actions forever" from one run — wait and
+  re-measure. If it persists across spaced-out runs, collection needs a new
+  route (relay, or Mercy's browser).
+- **archive.org REFUSED connections for most of the run** ([Errno 111]) —
+  throttled after ~1,200 requests the previous night. A refused connection
+  is not "no snapshot"; it is "come back later".
+- **Fixes added (suites now 78+35+12+10):** circuit breaker — after 15
+  consecutive connection-level wayback failures the archive is rested for
+  the remainder of the run (clean 404s reset the counter; they are answers);
+  wayback pacing 1.5s → 3s. Skipped urls record "not tried — the archive
+  refused N consecutive connections" and retry next run.
+- **THE LESSON: space the runs out.** Back-to-back heavy sweeps got both
+  hosts to slam the door. From here: at most one run per day; better, let
+  the monthly schedule do it. The manifest makes patience free.
+
 **What Mercy is working on next: `index.html` — התקציב.** In her words it is
 "the most important part of all of it and the main reason I wanted to make the
 site". Everything else (votes, court) is supporting cast. Treat the budget page

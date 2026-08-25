@@ -402,6 +402,8 @@ def download(url, path, timeout=300):
 
 
 WAYBACK = "https://web.archive.org/web/2id_/"
+WB_REFUSALS_LIMIT = 15      # consecutive connection-level refusals before the
+                            # circuit breaker rests the archive for this run
 
 
 def wayback_url(url):
@@ -517,6 +519,7 @@ def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log,
     got = skipped = failed = 0
     failures = {}
     stopped_early = False
+    wb_refused = 0
     # direct downloads FIRST, the wayback grind last: the archive is slow and
     # rate-limited, and on a bounded run the cheap, high-value work — this
     # quarter's new reports — must never queue behind it
@@ -578,8 +581,17 @@ def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log,
 
         # THE SECOND CHANCE: the Wayback Machine. Tried for every direct
         # failure and for every url on a host that refuses servers outright.
+        #
+        # THE CIRCUIT BREAKER (2026-08-24, run 2): after our heavy sweeps,
+        # archive.org started REFUSING connections outright — and the run
+        # spent hours collecting nothing but [Errno 111]. A refused
+        # connection is not "no snapshot"; it is "come back later". After
+        # enough consecutive connection-level refusals, stop asking for the
+        # rest of THIS run; every skipped url is retried next run.
         wb_err = None
-        if wayback:
+        if wayback and wb_refused >= WB_REFUSALS_LIMIT:
+            wb_err = "not tried — the archive refused %d consecutive connections this run" % wb_refused
+        elif wayback:
             try:
                 n, real_path, snap = wayback_fetch(url, path)
                 name = os.path.basename(real_path)
@@ -589,10 +601,22 @@ def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log,
                                  "via": "wayback", "snapshot": snap}
                 got += 1
                 log("  ⚑ %s  (%d KB, Wayback Machine %s)" % (name, n // 1024, snap[:8]))
-                time.sleep(1.5)                   # the archive is a public good
+                wb_refused = 0
+                time.sleep(3.0)                   # the archive is a public good
                 continue
             except Exception as e:
                 wb_err = str(e)[:200]
+                # connection-level trouble counts toward the breaker;
+                # a clean 404 ("no snapshot") does not - that is an answer
+                if any(t in wb_err for t in ("Connection refused", "timed out",
+                                             "handshake", "Connection reset")):
+                    wb_refused += 1
+                    if wb_refused == WB_REFUSALS_LIMIT:
+                        log("! the archive has refused %d connections in a row - "
+                            "giving it a rest; remaining archive urls retry "
+                            "next run" % wb_refused)
+                else:
+                    wb_refused = 0
 
         failed += 1
         failures[url] = {"file": name, "publisher": meta.get("publisher"),
