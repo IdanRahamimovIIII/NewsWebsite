@@ -60,9 +60,10 @@
     <input id="q" placeholder="לדוגמה: 4502539235, או: מילגם, או: הזנה" autocomplete="off">
     <button class="go" id="go" type="button">חפש</button>
     <button id="rnd" type="button">התקשרות אקראית</button>
-    <button id="edu" type="button">אקראית מהחינוך</button>
+    <button id="edu" type="button">אקראית מהקבצים</button>
   </div>
   <p class="hint" id="disk" style="display:none;color:#b42318;font-weight:600"></p>
+  <p class="hint" id="dbline"></p>
   <p class="hint" id="status"></p>
   <div id="out"></div>
   <p class="hint" style="margin-top:22px;font-size:12px;color:var(--ink-3)">
@@ -80,10 +81,39 @@
 
 /* Bumped on every change to this page. When something looks wrong, the first
    question is which build is on screen — a cached copy answers differently. */
-const BUILD = "2026-08-23k";
+const BUILD = "2026-08-25a";
 const API = "https://next.obudget.org/api/query?query=";
 const $ = id => document.getElementById(id);
 const out = $("out"), status = $("status");
+
+/* ---------- the BUILT dataset, when audit.bat is running ----------
+   tools/audit_server.py serves contracts.db — the full database, provenance
+   per field and the raw mr.gov.il register rows included. With it, the green
+   column shows what the dataset REALLY stores (this page's whole purpose:
+   checking the build, not re-deriving it), search covers file-only contracts
+   (the union, at last), and two register columns light up. WITHOUT it the
+   page behaves exactly as before: green column computed here, registers off.
+   The probe tries the page's own origin first (audit.bat serves the site
+   too), then serve.bat's neighbour port. */
+let AUDIT = null;                       // "" (same origin) · a base url · null
+const auditReady = (async () => {
+  for (const base of ["", "http://localhost:8081"]) {
+    try {
+      const r = await withTimeout(fetch(base + "/audit/status"), 1200, "audit");
+      if (r.ok) {
+        const j = await r.json();
+        if (j && j.ok) { AUDIT = base; return j; }
+      }
+    } catch (e) { /* not running there — try the next */ }
+  }
+  return null;
+})();
+const auditJson = (path) =>
+  withTimeout(fetch(AUDIT + path), 6000, "המאגר הבנוי").then(r => r.json());
+const auditContract = async (id) => {
+  try { return (await auditJson("/audit/contract?id=" + encodeURIComponent(id))).contract; }
+  catch (e) { return null; }
+};
 
 const nf = v => v == null ? "—" : Number(v).toLocaleString("he-IL", { maximumFractionDigits: 2 });
 const q = s => String(s).replace(/'/g, "''");
@@ -285,32 +315,45 @@ const X = {
 };
 const xv = (k) => (r) => r ? val(r[X[k]]) : null;
 const xm = (k) => (r) => r ? money(r[X[k]]) : null;
+/* the registers' own column spellings (mr.gov.il), used by ex / exr / tnr */
+const rg = (k) => (r) => r ? val(r[k]) : null;
+const rm = (k) => (r) => r ? money(r[k]) : null;
 
+/* db: the field's name in the BUILT dataset (contracts.db) — the green
+   column reads it directly when audit.bat is running. */
 const FIELDS = [
-  { l: "ספק",              cs: r => val(r.entity_name || r.supplier_name), cd: r => val(r.supplier_entity_name), qr: r => val(r.supplier_name), ours: xv("supplier"), ex: r => val(r["שם ספק"]) },
-  { l: "מספר ח״פ",         cs: r => val(r.company_id), cd: null, qr: r => val(r.company_id), ours: xv("hp"), ex: r => val(r["מספר חפ ספק"]) },
-  { l: "קוד ספק במערכת",   cs: r => val(r.supplier_code), cd: null, qr: r => val(r.supplier_code), ours: xv("supcode"), ex: null },
-  { l: "סוג גוף",          cs: r => val(r.entity_kind), cd: r => val(r.supplier_entity_kind), qr: null, ours: null, ex: null },
-  { l: "משרד",             cs: r => val(r.publisher_name || r.publisher), cd: r => val(r.purchasing_ministry), qr: r => val(r.publisher), ours: xv("ministry"), ex: r => val(r["שם המשרד"]) },
-  { l: "יחידה רוכשת",      cs: r => val(r.purchasing_unit), cd: null, qr: r => val(r.purchasing_unit), ours: r => r ? val(r[X.unit] || r[X.org]) : null, ex: r => val(r["שם יחידה מפרסמת"]) },
-  { l: "תקנה תקציבית",     cs: r => val(r.budget_code), cd: r => val(r.budget_code), qr: r => val(r.budget_code), ours: xv("code"), ex: null },
-  { l: "שם התקנה",         cs: r => val(r.budget_title), cd: null, qr: r => val(r.budget_title), ours: null, ex: null },
-  { l: "שם פריט התחייבות", cs: null, cd: null, qr: null, ours: xv("item"), ex: null },
-  { l: "מטרה",             cs: r => val(r.purpose), cd: r => val(r.purpose), qr: r => val(r.purpose), ours: xv("purpose"), ex: r => val(r["שם הליך"]) },
-  { l: "אופן רכישה",       cs: r => val(r.purchase_method), cd: r => val(r.purchasing_method), qr: r => val(r.purchase_method), ours: xv("method"), ex: r => val(r["סוג הליך"]) },
-  { l: "תקנת הפטור",       cs: r => val(r.exemption_reason), cd: null, qr: r => val(r.exemption_reason), ours: xv("exempt"), ex: r => val(r["תקנה"]) },
-  { l: "היקף",             cs: r => money(r.volume), cd: r => money(r.volume), qr: r => money(r.volume), ours: xm("volume"), ex: r => val(r["היקף כספי"]) },
-  { l: "שולם", key: "paid", cs: r => money(r.executed), cd: r => money(r.executed), qr: r => money(r.executed), ours: xm("paid"), ex: null },
-  { l: "שולם בתקופת הדוח", cs: null, cd: null, qr: null, ours: xm("period"), ex: null },
+  { l: "ספק",              db: "supplier", cs: r => val(r.entity_name || r.supplier_name), cd: r => val(r.supplier_entity_name), qr: r => val(r.supplier_name), ours: xv("supplier"), ex: rg("שם ספק"), exr: rg("שם ספק"), tnr: rg("שם ספק זוכה") },
+  { l: "מספר ח״פ",         db: "company_id", cs: r => val(r.company_id), cd: null, qr: r => val(r.company_id), ours: xv("hp"), ex: rg("מספר חפ ספק"), exr: rg("מספר חפ ספק"), tnr: rg("מספר חפ ספק") },
+  { l: "קוד ספק במערכת",   db: "supplier_code", cs: r => val(r.supplier_code), cd: null, qr: r => val(r.supplier_code), ours: xv("supcode"), ex: null },
+  { l: "סוג גוף",          db: "entity_kind", cs: r => val(r.entity_kind), cd: r => val(r.supplier_entity_kind), qr: null, ours: null, ex: null },
+  { l: "משרד",             db: "ministry", cs: r => val(r.publisher_name || r.publisher), cd: r => val(r.purchasing_ministry), qr: r => val(r.publisher), ours: xv("ministry"), ex: rg("שם המשרד"), exr: rg("שם המשרד"), tnr: rg("שם המשרד") },
+  { l: "יחידה רוכשת",      db: "unit", cs: r => val(r.purchasing_unit), cd: null, qr: r => val(r.purchasing_unit), ours: r => r ? val(r[X.unit] || r[X.org]) : null, ex: rg("שם יחידה מפרסמת"), exr: rg("שם יחידה מפרסמת"), tnr: rg("שם יחידה מפרסמת") },
+  { l: "תקנה תקציבית",     db: "budget_code", cs: r => val(r.budget_code), cd: r => val(r.budget_code), qr: r => val(r.budget_code), ours: xv("code"), ex: null },
+  { l: "שם התקנה",         db: "budget_title", cs: r => val(r.budget_title), cd: null, qr: r => val(r.budget_title), ours: null, ex: null },
+  { l: "שם פריט התחייבות", db: "item_title", cs: null, cd: null, qr: null, ours: xv("item"), ex: null },
+  { l: "מטרה",             db: "purpose", cs: r => val(r.purpose), cd: r => val(r.purpose), qr: r => val(r.purpose), ours: xv("purpose"), ex: rg("שם הליך"), exr: rg("שם הליך"), tnr: rg("שם הליך") },
+  { l: "אופן רכישה",       db: "method", cs: r => val(r.purchase_method), cd: r => val(r.purchasing_method), qr: r => val(r.purchase_method), ours: xv("method"), ex: rg("סוג הליך"), exr: rg("סוג הליך"), tnr: rg("סוג הליך") },
+  { l: "תקנת הפטור",       db: "exemption", cs: r => val(r.exemption_reason), cd: null, qr: r => val(r.exemption_reason), ours: xv("exempt"), ex: rg("תקנה"), exr: rg("תקנה") },
+  { l: "מספר הליך",        db: "procedure_id", cs: null, cd: null, qr: null, ours: null, ex: rg("מספר הליך"), exr: rg("מספר הליך"), tnr: rg("מספר הליך") },
+  { l: "היקף",             db: "volume", cs: r => money(r.volume), cd: r => money(r.volume), qr: r => money(r.volume), ours: xm("volume"), ex: null },
+  { l: "היקף מוכרז",       db: "announced", cs: null, cd: null, qr: null, ours: null, ex: rg("היקף כספי"), exr: rm("היקף כספי") },
+  { l: "שולם", key: "paid", db: "paid", cs: r => money(r.executed), cd: r => money(r.executed), qr: r => money(r.executed), ours: xm("paid"), ex: null },
+  { l: "שולם בתקופת הדוח", db: "paid_in_period", cs: null, cd: null, qr: null, ours: xm("period"), ex: null },
   { l: "שולם — לשנה (ממוצע מחושב, לא מדידה)", cs: null, cd: r => money(r.executed_per_year), qr: null, ours: null, ex: null },
-  { l: "סכום אופציה מצטבר", cs: null, cd: null, qr: null, ours: xm("optTotal"), ex: null },
-  { l: "סכום התקשרות מצטבר", cs: null, cd: null, qr: null, ours: xm("contTotal"), ex: null },
-  { l: "תאריך הזמנה",      cs: r => val(r.order_date), cd: r => val(r.order_date), qr: r => val(r.order_date), ours: xv("ordered"), ex: r => val(r["תאריך פרסום"]) },
-  { l: "תחילת התקשרות",    cs: r => val(r.start_date), cd: r => val(r.start_year), qr: r => val(r.start_date), ours: null, ex: r => val(r["תאריך תחילת תקופת התקשרות"]) },
-  { l: "סיום התקשרות",     cs: r => val(r.end_date), cd: r => val(r.end_year), qr: r => val(r.end_date), ours: xv("ends"), ex: r => val(r["תאריך סיום תקופת התקשרות"]) },
+  { l: "סכום אופציה מצטבר", db: "option_cumulative", cs: null, cd: null, qr: null, ours: xm("optTotal"), ex: null },
+  { l: "סכום התקשרות מצטבר", db: "total_cumulative", cs: null, cd: null, qr: null, ours: xm("contTotal"), ex: null },
+  { l: "תאריך הזמנה",      db: "ordered_date", cs: r => val(r.order_date), cd: r => val(r.order_date), qr: r => val(r.order_date), ours: xv("ordered"), ex: rg("תאריך פרסום") },
+  { l: "תחילת התקשרות",    db: "starts_date", cs: r => val(r.start_date), cd: r => val(r.start_year), qr: r => val(r.start_date), ours: null, ex: rg("תאריך תחילת תקופת התקשרות"), exr: rg("תאריך תחילת תקופת התקשרות"), tnr: rg("תאריך תחילת תקופת התקשרות") },
+  { l: "סיום התקשרות",     db: "ends_date", cs: r => val(r.end_date), cd: r => val(r.end_year), qr: r => val(r.end_date), ours: xv("ends"), ex: rg("תאריך סיום תקופת התקשרות"), exr: rg("תאריך סיום תקופת התקשרות"), tnr: rg("תאריך סיום תקופת התקשרות") },
   { l: "שנים מדווחות",     cs: r => val([r.min_year, r.max_year].filter(Boolean).join("–")), cd: r => val([r.start_year, r.end_year].filter(Boolean).join("–")), qr: r => val(r["report-year"]), ours: null, ex: null },
-  { l: "מספר פרסום",       cs: r => val(pubNumber(r)), cd: null, qr: null, ours: xv("pub"), ex: r => val(r["מספר פרסום"]) },
-  { l: "מספר הזמנה",       cs: r => val(r.order_id), cd: null, qr: r => val(r.order_id), ours: xv("order"), ex: null },
+  { l: "סטטוס פרסום",      db: "publication_status", cs: null, cd: null, qr: null, ours: null, ex: rg("סטטוס"), exr: rg("סטטוס"), tnr: rg("סטטוס") },
+  { l: "גורם מאשר",        db: "approver", cs: null, cd: null, qr: null, ours: null, ex: rg("גורם מאשר"), exr: rg("גורם מאשר") },
+  { l: "מהות החלטה",       db: "decision", cs: null, cd: null, qr: null, ours: null, ex: rg("מהות החלטה"), exr: rg("מהות החלטה") },
+  { l: "נושאים",           db: "topics", cs: null, cd: null, qr: null, ours: null, ex: rg("נושאים"), exr: rg("נושאים"), tnr: rg("נושאים") },
+  { l: "תאריך פרסום",      db: "published_date", cs: null, cd: null, qr: null, ours: null, ex: rg("תאריך פרסום"), exr: rg("תאריך פרסום"), tnr: rg("תאריך פרסום") },
+  { l: "תאריך עדכון",      db: "updated_date", cs: null, cd: null, qr: null, ours: null, ex: rg("תאריך עדכון"), exr: rg("תאריך עדכון"), tnr: rg("תאריך עדכון") },
+  { l: "מספר פרסום",       db: "publication", cs: r => val(pubNumber(r)), cd: null, qr: null, ours: xv("pub"), ex: rg("מספר פרסום"), exr: rg("מספר פרסום"), tnr: rg("מספר פרסום") },
+  { l: "מספר הזמנה",       db: "order_id", cs: r => val(r.order_id), cd: null, qr: r => val(r.order_id), ours: xv("order"), ex: null },
 ];
 
 /* The lineage matters more than the list. Four of these five are the SAME
@@ -392,6 +435,10 @@ const MERGE = {
 };
 const SRC_LABEL = { cs: "BudgetKey", cd: "contracts_data", qr: "דוח גולמי",
                     ours: "קובץ המשרד", ex: "data.gov.il" };
+/* the built db speaks its own provenance names — "ex" there means the
+   mr.gov.il exemptions register, NOT this page's data.gov.il column */
+const DB_LABEL = { file: "קובץ המשרד", bk: "BudgetKey", ex: "מרשם הפטורים",
+                   tn: "מרשם המכרזים", "all-zero": "0 בכל המקורות" };
 
 const SRC = [
   { k: "mrg",  name: "התוצאה הסופית",        note: "מה שיישמר במאגר — ומאיזה מקור" },
@@ -399,7 +446,9 @@ const SRC = [
   { k: "cd",   name: "contracts_data",     note: "BudgetKey · גזירה מצומצמת מאותו מקור" },
   { k: "qr",   name: "הדוח שפורסם",         note: "BudgetKey · הקריאה הגולמית של דוח בודד" },
   { k: "ours", name: "הקובץ שהמשרד פרסם",    note: "הקובץ עצמו, כפי שאנחנו פענחנו אותו" },
-  { k: "ex",   name: "data.gov.il",         note: "מרשם פרסומים — המקור העצמאי היחיד" },
+  { k: "exr",  name: "מרשם הפטורים",         note: "mr.gov.il · דרך audit.bat" },
+  { k: "tnr",  name: "מרשם המכרזים",         note: "mr.gov.il · דרך audit.bat" },
+  { k: "ex",   name: "data.gov.il",         note: "מרשם פרסומים — עותק קפוא (עד 01.2021)" },
 ];
 
 /* the same fact, spelled differently, is not a disagreement: 409961432.74 and
@@ -454,6 +503,9 @@ function mergeRow(tr) {
   const label = tr.querySelector("td b").textContent.trim();
   const td = tr.querySelector('td[data-s="mrg"]');
   if (!td) return;
+  /* the BUILT record answered — the browser-side derivation must not
+     overwrite the thing this page exists to check */
+  if (td.dataset.locked) return;
 
   if (NEVER_MERGE[label]) {
     td.innerHTML = `<span class="none">${esc(NEVER_MERGE[label])}</span>`;
@@ -514,6 +566,67 @@ function markDisagreements(card) {
   });
 }
 
+/* ---------- the green column, from the BUILT dataset ----------
+   Every value exactly as contracts.db stores it, with the db's own
+   provenance underneath. This is the page's real job since 2026-08-25:
+   checking the build, not re-deriving the merge in the browser. */
+function fillMergedFromDb(card, c) {
+  const th = card.querySelector('thead th[data-s="mrg"] .u');
+  if (th) th.textContent = "המאגר הבנוי (contracts.db) — מה שנשמר בפועל";
+  FIELDS.forEach((f, i) => {
+    const td = card.querySelector(`tr[data-f="${i}"] td[data-s="mrg"]`);
+    if (!td) return;
+    td.dataset.locked = "1";
+    if (NEVER_MERGE[f.l]) {
+      td.innerHTML = `<span class="none">${esc(NEVER_MERGE[f.l])}</span>`;
+      return;
+    }
+    let v, src = null;
+    if (f.l === "שנים מדווחות") {
+      v = [c.first_year, c.last_year].filter(Boolean).join("–") || null;
+      src = c.provenance && (c.provenance.first_year || c.provenance.last_year);
+    } else if (f.db) {
+      v = c[f.db];
+      src = c.provenance && c.provenance[f.db];
+    } else {
+      td.innerHTML = '<span class="none">—</span>';
+      return;
+    }
+    if (v == null || v === "") {
+      td.dataset.v = "";
+      td.innerHTML = '<span class="none">לא במאגר — ריק</span>';
+      return;
+    }
+    const text = KIND[f.l] === "money" && !isNaN(+v) ? nf(+v) + " ₪" : String(v);
+    td.innerHTML = esc(text) +
+      (src ? `<div class="u">${esc(DB_LABEL[src] || src)}</div>` : "");
+    td.dataset.v = norm(text);
+  });
+  markDisagreements(card);
+}
+
+/* the two register columns — raw rows from contracts.db, by publication */
+async function fillRegisters(card, pub) {
+  const off = (why) => {
+    fillColumn(card, "exr", null, null, null, why);
+    fillColumn(card, "tnr", null, null, null, why);
+  };
+  /* AUDIT is "" when audit.bat serves this very page — falsy on purpose is
+     a trap, so every check here is an explicit null comparison */
+  if (AUDIT === null) return off("הריצו audit.bat");
+  if (!pub) return off("אין מספר פרסום");
+  try {
+    const j = await auditJson("/audit/register?pub=" + encodeURIComponent(pub));
+    const rows = j.rows || [];
+    const exRow = rows.find(r => r.kind === "exemptions") || null;
+    const tnRow = rows.find(r => r.kind === "tenders") || null;
+    fillColumn(card, "exr", exRow, exRow ? "פרסום " + pub : null, null,
+               "פרסום " + pub + " — לא במרשם הזה");
+    fillColumn(card, "tnr", tnRow, tnRow ? "פרסום " + pub : null, null,
+               "פרסום " + pub + " — לא במרשם הזה");
+  } catch (e) { off(e.message); }
+}
+
 function shell(row) {
   const d = document.createElement("div");
   d.className = "res";
@@ -522,15 +635,20 @@ function shell(row) {
     <div class="sub">${esc(row.purpose || "")}<br>
       הזמנה ${esc(row.order_id)} · תקנה ${esc(row.budget_code)} · ${esc(row.publisher_name || "")}</div>
     ${matrixHtml(row)}
-    <p class="legend"><b>העמודה הירוקה היא מה שיישמר במאגר</b> — כל שדה נפתר
-      בנפרד, לפי סדר האמינות של אותו שדה, ומתחת לערך רשום מאיזה מקור הוא הגיע.
-      ח״פ יגיע מקובץ המשרד ושם הספק מ-BudgetKey, באותה התקשרות, וזה בסדר.
-      <b>אפס לא גובר על מספר:</b> אם מקור אחד רשם 0 ואחר רשם סכום — הסכום ינצח.
-      תאריכים מיושרים לצורה אחת (YYYY-MM-DD). ממוצעים מחושבים אינם נכנסים.
-      ״אין נתון״ ו״0״ אינם אותו דבר, ולא נחליף אחד בשני.</p>
-    <p class="legend"><b>שימו לב ללידה של כל עמודה:</b> ארבע העמודות הראשונות
-      נגזרות כולן מאותו קובץ שהמשרד פרסם — הסכמה ביניהן אינה אישור, היא הד.
-      רק <b>data.gov.il</b> הוא מרשם נפרד, והוא מקושר רק לכ-24% מההתקשרויות.</p>
+    <p class="legend"><b>העמודה הירוקה היא מה שנשמר במאגר.</b> כש-audit.bat
+      רץ, היא מציגה את הרשומה <b>כפי שהיא באמת שמורה</b> ב-contracts.db —
+      כל שדה עם המקור שניצח, ישר מהמאגר, בלי חישוב בדפדפן. בלעדיו היא
+      מחושבת כאן, לפי אותם כללים. ח״פ יגיע מקובץ המשרד ושם הספק
+      מ-BudgetKey, באותה התקשרות, וזה בסדר.
+      <b>אפס לא גובר על מספר:</b> אם מקור אחד רשם 0 ואחר רשם סכום — הסכום
+      ינצח. תאריכים מיושרים לצורה אחת (YYYY-MM-DD). ממוצעים מחושבים אינם
+      נכנסים. ״אין נתון״ ו״0״ אינם אותו דבר, ולא נחליף אחד בשני.</p>
+    <p class="legend"><b>שימו לב ללידה של כל עמודה:</b> ארבע עמודות ה-BudgetKey
+      והקובץ נגזרות כולן מאותו קובץ שהמשרד פרסם — הסכמה ביניהן אינה אישור,
+      היא הד. המקור העצמאי הוא מערכת הפרסומים של מינהל הרכש: <b>מרשם
+      הפטורים והמכרזים</b> (mr.gov.il, דרך audit.bat) הם העותק החי שלה,
+      ו-<b>data.gov.il</b> הוא עותק קפוא שלה (עד 01.2021) — הם מרשם אחד,
+      לא שני עדים. רק כ-7% מכלל ההתקשרויות נושאות מספר פרסום בכלל.</p>
     <p class="legend"><b>איך לקרוא:</b>
       <code>ריק</code> — לשדה יש מקום במקור והוא ריק ·
       <code>אין שדה כזה</code> — המקור לא מנהל את השדה הזה בכלל ·
@@ -549,19 +667,39 @@ function shell(row) {
 
 const rawBlock = (title, obj, note) => {
   if (!obj) return `<div class="rawsrc"><b>${esc(title)}</b> <span class="none">— לא נמצא</span></div>`;
-  const skip = { payments: 1, manof_excerpts: 1, resolved_budget_codes: 1, score: 1 };
+  const skip = { payments: 1, manof_excerpts: 1, resolved_budget_codes: 1, score: 1,
+                 /* the built record's nested parts — shown in the matrix, not here */
+                 allocations: 1, reports: 1, provenance: 1, notes: 1 };
   const rows = Object.keys(obj).filter(k => !skip[k]).map(k =>
     `<tr><td class="u">${esc(k)}</td><td>${esc(val(obj[k]) == null ? "—" : val(obj[k]))}</td></tr>`).join("");
   return `<div class="rawsrc"><b>${esc(title)}</b>${note ? ` <span class="u">${esc(note)}</span>` : ""}
     <table>${rows}</table></div>`;
 };
 
-async function show(row) {
+async function show(row, opts) {
+  opts = opts || {};
   const card = shell(row);
   const section = String(row.budget_code || "").slice(0, 4);
-  const raw = { "contract_spending": row };
+  const raw = { "contract_spending": opts.noCs ? null : row };
 
-  fillColumn(card, "cs", row);
+  if (opts.noCs) {
+    /* the union at work: this contract exists ONLY outside BudgetKey */
+    fillColumn(card, "cs", null, null, null,
+               "לא נמצא — ההתקשרות קיימת רק בקובץ המשרד");
+  } else {
+    fillColumn(card, "cs", row);
+  }
+
+  /* the built record: the green column, then the register columns */
+  (async () => {
+    let c = opts.audit;
+    if (c === undefined && AUDIT !== null) c = await auditContract(row.order_id);
+    if (c) {
+      raw["המאגר הבנוי (contracts.db)"] = c;
+      fillMergedFromDb(card, c);
+    }
+    fillRegisters(card, (c && c.publication) || pubNumber(row));
+  })();
 
   const qrP = withTimeout(fromQuarterly(row.order_id), 25000, "טבלת הדוחות");
   qrP.then(qr => { raw["הדוח שפורסם (האחרון)"] = qr[0] || null; fillColumn(card, "qr", qr[0] || null); })
@@ -620,25 +758,61 @@ async function show(row) {
   });
 }
 
+/* a card for a contract BudgetKey has never heard of — before the built
+   db, this page simply could not find those (the old KNOWN GAP) */
+function showAuditOnly(c) {
+  show({ order_id: c.order_id, budget_code: c.budget_code || "",
+         supplier_name: c.supplier, entity_name: c.supplier,
+         purpose: c.purpose, publisher_name: c.ministry,
+         volume: c.volume, executed: c.paid, payments: [] },
+       { noCs: true, audit: c });
+}
+
 async function run() {
   out.innerHTML = "";
   status.textContent = "מחפש…";
+  await auditReady;
+  const term = $("q").value;
+  const byOrder = /^\d{6,}$/.test(term.trim());
+  const multiNote = (n) =>
+    `<b>${n} שורות לאותה הזמנה.</b> זו התקשרות אחת שנרשמה תחת יותר ` +
+    `מתקנה תקציבית אחת — החיוב הועבר בין תקנות, ו-BudgetKey שומר שורה לכל תקנה. ` +
+    `לפעמים אותה תקנה מופיעה פעמיים. <b>אין לסכם את השורות</b> — זה יכפיל את החוזה.`;
   try {
-    const found = await find($("q").value);
+    /* the BUILT db is the union of all sources — search it first, so a
+       contract that exists only in a ministry file is finally findable */
+    if (AUDIT !== null) {
+      const ids = (await auditJson("/audit/search?q=" +
+                                   encodeURIComponent(term))).ids || [];
+      if (ids.length) {
+        status.innerHTML = `${ids.length} התקשרויות מהמאגר הבנוי. ` +
+          `כל אחת מושווית מול כל המקורות.`;
+        for (const id of ids) {
+          const live = await find(id).catch(() => []);
+          if (live.length) {
+            if (byOrder && live.length > 1) status.innerHTML = multiNote(live.length);
+            live.forEach(r => show(r));
+          } else {
+            const c = await auditContract(id);
+            if (c) showAuditOnly(c);
+          }
+        }
+        return;
+      }
+      /* nothing in the built db — fall through and ask BudgetKey live */
+    }
+    const found = await find(term);
     if (!found.length) {
       status.innerHTML = "לא נמצאו התקשרויות. חיפוש טקסט הוא על התחלת הסריקה, " +
         "לא על כל הטבלה — נסו מילה קצרה יותר, שם ספק, מספר הזמנה, או " +
         "<b>התקשרות אקראית</b>.";
       return;
     }
-    const byOrder = /^\d{6,}$/.test($("q").value.trim());
     status.innerHTML = byOrder && found.length > 1
-      ? `<b>${found.length} שורות לאותה הזמנה.</b> זו התקשרות אחת שנרשמה תחת יותר ` +
-        `מתקנה תקציבית אחת — החיוב הועבר בין תקנות, ו-BudgetKey שומר שורה לכל תקנה. ` +
-        `לפעמים אותה תקנה מופיעה פעמיים. <b>אין לסכם את השורות</b> — זה יכפיל את החוזה.`
+      ? multiNote(found.length)
       : `${found.length} התקשרויות (הראשונות שנמצאו, לא הגדולות). ` +
         `כל אחת מושווית מול כל המקורות.`;
-    found.forEach(show);          // each card draws now and fills itself in
+    found.forEach(r => show(r));  // each card draws now and fills itself in
   } catch (e) {
     status.innerHTML = `<span class="err">${esc(e.message)}</span>`;
   }
@@ -668,7 +842,15 @@ async function runOurs() {
 
 async function runRandom() {
   out.innerHTML = ""; status.textContent = "בוחר התקשרות אקראית…";
+  await auditReady;
   try {
+    /* with the built db: draw from OUR dataset (that is what's being
+       audited), then compare it against the live sources. Without it:
+       the old TABLESAMPLE draw from BudgetKey. */
+    if (AUDIT !== null) {
+      const j = await auditJson("/audit/random");
+      if (j && j.id) { $("q").value = j.id; await run(); return; }
+    }
     const rows = await randomOne();
     if (!rows.length) { status.textContent = "לא הוגרלה התקשרות. נסו שוב."; return; }
     $("q").value = rows[0].order_id;
@@ -687,6 +869,19 @@ if (pre) { $("q").value = pre; run(); }
 
 $("build").textContent = BUILD;
 if (FROM_DISK) { $("disk").style.display = ""; $("disk").textContent = DISK_MSG; }
+auditReady.then(j => {
+  const el = $("dbline");
+  if (j) {
+    el.innerHTML = `✔ <b>המאגר הבנוי מחובר</b> — ${Number(j.contracts)
+      .toLocaleString("he-IL")} התקשרויות מ-contracts.db` +
+      (j.registers ? " · המרשמים בפנים" : " · בלי המרשמים (נבנה בלי --exemptions)");
+    el.style.color = "#1a7f37";
+  } else {
+    el.innerHTML = "המאגר הבנוי לא מחובר — העמודה הירוקה מחושבת בדפדפן " +
+      "ועמודות המרשמים כבויות. להפעלה מלאה: להריץ את <b>audit.bat</b> " +
+      "בתיקיית הפרויקט (במקום serve.bat).";
+  }
+});
 if (typeof buildChrome === "function") buildChrome();
 })();
 </script>

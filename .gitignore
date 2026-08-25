@@ -30,9 +30,20 @@ __pycache__/
 *.pyc
 .venv/
 
-# leftovers from tidy-up.bat
+# leftovers from tidy-up.bat / clean-up-2.bat
 _old_delete_me/
 *.log
+
+# downloaded Actions artifacts and the locally built databases — the inputs
+# and outputs of build-database.bat (added 2026-08-25). Hundreds of MB, all
+# reproducible: artifacts re-download from Actions, the databases rebuild
+# in one click.
+/full-records.zip
+/budgetkey-raw.zip
+/portal-registers.zip
+/publications-register.zip
+/contracts.db
+/contracts-public.db
 
 # NOTE: site/data/**  IS committed on purpose. Those JSON files are what the
 # site actually reads, and what the monthly workflow updates. That is the

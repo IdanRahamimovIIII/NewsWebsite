@@ -2,256 +2,284 @@
 
 Notes from Claude to Claude (and Mercy) for future chats about this project.
 
-## START HERE (updated 2026-08-24)
+## THE RULE THAT GOVERNS THIS FILE
 
-**2026-08-23: the work moved to COLLECTION.** The monthly GitHub
-Actions job downloads the ministries' reports; the merge step is
-deliberately unwired until collection is finished. Four wrong
-assumptions of mine were retracted that day — read
-"COLLECTION PIPELINE" below before touching anything in tools/.
+Keep it honest and CURRENT. Whenever work in a chat proves a conclusion here
+wrong, outdated, or incomplete — update or delete it in the same chat, and
+date the change. A wrong "conclusion" is worse than none. This is distilled
+knowledge, not a log: once a story is settled, keep the conclusion and the
+lesson, drop the play-by-play. (Cleaned on this rule 2026-08-25, at Mercy's
+request; the full history is in git.)
 
-**2026-08-24: collection state, from site/data/inventory.txt (committed by
-the job — read it before re-measuring anything):** 1,734 report files,
-552 MB, 77 publishers, 535,179 parsed records across site/data/paid.
-Three holes remain, in size order: (1) 1,181 reports on hosts that refuse a
-server — mostly foi.gov.il, 2015–2020; a browser can open them; (2) 79
-downloads FAILED (48×404, 15×403, 16×not-an-xlsx — the no-PK ones may be
-legitimate old .xls files our PK check rejects, unverified); (3) the
-BudgetKey side not collected at all yet — fetch_budgetkey.py exists but
-build/raw is empty and it is not in the workflow. Mercy picked (2), the 79
-failures, as the next task. The blocker was that failed.json and
-unreachable.json lived only in the Actions cache, so the workflow now copies
-them + manifest.json into `site/data/collection/` on every run.
+## START HERE — WHERE THE PROJECT STANDS (2026-08-25)
 
-**2026-08-24, later — the 79 failures read from the run LOG, and the recovery
-routes built (all tested offline, 69 assertions in tests/test_fetch.py, up
-from 52):**
+**Current focus: the contracts database.** The other fronts are parked in
+good states: votes page done for now (own index, searchable history, one
+queued fix — "THE REAL FIX STILL PENDING" below), budget page v4 live,
+court page works. The sections from "THE CONTRACTS DATABASE" down to the
+collection lessons are where the action is; everything after that is
+reference for the other fronts.
 
-- **Many "failures" are DEAD TWINS, not missing reports.** BudgetKey indexes
-  the same report under several addresses, and in the log a large share of
-  the 48 404s sit right next to a twin that downloaded fine (משרד-האוצר_3_2018:
-  one ↓, one ✘; same for מנהל הרכב, הדיור הממשלתי, מנהלת הגמלאות, ניצולי
-  השואה…). fetch_reports now marks such a failure `covered_by <file>` in
-  failed.json and prints how many of the failures are noise vs. real holes.
-- **The 16 "not an xlsx (no PK header)" are most likely Excel's OLD format**
-  (.xls, OLE2, header D0 CF 11 E0), not block pages: they cluster exactly
-  where old files would — משרד החוץ 2019–20, תיאום הפעולות בשטחים 2016–17,
-  קליטת עליה 2015–16. The PK check was rejecting real government reports and
-  claiming they were HTML. `classify()` now accepts OLE2, saves as `.xls`,
-  parse_report reads it via xlrd (workflow installs xlrd; xlwt only for the
-  test), and a rejected file's error prints its ACTUAL first bytes so nobody
-  ever has to guess this again. Unverified against the live files until the
-  next run proves it.
-- **THE ALTERNATIVE ROUTE: the Wayback Machine.** web.archive.org serves
-  everyone and crawled both foi.gov.il and gov.il for years. `--wayback`
-  (workflow input, default yes) tries `https://web.archive.org/web/2id_/<url>`
-  for every direct failure AND for all 1,181 foi.gov.il urls — the whole
-  2015–2020 archive hole. Rules baked in: a recovered file is stamped
-  `via: "wayback"` + snapshot timestamp in the manifest (R3 — an archived
-  number must say where it came from); a snapshot is final, fetched once,
-  never re-checked; a good local copy is NEVER replaced by an older snapshot
-  when its live url dies. Coverage is unknown until the run — whatever the
-  archive lacks stays in failed.json with BOTH errors recorded. NOTE: this
-  sandbox cannot reach web.archive.org (robots + egress proxy), so the route
-  could not be probed from here; GitHub Actions can. Expect the first wayback
-  pass to add roughly 1–2.5 hours to the run (1,181 × ~2–4s, politely paced).
-- Other routes weighed: **gov.il's DynamicCollector JSON API** (the Angular
-  report pages load their file list from an XHR — an authoritative
-  per-ministry list, independent of BudgetKey's lagging index; needs one
-  DevTools capture from Mercy on any ministry's reports page, F12 → Network →
-  the request that returns the file list → Copy as cURL). **Reconstructing an
-  unreachable report from BudgetKey's tables — REJECTED by Mercy 2026-08-24:**
-  "do not combine the data with data from BudgetKey, we will do it later.
-  Getting data from BudgetKey is not a problem; the problem is getting it
-  from other sources." So BudgetKey stays addresses-only in collection, no
-  BudgetKey rows ever stand in for a ministry file, and the effort goes where
-  the difficulty is: the primary sources. NUANCE added by Mercy 2026-08-24,
-  after the wayback pass showed some files are gone from the whole internet:
-  for a report that neither the live host nor the archive nor a browser can
-  produce, "we will just have to hope BudgetKey have it" — its
-  row-per-contract-per-report copy is the accepted LAST resort, at merge
-  time, labelled as such. Not during collection. **Claude driving Mercy's browser**
-  stays the fallback for whatever wayback misses.
+**The immediate sequence, agreed with Mercy 2026-08-25:**
 
-**2026-08-24: ORIGIN B PROBED LIVE AND ITS COLLECTOR BUILT** (while the big
-wayback run was going — Mercy asked "what other sources of contractor data").
+1. Mercy: commit+push; buy Workers Paid ($5/mo — her call: ONE bootstrap
+   month, keep only if still needed at project end); run "collect
+   budgetkey" in Actions, re-running until it reports nothing remaining;
+   download the `budgetkey-raw` artifact into the project folder.
+2. Claude: rebuild the dataset with all three sources → `contracts.db`
+   (full, audit) + `contracts-public.db` (D1 upload).
+3. One-time D1 bootstrap + worker endpoints (`/contract?id=`,
+   `/supplier?hp=`). CALLS RULES: D1 bills rows READ — every endpoint must
+   hit an index (a full scan on 513K rows costs 513K reads), Cache API on
+   the worker so repeats never reach D1, LIMIT on every list endpoint.
+4. ~~compare.html overhaul~~ **DONE 2026-08-25 — the audit tool is built:**
+   - **`build-database.bat`** (root) → `tools/build_database.py`: the whole
+     build on HER machine, one double-click — finds full-records.zip, the
+     register JSONs (gunzips the .gz), budgetkey-raw.zip when it exists
+     (loud NOTE when it doesn't), and produces `contracts.db` (full: audit
+     + registers embedded, ~765 MB — too big for the bridge, hence local
+     build) and `contracts-public.db` at the root. Needs python; the .bat
+     says what to install if missing.
+   - **`audit.bat`** (root) → `tools/audit_server.py`: stdlib http.server +
+     sqlite3, serves site/ on :8081 plus read-only `/audit/*` endpoints
+     (status · contract?id= · search?q= · register?pub= · random) from the
+     FULL db. CORS open so serve.bat-served pages can reach it too. GOTCHA
+     fixed: http.server decodes the request line latin-1 — Hebrew query
+     args need the latin-1→utf-8 round-trip.
+   - **`site/tools/compare.html` BUILD 2026-08-25a**: probes /audit/status
+     (same origin, then :8081 — AUDIT === "" is same-origin, every check
+     must be `!== null`, "" is falsy!). With audit.bat: the green column
+     shows the record AS STORED (values + provenance labels straight from
+     the db, locked against the client-side derivation), search goes
+     through the built db first — **file-only contracts finally findable**
+     (the old KNOWN GAP), with the BudgetKey column honestly saying
+     "קיימת רק בקובץ המשרד" — two new register columns (מרשם
+     הפטורים/המכרזים, raw mr.gov.il rows by publication), and the random
+     button draws from OUR dataset. Without audit.bat: byte-for-byte the
+     old behaviour (client-side merge, registers off, a hint explains).
+   - Tests: `tests/cmp.mjs` (fallback mode, all green, untouched) +
+     **`tests/cmp_audit.mjs`** (new): builds a tiny db with the real
+     build_sqlite, runs the real audit_server, asserts the green column,
+     the register columns, and the file-only-contract card.
+**Folder cleanup 2026-08-25 (before her big commit), via `clean-up-2.bat`
+(moves to _old_delete_me, never deletes):** FIELDS.md (superseded by the
+.xlsx), tidy-up.bat (job done), tests/trail2.mjs (early draft of
+test_budget.mjs), site/data/contracts/contracts.json (the old 2,455-row
+experiment), the stray root report copy, portal-registers.zip (its JSONs
+already live in the export folders), and the 456 MB extracted פלט
+פטורים .xls (its exact copy stays in the 24 MB zip beside it). .gitignore
+now also excludes the artifact zips and both databases — before this,
+full-records.zip & friends would have been COMMITTED. Kept on disk:
+full-records.zip (build input) and publications-register.zip (the archived
+data.gov.il snapshot for the merge-time diff).
 
-- Both register resources answer through the relay: `exemptions` 165,705
-  records / 23 fields, `tenders` 14,205 / 18 fields — the counts EXACTLY as
-  measured 2026-08-22. Now the reason, **measured, not assumed:** the CKAN
-  package metadata for both says they were **"manually updated" through
-  2021-01-31**. The data.gov.il register is a FROZEN snapshot — Origin B's
-  history, not its present. This also explains recent contracts resolving to
-  nothing through `tender_key`.
-- **The live continuation is the procurement portal (mr.gov.il / gov.il
-  tenders), an Angular app** — reaching its file/record API needs a one-time
-  DevTools capture from Mercy (same as the gov.il DynamicCollector one).
-  Until then, post-2021 authorisation data is NOT collected anywhere.
-- **RULE (Mercy, mid-build): files the running workflow uses are FROZEN —
-  new capability goes in NEW files.** First drafts of this touched
-  inventory.py / test_fetch.py / install-workflow.ps1; all three were
-  reverted to exactly the state the running pipeline was generated from.
-  Origin B is therefore fully self-contained:
-  `tools/fetch_publications.py` (pulls both resources WHOLE — every field,
-  pages by rows actually returned, dedupes only exact `_id` repeats, fails
-  loudly on a short pull, prints the newest תאריך פרסום so staleness is
-  measured every run) · `tests/test_publications.py` (10 assertions, its own
-  harness) · `.github/workflows/collect-publications.yml`, written by
-  `install-publications-workflow.bat` at the repo root. That workflow is
-  manual-only, shares no files with refresh-data.yml, and COMMITS NOTHING —
-  the register lands as a `publications-register` artifact (90 days;
-  re-run to regenerate; the permanent home is Mercy's call later). It can
-  run anytime without touching the monthly pipeline.
-- A CKAN sweep for מכרזים/התקשרויות found nothing else new for contracts:
-  the two registers, עיריית באר-שבע's municipal tenders (out of scope for
-  now), and unrelated sets. data.gov.il holds no other contractor source.
+5. Wire the merge into refresh-data.yml (the reserved commented slot),
+   restore the `budgetkey-` cache there, and apply the deferred
+   `git pull --rebase` hardening to its commit step. CI-memory caveat:
+   the in-memory merge of full BudgetKey (~1.5 GB JSON) may not fit a
+   7 GB private-repo runner — measure, or make the merge per-section,
+   before wiring.
 
-**2026-08-24, EVENING — MERCY EXPORTED THE REGISTER FROM THE PORTAL ITSELF,
-and it SUPERSEDES the frozen data.gov.il copy.** No DevTools capture was
-needed: mr.gov.il has an export button, and she used it. On disk, kept out
-of git (folders are in .gitignore):
+Also queued: browser last-mile for reports gone from the whole internet;
+merge-time diff of the data.gov.il snapshot vs the portal export (parse the
+DD.MM.YYYY dates properly — newest_date() compares strings); report the
+BudgetKey paid-column bug to הסדנא לידע ציבורי.
 
-- `Tenders-07082026\פלט מכרזים_B.xls` — **24,572 tenders, 2009 → 2026**
-  (newest פרסום 2026-09-08; a few carry future dates, status עתידי), against
-  data.gov.il's 14,205 frozen at 2021-01. Same 17 columns incl. שם ספק זוכה
-  and the supplier's ח"פ. Converted: `mr-tenders.json` beside it, 10.1 MB.
-- `Exemptions-07082026\פלט פטורים_B.xls` — **456 MB, VERIFIED (zipped to
-  24 MB by Mercy, staged, stream-parsed): 239,549 exemption publications,
-  2005 → 2026-08-06** (the folder name is the export date, 07/08/2026),
-  against data.gov.il's 165,705 frozen rows. All 22 real columns present;
-  fill rates measured: תקנה 100%, לינק לטקסטים 100%, היקף כספי 128,572
-  (54%). 14 rows carry פרסום year 1901 — the usual junk-date placeholder.
-  Converted: `mr-exemptions.json.gz` beside it (15.8 MB; the raw JSON is
-  140 MB — over the 20 MB/file commit cap, so only the .gz crossed the
-  bridge; gunzip to use). The 24 MB zip in the folder is the transport copy.
-- **THE FORMAT LIES TWICE** (measured): extension .xls, content is
-  SpreadsheetML 2003 XML; declaration says encoding="utf-16", bytes are
-  UTF-8 with BOM. `tools/parse_portal_export.py` (new file) handles both and
-  converts to compact JSON — every column, portal's own spellings, rows as
-  arrays (Hebrew keys per row would double the exemptions file). It STREAMS
-  (byte-patch the encoding lie into a temp copy, then iterparse row by row)
-  because 456 MB does not fit an in-memory parse. Dates are DD.MM.YYYY with
-  DOTS — a regex expecting slashes silently finds nothing.
-- Consequence: the data.gov.il `collect-publications` workflow is now a
-  historical CROSS-CHECK at best (its copy is a strict subset by date);
-  whether to bother running it is Mercy's call. The portal export is Origin
-  B's real source.
-- **AUTOMATION SOLVED THE SAME EVENING.** Mercy pasted the portal page she
-  had exported from — mr.gov.il/ilgstorefront/he/news/details/230920201036 —
-  and it is a news page where מינהל הרכש publishes the export zips MONTHLY
-  ("updated monthly", currently 07.08.2026), with direct media links
-  (`/ilgstorefront/medias/Tenders-DDMMYYYY.zip?context=<token>`). The page
-  ANSWERS A PLAIN SERVER FETCH (verified via WebFetch — no session, no bot
-  wall on this path, unlike foi.gov.il). So: `tools/fetch_portal_registers.py`
-  re-reads the page each run (the context token rotates — links are never
-  remembered), downloads whatever dated zips it carries, converts via
-  parse_portal_export, skips months already collected (manifest, cached).
-  `tests/test_portal.py`, 12 assertions. Workflow
-  `collect-portal-registers.yml` — monthly cron on the 12th (portal updates
-  ~7th–8th) + manual; commits nothing (artifact `portal-registers`), so its
-  schedule can never collide with the refresh push. Both Origin-B workflows
-  are written by `install-publications-workflow.bat` — one double-click,
-  then commit+push AFTER the big run finishes. Caveat: server-side fetch of
-  the ZIP itself is verified only for the page, not the binary — the first
-  Actions run is the proof; if the media path turns out bot-walled, fall
-  back to Mercy's quarterly manual export, which works today.
-- STILL TRUE about refresh-data.yml: its final `git push` fails if anything
-  lands on main while it runs — push nothing until a run finishes. A
-  `git pull --rebase` hardening was drafted and NOT applied (frozen files).
-  Queue it for after the current run.
+**Standing rules (Mercy's, non-negotiable):**
 
-**2026-08-24, NIGHT — THE FIRST WAYBACK RUN HIT GITHUB'S 6-HOUR CEILING AND
-WAS KILLED.** Read the log before concluding anything:
+- **Files the running workflows use are FROZEN — new capability goes in NEW
+  files.** (Origin-B drafts once touched pipeline files; all were reverted.)
+- **Collect raw, keep sources separate.** The merge is a separate,
+  re-runnable computation; raw is kept forever, so schema choices are
+  reversible. No BudgetKey row ever stands in for a ministry file during
+  COLLECTION — accepted last resort at MERGE time only, labelled, for
+  reports gone from the whole internet.
+- `.github/workflows` is write-protected via the device bridge → every
+  workflow change ships as an installer: `install-*.bat` at the root +
+  `tools/install-*.ps1` (ps1 saved UTF-8-BOM when it carries Hebrew; the
+  YAML heredoc it writes must have NO BOM).
+- refresh-data.yml's final `git push` fails if main moves during a run —
+  push nothing while it runs. Workflows that commit nothing (all the
+  collectors) can run anytime.
 
-- **The route WORKS.** Hundreds of ⚑ recoveries in the partial log, roughly
-  half to two-thirds of attempts. The .xls acceptance worked live (משרד
-  החוץ's old-format files came back as .xls), and טלויזיה חינוכית — a
-  ministry with NO reachable report — was recovered from the archive.
-- **Why it died:** web.archive.org rate-limits a steady client — seen as
-  slow reads, `timed out`, SSL handshake timeouts, connection resets — and
-  wayback_fetch's 120s timeout turned each throttled url into two lost
-  minutes. 1,181 archive attempts at that price blew the 6h job ceiling; a
-  KILLED job runs nothing afterwards (no parse, no commit, cache save
-  uncertain), so the run's downloads may be partly or wholly lost. The
-  manifest-based design makes this survivable: everything is re-resumable.
-- **Fixes applied (2026-08-24, all suites green: 74+35+12+10):**
-  wayback timeout 120s → **30s**; `_download_all` now processes DIRECT
-  downloads before any wayback attempt (the cheap, high-value work must
-  never queue behind the slow archive); and `--deadline-minutes` makes the
-  fetch stop CLEANLY on a time budget — manifest + failure lists written,
-  parse/tests/commit/cache all run, remainder continues next run. The
-  workflow passes `--deadline-minutes 240` with `timeout-minutes: 300` on
-  the step. Expect the backlog to drain over 2–3 runs. Mercy re-runs with
-  the same inputs (12 years, wayback yes) after committing these fixes.
+**How Mercy works (earned over many sessions):**
 
-**2026-08-24, RUN 2 (with the fixes) — the machinery worked; the WORLD
-pushed back. Read this before judging any future run's failures:**
+- She spots real problems fast and is usually right about the cause. When
+  she says something is fundamentally wrong, stop patching and re-examine
+  the model. Her questions found the ss:Index bug, the 3×-sum duplicate
+  trap, and the full-reload waste; she rejected the static-shard workaround
+  with "what is the correct way to do it?" — answer THAT question first,
+  don't optimize for zero-cost cleverness.
+- Never show a partial answer as if complete; a partial list is worse than
+  a count, because the name someone is looking for is exactly the one cut.
+- Verify against live data before claiming a fix (selftest.html for the
+  site). WebFetch caches ~15 min — cache-bust with `?fresh=N`.
+- Read-only probes only. An endpoint that MUTATES her data is never a probe.
+- She runs .bat files happily, edits in Notepad, has NO node on PATH — keep
+  setups zero-install and explain plainly. She is the product mind: present
+  options, let her drive.
+- Claude commits files via SendUserFile + device_commit_files. Her Chrome
+  extension is NOT connected; she pastes logs and screenshots quickly.
+  TODO.md tracks the roadmap. Claude CAN reach her public workers.dev relay
+  for live schema probes (`/b64/<base64url>`; WebFetch URL ceiling ~248
+  chars — keep probe SQL tiny).
 
-- Machinery: the killed run's cache HAD survived (1,704 skips). The
-  keep-the-copy guard protected every held file whose url died. Budget
-  stopped cleanly at 4h with 444 urls left. Accounting: 715 "failed", of
-  which **544 are dead twins already on disk (covered_by)** — the real hole
-  is ~170, most retryable. 101 new downloads, all essentially wayback ⚑
-  (more .xls among them).
-- **gov.il answered 403 to EVERY url this run** — including hundreds that
-  served fine two days earlier, and every probe_forward head-check (so no
-  new quarters were discovered this run). A blanket block of the runner,
-  almost certainly a reaction to three heavy sweeps in ~48 hours. NOT
-  per-file, NOT permanent damage: every held file was kept by the guard.
-  Do not conclude "gov.il blocks Actions forever" from one run — wait and
-  re-measure. If it persists across spaced-out runs, collection needs a new
-  route (relay, or Mercy's browser).
-- **archive.org REFUSED connections for most of the run** ([Errno 111]) —
-  throttled after ~1,200 requests the previous night. A refused connection
-  is not "no snapshot"; it is "come back later".
-- **Fixes added (suites now 78+35+12+10):** circuit breaker — after 15
-  consecutive connection-level wayback failures the archive is rested for
-  the remainder of the run (clean 404s reset the counter; they are answers);
-  wayback pacing 1.5s → 3s. Skipped urls record "not tried — the archive
-  refused N consecutive connections" and retry next run.
-- **THE LESSON: space the runs out.** Back-to-back heavy sweeps got both
-  hosts to slam the door. From here: at most one run per day; better, let
-  the monthly schedule do it. The manifest makes patience free.
+## THE CONTRACTS DATABASE — CURRENT STATE (2026-08-25)
 
-**What Mercy is working on next: `index.html` — התקציב.** In her words it is
-"the most important part of all of it and the main reason I wanted to make the
-site". Everything else (votes, court) is supporting cast. Treat the budget page
-as the product's centre of gravity, not as one page among four.
+**Built at full scale, file+registers (BudgetKey pending):** 513,326
+contracts (unique orders; 535,179 is the row count) from 52 sections of
+.full.json + both mr.gov.il registers, 2m43s. 6.72M field-fills from the
+files, 74,328 from the tenders register, 65,702 from exemptions. Currencies:
+ILS 504,666 / USD 4,311 / EUR 2,013 / GBP 457 / CHF 236 — 8,660 non-ILS,
+the מטבע field earns its keep. The .full.json inputs exist ONLY as the
+refresh workflow's `full-records` artifact (repo is private → download from
+the latest green run; 37.7 MB zip → 541 MB).
 
-State of play right now:
-- **Votes page: at a good stopping point.** Search works across all history from
-  our own index; the panel layout is the one Mercy specified. One known
-  limitation is queued, not hidden: see "THE REAL FIX STILL PENDING" below.
-- **`selftest.html` exists — USE IT.** It runs the real page against real data
-  and posts the report to the worker; Claude reads it with
-  `WebFetch https://our-money.idannhhb.workers.dev/qa/report?fresh=<n>`.
-  Before telling Mercy something is fixed, prove it there. Every bug that
-  reached her had passed tests built on invented data.
-- BudgetKey (obudget.org) had an outage on 2026-08-21 and recovered. Its
-  documented failure mode (HTTP 200 with success:false) is already handled in
-  index.html; don't mistake an outage for a bug.
-- **index.html was SPLIT AND FIXED on 2026-08-22** — see "BUDGET PAGE v3" below.
-  The two-tree bug is closed and tested (test_budget.mjs, 27 assertions).
-  Still waiting on Mercy's live check, and on her call for what comes next
-  (revenue is the obvious candidate — see the ranked list in TODO.md).
+**Register-join reality: only 7% of ALL contracts carry a publication
+number** (35,930) — the 54% measured on education was its NEWEST report;
+whole ministries (בריאות, רווחה, בתי הסוהר, מנהל המחקר החקלאי…) never fill
+the column, and the join cannot invent what a ministry never recorded. Of
+those WITH a number, 62% join (22,456). announced filled 2,872 ·
+starts_date 7,104.
 
-How Mercy works — earned the hard way in the 2026-08-22 session:
-- She spots real problems fast and is usually right about the cause. When she
-  says something is fundamentally wrong, stop patching and re-examine the data
-  model. That instinct produced the vote index and the id-based verification.
-- Never show a partial answer as if it were complete: no half-lists, no rows
-  that haven't passed the active filter, no cap without saying so.
-- Verify against live data before claiming a fix, and use a cache-buster
-  (`?fresh=N`) — WebFetch caches for ~15 minutes and a stale read already sent
-  me chasing a bug that didn't exist.
-- Read-only probes only. Calling an endpoint that MUTATES her data to "check"
-  something is not a check; I restarted her finished index that way.
+**The schema constitution is `FIELDS.xlsx` (repo root, v2).** One row per
+concept × the five sources (each source's own column name + measured fill),
+explanation, recommendation, and Mercy's yellow החלטה column. It supersedes
+FIELDS.md. Her rulings (2026-08-24/25): מספר הליך keep · הסברים והערות keep
+· מטבע חשבונית DROP (measured: never differs from מטבע) · everything else
+as recommended ("maybe drop more later"). Dropped along the way: שם אתר
+(duplicate of the org name), the קבוצת רכש code (description kept), שם הסל
+(20 real rows in 24,572), the השגות deadline (proceduralia).
 
-**THE RULE: keep this file honest.** Whenever work in a chat proves one of
-these conclusions wrong, outdated, or incomplete — update or delete it in the
-same chat, and date the change. A wrong "conclusion" is worse than none.
-Add new hard-won conclusions here too (API quirks, schema facts, decisions),
-each with a date. Keep it short; this is distilled knowledge, not a log.
+**Corrected register measurements (post-ss:Index fix — replace ANYTHING
+measured earlier):** נושאים 81% exemptions / 89% tenders (real topic tags,
+KEPT) · תאריך תחילת/סיום התקשרות 57%/57% in exemptions — a real second
+source for the contract period · מטבע 69% clean (USD 6,008 · EUR 2,465 ·
+GBP 298) · היקף כספי 53%, all numeric · ח"פ ספק 62% · מספר הליך 18%
+exemptions / 100% tenders · tender winners a real 98/24,572 — winners come
+from the ministry files, not the register.
+
+**`tools/build_dataset.py` implements FIELDS.xlsx v2** (still deliberately
+unwired from workflows). Key mechanics:
+
+- File columns resolved LOOSELY, cached per spelling (`_FILE_MATCHERS` /
+  `file_view`) — ministries disagree on spellings across years; exact keys
+  are a trap. מטבע is exact-match so מטבע חשבונית can't leak in.
+- The registers are sources `ex`/`tn`, indexed by publication number,
+  joined per contract through candidates: the file's מספר פניית פרסום
+  first (SPLIT on non-digits — ~1 cell in 350 carries several numbers,
+  comma-separated, and canon_id would weld them; "0" means none), then
+  BudgetKey's tender_key. A multi-row publication prefers the row whose
+  ח"פ matches the contract's. Register-only fields: announced (היקף כספי),
+  procedure_id, approver, decision, publication_status,
+  published/updated_date, documents_ref (a bare id, NOT a url — the site
+  builds the link), topics, starts_date.
+- `--budgetkey` accepts one JSON or the build/raw DIRECTORY. Output is
+  sharded site/data/contracts/<sec>.json + index.json (section = code[:4],
+  parse_report's own cut). LOUD refusals: a register that joins zero
+  contracts, or a BudgetKey input that fills nothing, kills the build.
+- `tests/test_merge.py`: 67 assertions on live-verified fixtures — pub
+  651623 really is the מילגם tender (מכרז פומבי 7/7.2020, matching the
+  file's purpose text) and 569574 the קריץ איגור exemption.
+
+**The database is SQLite; D1 serves the public copy; updates are
+INCREMENTAL.** Settled with Mercy in three exchanges: "are we gonna keep it
+in Cloudflare?" → she rejected static-shard workarounds ("what is the
+correct way?") → she caught the full-reload waste ("we only need to update
+what's relevant") → and set "the audit is just for myself; compare.html is
+only expected to work locally". So `tools/build_sqlite.py` makes TWO
+databases from one build:
+
+- **contracts.db (full, 469.9 MB)** — every field + per-field provenance +
+  a sha256 fingerprint per contract. Stays local / artifact; compare.html
+  reads it. `--delta-against last-month.db` prints new/changed/gone — ALL
+  a monthly D1 update writes. The full 513K write happens once, at
+  bootstrap (~1.7M rows incl. allocations).
+- **contracts-public.db (234.6 MB)** via `--public` — NO provenance, no
+  fingerprints; `sources`+`notes` kept (a reader is entitled to know which
+  sources fed a contract). 13 low-cardinality text columns
+  dictionary-encoded into one `strings` table (1,177 distinct strings
+  replace all the repeated Hebrew; was 306 MB flat). A `contracts_v` VIEW
+  undoes the encoding so worker queries read plain text (0.19 ms).
+- Measured query speed on the real 513K: order_id lookup 0.1 ms; every
+  מילגם contract by ח"פ (94 contracts, ₪4.3B) 0.5 ms. With an index, size
+  is irrelevant to specific lookups.
+- D1 facts (verified 2026-08-25): free = 500 MB/db, 5 GB/account, 5M row
+  reads/day, 100K row writes/day. Paid $5/mo = 10 GB/db, 25B reads/mo,
+  50M writes/mo. The public copy fits free today; BudgetKey's payments[]
+  history may push it — next levers if needed: compact provenance is
+  already out, reports table can live outside D1.
+- gzip math: contracts.db → 74 MB; the JSON shards compress ~17:1. The
+  756 MB contracts-out JSON is the build's intermediate, not a serving
+  form — nothing hosts it.
+
+## COLLECTION — WHAT RUNS ON ITS OWN, AND THE LESSONS (2026-08-23→25)
+
+**Three workflows, all resumable, none collide** (only refresh-data
+commits; installers at the repo root create them):
+
+| workflow | when | what | output |
+|---|---|---|---|
+| refresh data | 1st monthly + manual | ministry reports: fetch (+wayback), parse, tests | commits site/data/paid + collection lists; `full-records` artifact |
+| collect portal registers | 12th monthly + manual | mr.gov.il export zips → JSON (parser-version self-healing) | `portal-registers` artifact |
+| collect budgetkey | 25th monthly + manual | contract_spending per section → build/raw | `budgetkey-raw` artifact, cache `budgetkey-` |
+
+**Collection state (inventory 2026-08-24):** 1,734 report files, 552 MB,
+77 publishers, 535,179 parsed rows. Remaining holes: ~444 wayback-untried
+urls + ~170 real failures (most retryable; browser last-mile later), and
+the BudgetKey side pending Mercy's first run. failed.json / unreachable.json
+/ manifest.json are copied into site/data/collection/ every run. Repeated
+budget-limited runs CONVERGE: manifest+cache skip everything already held,
+so each run only chases what's missing.
+
+**Origin B is fully automatic.** מינהל הרכש publishes the register exports
+MONTHLY as dated zips on a news page
+(mr.gov.il/ilgstorefront/he/news/details/230920201036) that answers a plain
+server fetch. fetch_portal_registers re-reads the page every run (the
+?context= token rotates — links are never remembered), converts via
+parse_portal_export, skips collected months unless PARSER_VERSION bumped.
+Proven live: CI output matches Mercy's manual export exactly. The
+data.gov.il register copy is FROZEN at 2021-01-31 — pulled complete once,
+retired to a merge-time faithful-copy diff; its workflow stays dormant.
+Local copies on her disk: Tenders-07082026/ + Exemptions-07082026/ with
+mr-tenders.json / mr-exemptions.json.gz (parser v2), gitignored.
+
+**Format lessons (each cost a real bug):**
+
+- Files are classified by BYTES, never extension: PK=xlsx, D0CF11E0=OLE2
+  .xls (xlrd reads those — ministries used .xls into ~2020); a rejection
+  prints the actual first bytes.
+- The portal export lies twice: .xls extension over SpreadsheetML 2003 XML,
+  and declaration utf-16 over utf-8+BOM bytes. parse_portal_export
+  byte-patches a temp copy and STREAMS (456 MB).
+- **The ss:Index rule:** SpreadsheetML OMITS empty cells; the next cell
+  carries ss:Index="N" naming its true column. Ignoring it shifts every
+  row with an empty middle cell LEFT — that put topic categories in the
+  currency column, and Mercy's "was it ever not-shekel?" question exposed
+  it. Cells are placed at declared positions; PARSER_VERSION=2; the
+  manifest stores the parser version so old conversions are redone, never
+  trusted.
+- Register dates are DD.MM.YYYY with DOTS — a regex expecting slashes
+  silently finds nothing.
+
+**The wayback route and the blocks (run 1 + run 2, 2026-08-24):**
+
+- web.archive.org recovers gov.il/foi.gov.il history:
+  `https://web.archive.org/web/2id_/<url>`. Recovered files are stamped
+  via:"wayback"+snapshot; a snapshot is final, fetched once; a good local
+  copy is NEVER replaced by an older snapshot when its live url dies
+  (keep-the-copy guard). Many "failures" are DEAD TWINS — the same report
+  indexed under several addresses; failed.json marks them `covered_by`.
+- The archive throttles steady clients and gov.il blanket-403'd the runner
+  after three heavy sweeps in 48h — blocks are runner-targeted and
+  TEMPORARY (the relay still fetched gov.il fine). Machinery answers:
+  30s wayback timeout, direct downloads before any archive attempt,
+  `--deadline-minutes 240` clean stop (step timeout-minutes 300), circuit
+  breaker WB_REFUSALS_LIMIT=15 consecutive connection-level failures rests
+  the archive for the run (a clean 404 is an ANSWER and resets it).
+- **THE LESSON: space runs out.** At most one heavy run per day; better,
+  let the monthly schedule drain the backlog. The manifest makes patience
+  free. Do not conclude "blocked forever" from one run.
 
 ## COLLECTION PIPELINE — GITHUB ACTIONS (2026-08-23). Read before touching tools/
 
@@ -373,58 +401,31 @@ open to the internet.
 - A report with no publisher recorded produced `unknown_1_2024.xlsx`; a second
   nameless one would have overwritten it. Filenames now carry a URL fingerprint.
 
-### WHERE THE DATA LIVES — decided with Mercy 2026-08-23
+### WHERE THE DATA LIVES — superseded 2026-08-25
 
-The reasoning, not a verdict: a file answers the question it was filed under,
-so "how much did מילגם get from all of government" would mean downloading all 99
-sections. That argues for files for browsing and something queryable for search.
-Nothing has been built or benchmarked — D1 is a candidate we picked off its
-published limits, not one we have tried.
+The 2026-08-23 static-files-vs-D1 deliberation is settled — see "THE
+CONTRACTS DATABASE — CURRENT STATE" near the top (SQLite → D1, incremental
+updates, audit db local). Still-true residue worth keeping:
 
-| the question | answered by |
-|---|---|
-| who got money from one ministry | **static per-section file** — free, CDN-cached, no meter |
-| a supplier across all of government | **D1** behind the worker |
-| one contract by id | **D1**, indexed on `order_id` |
-
-Split axis should be section rather than year — a contract spans years, so year
-files would duplicate it and force a fetch of all of them to show its history.
-If a section turns out too big, split it by size instead. At most
-99 files in `site/data/paid/`, plus `index.json`. Per-year figures go INSIDE each
-contract (~43 B → ~100 B per contract; education 111 KB → ~250 KB, ~60 KB gzipped).
-`.full.json` never goes to the browser.
-
-Limits checked 2026-08-23, in the order they will actually bite:
-
-- **D1 free: 5M rows read/day, and Cloudflare's docs say "rows read" counts rows
-  SCANNED.** If so, one unindexed query over ~1M contracts would be ~5 page views
-  a day. Worth confirming on a real table before committing to the design. Index `order_id`,
-  `budget_code`, `company_id`, supplier. Never ship a query that filters on an
-  unindexed column.
-- D1 free: **100,000 rows WRITTEN per day** — a full rebuild of ~1M contracts
-  would take ten days. `build_dataset.py` must eventually emit a DIFF, not a
-  dataset.
-- D1 free storage 5 GB. Workers free 100,000 requests/day, 10 ms CPU each.
-- GitHub: recommended max file **1 MB**, enforced at 100 MB, repo 10 GB.
-  Our education `.full.json` is already 4 MB.
-- Actions cache: 10 GB per repo default, entries evicted after 7 days unused
-  (GitHub docs, read 2026-08-23 — not something we have hit yet).
-- The repo is PRIVATE (Mercy confirmed), so the 60-day auto-disable of
-  scheduled workflows in public repos does not apply.
+- The per-section paid/<sec>.json files stay as the budget page's data —
+  free, CDN-cached, no meter. `.full.json` never goes to the browser.
+- GitHub: recommended max file 1 MB, enforced at 100 MB — why .full.json
+  (241 MB/run) lives as an artifact, never in git.
+- Actions cache: 10 GB per repo, entries evicted after 7 days unused.
+- The repo is PRIVATE, so the public-repo 60-day workflow auto-disable does
+  not apply — but artifact downloads need Mercy's login.
 
 ### STILL OPEN
 
-- `contracts_data` and data.gov.il are not collected at all. `contracts_data`
-  has dotted budget codes (`20.67.02.05`) and **no `order_id`**, so the paging
-  written for `contract_spending` will not work on it. Look at its shape before
-  writing anything — guessing is how rows go missing silently.
-- `compare.html` searches `contract_spending` first, so a contract that exists
-  only in a ministry file cannot be found there. The union is in the builder,
-  not in the tool.
+- `contracts_data` is not collected (BudgetKey's orphan table: dotted budget
+  codes, **no `order_id`** — can only contribute start_year/end_year,
+  matched heuristically). Look at its shape before writing anything.
+- `compare.html` still searches `contract_spending` first, so a file-only
+  contract cannot be found in it — fixed by the queued overhaul (local
+  audit server over the built db; see the sequence at the top).
 - `worker.js` line ~66: `const BUILD_KEY = "rebuild"` in plain text gates
   `?reset=1`, which wipes the vote index. Private repo, but still a live word.
 - Report the BudgetKey payment-column parsing bug to הסדנא לידע ציבורי.
-- The contractors deep-dive page — needs D1, cannot be built on files.
 
 ## The vision (updated 2026-08-21, after extensive work with Mercy)
 
@@ -959,10 +960,13 @@ Mercy on data.gov.il: *"it will only be used when both possible and needed to
 complete missing data from our other sources."* Hence it is last in every row
 where anything else can answer.
 
-**This spec is live in `tools/compare.html` as the green המאגר המאוחד column** —
-every field resolved by these rules, each value labelled with the source that
-won, contract by contract, before we run it at scale. Check the rules there
-first; the Actions build must implement the same table.
+**IMPLEMENTED 2026-08-25 in `build_dataset.py`** — this table, with the
+registers appended as sources `ex`/`tn` where FIELDS.xlsx names them, and
+new register-only rows (announced, approver, decision, statuses, dates,
+topics, procedure_id, documents_ref). The spec's older live rendering, the
+green המאגר המאוחד column in `tools/compare.html`, predates the build —
+the queued overhaul makes compare.html read the BUILT db instead of
+re-deriving.
 
 **KNOWN GAP:** compare.html searches `contract_spending` first, so a contract
 that exists ONLY in a ministry file cannot currently be found. The union is
@@ -1024,19 +1028,13 @@ late publishers and every revision. Monthly is cheap if the job compares the
 report URL and its size/ETag first and only re-downloads what changed. Plus a
 manual trigger for when we want it now.
 
-### tools/build_dataset.py — the merge, in code (2026-08-23)
+### tools/build_dataset.py — the merge, in code
 
-The eight rules implemented server-side, with `tests/test_merge.py` (35
-assertions) built from contracts verified live: מילגם 4502539235 and
-אגוד הייעל 4501119831, real values, no invented fixtures.
-
-    python3 tools/build_dataset.py --files site/data/paid \
-        --budgetkey bk.json --out site/data/contracts
-    python3 tests/test_merge.py
-
-First real run, education file only: **2,455 contracts**, 37,064 fields filled
-from the file, 948 fields where every source said zero (and are marked
-`all-zero`, not silently blanked).
+The eight rules server-side; fixtures are contracts verified live (מילגם
+4502539235, אגוד הייעל 4501119831), real values, no invented numbers.
+CURRENT STATE (schema, registers, 67 tests, full-scale numbers) is in
+"THE CONTRACTS DATABASE" near the top — this section keeps only the rules
+the code carries.
 
 Output per contract: merged fields · `provenance` (which source won each
 field) · `allocations` (live budget codes, per the ministry's snapshot) ·
@@ -1085,25 +1083,24 @@ therefore per budget section, which is indexed and returns instantly:
     FROM quarterly_contract_spending_reports
     WHERE budget_code LIKE '<section>%' AND "report-year" = '<year>'
 
-`tools/fetch_reports.py` — discovery, **one report per ministry** (the newest
-reachable one; downloading every report ever would be hundreds of files to
-answer what the newest already answers), size-check, download. Ministries whose
-only URLs are on foi.gov.il are **listed by name as needing a manual download**
-rather than counted as failures. It refuses to save
-anything that is not a real .xlsx: under 5,000 bytes or missing the `PK` zip
-header means a block page, and a block page written to disk with an .xlsx name
-would be parsed as an empty ministry. Only files whose size changed are
-re-downloaded.
+`tools/fetch_reports.py` — discovery, download, wayback recovery.
+(~~One report per ministry~~ — RETRACTED, see retraction #2 above: EVERY
+reachable report is downloaded; the paid column restates, and a later
+report can list fewer contracts.) It refuses to save anything that is not
+a real spreadsheet: bytes decide (PK=xlsx, OLE2=.xls accepted since
+2026-08-24), a block page written to disk with an .xlsx name would be
+parsed as an empty ministry. Only files whose size changed are
+re-downloaded; foi.gov.il-only urls go through the wayback route.
 
 A TEST CAUGHT A DESIGN FLAW before it shipped: the skip check recomputed the
 filename instead of reading it from the manifest, so any change to the naming
 rule would have made all 82 files look missing and re-downloaded the lot. It
 trusts `manifest[url].file` now.
 
-`.github/workflows/refresh-data.yml` — **monthly** (03:17 UTC on the 1st) plus
-a manual trigger: fetch → parse → merge → **run tests/test_merge.py** → commit
-only if something changed. A refresh that breaks one of the eight rules must
-not ship, so the tests gate the commit.
+`.github/workflows/refresh-data.yml` — **monthly** (03:17 UTC on the 1st)
+plus a manual trigger: fetch (wayback input, --deadline-minutes 240) →
+parse → tests → commit only if something changed. The merge step is the
+reserved commented slot (wiring day). Tests gate the commit.
 
 The reports themselves live in the Actions cache, not the repo: they are build
 inputs, and 82 spreadsheets a quarter do not belong in git history.
@@ -1248,8 +1245,11 @@ ORIGIN A — the ministries' quarterly procurement reports (.xlsx, gov.il/foi.go
   3. `contract_spending` (1,036,112) — (2) grouped per contract
   4. `contracts_data` (779,202) — a narrower crop of (3)
 
-ORIGIN B — the tender/exemption publication system
-  5. data.gov.il `exemptions` (165,705) — publication notices, `היקף כספי`, NO payments
+ORIGIN B — the tender/exemption publication system (מינהל הרכש)
+  5. the mr.gov.il monthly exports — THE live source since 2026-08-24:
+     exemptions 239,549 / tenders 24,572, publication notices, `היקף כספי`,
+     NO payments. (data.gov.il's copy of the same register is FROZEN at
+     2021-01 — retired to a merge-time faithful-copy diff.)
 
 Plus, for the budget itself: `raw_budget` (Ministry of Finance) and OECD/CBS
 for the debt stock. Those are separate origins again.
@@ -1262,7 +1262,8 @@ What each one uniquely holds — none is strictly best:
 - **contracts_data**: `start_year`/`end_year` — the CONTRACT PERIOD, which
   contract_spending does not have at all (its `start_date` is 100% NULL).
   It also invents `volume_per_year`; never use those.
-- **data.gov.il exemptions**: approving body, decision, link to texts.
+- **the registers (mr.gov.il)**: approving body, decision, announced
+  amount, procedure id, doc reference, topics, contract start dates.
 
 **IS THERE A SHARED INDEX? (probed live 2026-08-22 — yes, two of them)**
 
@@ -1272,7 +1273,7 @@ What each one uniquely holds — none is strictly best:
 | `quarterly_…` | ✓ | ✓ | – | ✓ `company_id` |
 | `contract_spending` | ✓ **100%** (1,036,112/1,036,112) | ✓ 10-digit | ✓ `tender_key` | `company_id` 75.5%, `entity_id` |
 | `contracts_data` | ✗ **none** | ✓ dotted | ✗ | ✓ `supplier_entity_id` |
-| data.gov.il `exemptions` | ✗ | ✗ | ✓ `מספר פרסום` | ✓ `מספר חפ ספק` |
+| the registers (mr.gov.il / data.gov.il) | ✗ | ✗ | ✓ `מספר פרסום` | ✓ `מספר חפ ספק` |
 
 1. **`order_id` + `budget_code` joins the whole Origin-A chain**, .xlsx included.
    `order_id` is present on every single contract_spending row. This is the key
@@ -1437,32 +1438,16 @@ which ships with Windows and needs no admin rights for a localhost prefix).
 Zero installs either way. Serves `site/` on :8080, logs every 404, refuses paths outside
 `site/`, and sends `Cache-Control: no-store` so a saved file shows immediately.
 
-### HOW BIG WOULD OUR OWN CONTRACTS DATASET BE? NOT BIG (measured 2026-08-22)
+### SIZE WAS NEVER THE CONSTRAINT (2026-08-22, real numbers 2026-08-25)
 
-From the education file, 3,488 contracts, every field (supplier, ח״פ, purpose,
-method, regulation, dates, volume, paid):
-
-| | raw | gzipped |
-|---|---|---|
-| full record set | 1,090 KB | **163 KB** |
-| paid amounts only (what we ship today) | 109 KB | 32 KB |
-
-**48 bytes per contract gzipped.** ~86,000 contracts are currently live across
-government (`max_year >= 2024`), so a full self-hosted set is about **4 MB
-gzipped**, and sharded by section nobody loads more than their own ministry.
-Netlify and Cloudflare Pages gzip static JSON automatically.
-
-So size is NOT the constraint, and never was. The constraints are:
-1. **Supply** — 82 publishers, refreshed quarterly. This is the whole problem.
-2. **Format variance** — education's headers already carry typos, double spaces
-   and a stray apostrophe. 82 ministries will differ more. The parser matching
-   loosely is what makes this survivable; expect per-ministry tolerance.
-3. **raw_budget is still BudgetKey's.** The .xlsx files carry no budget tree,
-   so the tree, the flows and the debt block stay on the live API regardless.
-
-What our own set WOULD fix, beyond the zero-paid bug: the 25-row cap, the live
-query latency, and the restatement mess (collect several quarters and we hold
-the report history ourselves instead of differencing a cumulative column).
+The dataset was built at scale — the measured sizes live in "THE CONTRACTS
+DATABASE" at the top (contracts.db 470 MB / public 234.6 MB / gzip ~17:1).
+What this section correctly predicted, still true:
+1. **Supply is the whole problem** — 82 publishers, refreshed quarterly.
+2. **Format variance** — headers carry typos, double spaces, stray
+   apostrophes, and vary by ministry and year; only LOOSE matching survives.
+3. **raw_budget is still BudgetKey's.** The .xlsx files carry no budget
+   tree, so the tree, the flows and the debt block stay on the live API.
 
 ### THE RELAY'S 403 ON gov.il WAS OUR OWN ALLOWLIST (2026-08-22)
 
@@ -1588,7 +1573,7 @@ Rules baked in, do not undo them:
 Files (load order: config → budget.strings → common → budget.data → budget.view):
 `index.html` shell only · `budget.css` · `budget.strings.js` (window.PAGE +
 PAGE_STR, all wording) · `budget.data.js` (SQL, the code-tree map, `state`) ·
-`budget.view.js` (all DOM, init at the bottom). Mirrored into `site/`.
+`budget.view.js` (all DOM, init at the bottom).
 
 **NEVER SELECT BUDGET ROWS BY CODE LENGTH ALONE.** The header comment in
 budget.data.js has the full map; the short version: '00' root · '0000' revenue ·
@@ -2104,12 +2089,6 @@ into KV and the page searches our copy.
 
 ## Process conclusions
 
-- Mercy's Chrome extension for Claude is NOT connected (checked twice) —
-  live browser testing goes through Mercy manually; she's responsive and
-  pastes errors/screenshots willingly. The pages' footer shows a ⚠ debug
-  line with the exact failing request — ask her for it when something breaks.
-- Claude commits files to `D:\My\NewsWebsite` via SendUserFile +
-  device_commit_files. TODO.md tracks the roadmap; keep it updated.
-- Useful probe trick: Claude CAN reach Mercy's public workers.dev relay URL
-  (if she shares it) to query Knesset APIs from the cloud and inspect real
-  schemas. Ask for the URL when schema questions block progress.
+Moved into "How Mercy works" in START HERE (2026-08-25). One detail kept
+here: the pages' footer shows a ⚠ debug line with the exact failing
+request — ask her for it when something on the site breaks.

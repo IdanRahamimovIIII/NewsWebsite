@@ -93,6 +93,47 @@ with tempfile.TemporaryDirectory() as d:
 
 FP.fetch_text, FP.download_zip = _t, _z
 
+print("\nss:Index — omitted cells must not shift what follows:")
+XML_IDX = ('\ufeff<?xml version="1.0" encoding="utf-16"?>'
+           '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" '
+           'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">'
+           '<Worksheet><Table>'
+           '<Row><Cell><Data>א</Data></Cell><Cell><Data>ב</Data></Cell>'
+           '<Cell><Data>ג</Data></Cell><Cell><Data>ד</Data></Cell></Row>'
+           '<Row><Cell><Data>1</Data></Cell>'
+           '<Cell ss:Index="4"><Data>ILS</Data></Cell></Row>'
+           '</Table></Worksheet></Workbook>')
+with tempfile.TemporaryDirectory() as d:
+    src = os.path.join(d, "r.xls")
+    with open(src, "w", encoding="utf-8") as fh:
+        fh.write(XML_IDX)
+    out = os.path.join(d, "out.json")
+    PX.convert(src, out, log=lambda *a: None)
+    doc = json.load(open(out, encoding="utf-8"))
+ok("the indexed cell lands in ITS column, the gap stays empty",
+   doc["rows"][0] == ["1", "", "", "ILS"], doc["rows"][0])
+
+print("\na bumped parser version forces re-conversion of an old month:")
+FP.fetch_text, FP.download_zip = fake_text, fake_zip
+with tempfile.TemporaryDirectory() as d:
+    man, failed = FP.run(d, log=lambda *a: None)
+    # sabotage: pretend the collection was made by parser v1
+    mp = os.path.join(d, "manifest.json")
+    m = json.load(open(mp, encoding="utf-8"))
+    for k in m: m[k]["parser"] = 1
+    json.dump(m, open(mp, "w", encoding="utf-8"))
+    zips = []
+    def counting_zip(url, timeout=0):
+        zips.append(url)
+        return fake_zip(url)
+    FP.download_zip = counting_zip
+    man2, failed2 = FP.run(d, log=lambda *a: None)
+ok("both months were re-downloaded and re-converted",
+   len(zips) == 2 and failed2 == [], (len(zips), failed2))
+ok("the manifest now records the current parser",
+   all(v.get("parser") == PX.PARSER_VERSION for v in man2.values()), man2)
+FP.fetch_text, FP.download_zip = _t, _z
+
 print("\na zip that is not what it claims fails loudly:")
 def bad_zip(url, timeout=0):
     tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)

@@ -92,8 +92,11 @@ def run(outdir, log=print):
     for kind, (url, iso) in sorted(links.items()):
         out_json = os.path.join(outdir, "%s-%s.json" % (kind, iso))
         prev = manifest.get(kind)
-        if prev and prev.get("date") == iso and os.path.exists(
-                os.path.join(outdir, prev.get("json", ""))):
+        # same month AND same parser version: a bumped PARSER_VERSION means the
+        # old conversion is wrong (the ss:Index lesson) and must be redone
+        if prev and prev.get("date") == iso \
+                and prev.get("parser") == parse_portal_export.PARSER_VERSION \
+                and os.path.exists(os.path.join(outdir, prev.get("json", ""))):
             log("  = %s %s already collected" % (kind, iso))
             continue
         try:
@@ -112,7 +115,8 @@ def run(outdir, log=print):
                 os.unlink(zpath)
             manifest[kind] = {"date": iso, "json": os.path.basename(out_json),
                               "rows": res["rows"], "columns": len(res["columns"]),
-                              "newest_publication": res["newest"], "source_url": url}
+                              "newest_publication": res["newest"], "source_url": url,
+                              "parser": parse_portal_export.PARSER_VERSION}
         except Exception as e:
             failed.append(kind)
             log("  ✘ %s — %s" % (kind, str(e)[:200]))

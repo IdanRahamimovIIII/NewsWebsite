@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-test_merge.py — the eight rules, against contracts verified live on 2026-08-22/23.
+test_merge.py — the eight rules, against contracts verified live on 2026-08-22/23,
+plus the FIELDS.xlsx v2 schema and the register join (added 2026-08-25 — every
+register fixture read out of the real mr.gov.il conversions on Mercy's disk).
 
-Every fixture value here was read from the real sources during that session.
+Every fixture value here was read from the real sources during those sessions.
 No invented numbers: a fixture kinder than reality is how we shipped a "per
 year" column that was really a lifetime total divided by four.
 
@@ -59,6 +61,42 @@ FILE_MILGAM = {
     "ביצוע חשבוניות לתקופת הדוח' במטבע מקומי": 235298429.36,
     "אופן רכישה מקור": "תקנה 1ב - מכרז פומבי רגיל",
     "מספר פניית פרסום": "651623",
+    # the FIELDS.xlsx v2 columns, as the education 2025Q1 report spells them
+    "תאור של ארגון רכש": "מטה כללי משרד החינוך",
+    "תיאור קבוצת רכש": "אגף ביטחון ובטיחות",
+    "קבוצת רכש": "E41",                                 # the raw code — dropped
+    "מטבע": "ILS",
+    "מטבע חשבונית": "ILS",                              # measured duplicate — dropped
+    "סכום התקשרות מצטבר במטבע מקומי": 409961432.74,
+}
+
+# publication 651623 in the TENDERS register (mr.gov.il, read 2026-08-25) —
+# the same מ7/7.2020 the file's purpose text names. The registers' spellings,
+# exactly as parse_portal_export writes them.
+TN_651623 = {
+    "מספר פרסום": "651623", "שם המשרד": "משרד החינוך",
+    "שם יחידה מפרסמת": "משרד החינוך", "סוג הליך": "מכרז פומבי",
+    "מספר הליך": "7/7.2020",
+    "שם הליך": "מתן שירותים מנהליים להפעלת תכניות הזנה ואורח חיים בריא של משרד החינוך",
+    "סטטוס": "בעדכון", "תאריך פרסום": "13.07.2020", "תאריך עדכון": "09.08.2020",
+}
+
+# publication 569574 in the EXEMPTIONS register (קריץ איגור — the tender_key
+# example contract, re-read after the ss:Index fix)
+EX_569574 = {
+    "מספר פרסום": "569574", "שם המשרד": "משרד הבינוי והשיכון",
+    "שם יחידה מפרסמת": "משרד הבינוי והשיכון",
+    "סוג הליך": "התקשרות בפטור במכרז או בהליך תחרותי אחר",
+    "שם הליך": "כבישים", "לינק לטקסטים": "569574",
+    "תקנה": "תקנה 5א(ב)(1) - התקשרות עם מתכננים - בחירה ממאגר מתכננים",
+    "סטטוס": "פורסם", "מהות החלטה": "התקשרות מאושרת",
+    "גורם מאשר": "מכרזים משרדית",
+    "תאריך פרסום": "08.09.2015", "תאריך עדכון": "08.09.2015",
+    "שם ספק": "קריץ איגור", "מספר חפ ספק": "303739957",
+    "היקף כספי": "222177.66", "מטבע": "ILS",
+    "תאריך תחילת תקופת התקשרות": "30.07.2015",
+    "תאריך סיום תקופת התקשרות": "30.12.2021",
+    "נושאים": "שירותי בנייה ואחזקת מבנים",
 }
 
 # אגוד הייעל, order 4501119831 — three BudgetKey rows: the charge moved between
@@ -142,6 +180,81 @@ ok("summing live allocations gives the contract, not 3x it",
 ok("the payment survives from the file, where BudgetKey has 0",
    g["paid"] == 7359.3, g["paid"])
 
+print("\nthe FIELDS.xlsx v2 columns (approved 2026-08-25):")
+ok("currency is read from מטבע — the exact column, not מטבע חשבונית",
+   m["currency"] == "ILS" and m["provenance"]["currency"] == "file")
+ok("the unit is תאור של ארגון רכש now, not שם אתר",
+   m["unit"] == "מטה כללי משרד החינוך", m["unit"])
+ok("שם אתר is not read by anything",
+   B._file_tag("שם אתר") is None)
+ok("מטבע חשבונית is not read by anything",
+   B._file_tag("מטבע חשבונית") is None)
+ok("the purchase group keeps the description, drops the code",
+   m["purchase_group"] == "אגף ביטחון ובטיחות" and
+   B._file_tag("קבוצת רכש") is None, m["purchase_group"])
+ok("the cumulative total arrives", m["total_cumulative"] == 409961432.74)
+ok("a spelling variant still lands: לתקופת הדוח without במטבע מקומי",
+   B._file_tag("ביצוע חשבוניות לתקופת הדוח'") == B.X_PERIOD)
+ok("rule 7 covers the whole schema: no field reads a per-year column",
+   not any(k in B.NEVER_READ for _, _, order in B.FIELDS for _, k in order))
+
+print("\nthe register join — פרסום 651623, the file's own bridge:")
+tn_index = {"651623": [TN_651623]}
+ex_index = {"569574": [EX_569574]}
+r = B.merge_contract("4502539235", [BK_MILGAM], [FILE_MILGAM], ex_index, tn_index)
+ok("the tenders register is found through the file's מספר פניית פרסום",
+   "tn" in r["sources"], r["sources"])
+ok("procedure id 7/7.2020 — only the register has it",
+   r["procedure_id"] == "7/7.2020" and r["provenance"]["procedure_id"] == "tn")
+ok("publication status arrives from the register",
+   r["publication_status"] == "בעדכון")
+ok("published date arrives canonical: 13.07.2020 → 2020-07-13",
+   r["published_date"] == "2020-07-13", r["published_date"])
+ok("the file's full purpose still beats the register's שם הליך",
+   r["purpose"].startswith("מ7/7.2020 מתן שירותיים"), r["purpose"][:40])
+ok("no exemptions row matched — and nothing pretends one did",
+   "ex" not in r["sources"])
+
+print("\nthe register join — פרסום 569574, an exemption with the works:")
+bk_kritz = {"order_id": "7777", "tender_key": ['["569574","exemptions"]'],
+            "payments": []}
+k = B.merge_contract("7777", [bk_kritz], [], ex_index, tn_index)
+ok("the exemptions register is reached through BudgetKey's tender_key",
+   "ex" in k["sources"], k["sources"])
+ok("the announced amount — number 3 of the three — arrives",
+   k["announced"] == 222177.66 and k["provenance"]["announced"] == "ex")
+ok("who approved it", k["approver"] == "מכרזים משרדית")
+ok("what was decided", k["decision"] == "התקשרות מאושרת")
+ok("the exemption regulation, full on every register row",
+   k["exemption"].startswith("תקנה 5א(ב)(1)"), k["exemption"])
+ok("the contract's start — only the register knows it",
+   k["starts_date"] == "2015-07-30", k["starts_date"])
+ok("…and the end", k["ends_date"] == "2021-12-30", k["ends_date"])
+ok("topics arrive", k["topics"] == "שירותי בנייה ואחזקת מבנים")
+ok("the supplier is filled from the register when nothing else has it",
+   k["supplier"] == "קריץ איגור" and k["provenance"]["supplier"] == "ex")
+ok("…and their ח\"פ", k["company_id"] == "303739957")
+ok("the documents ref is kept as found — an id, not a url",
+   k["documents_ref"] == "569574")
+
+print("\nthe publication cell's traps:")
+multi = dict(FILE_MILGAM); multi["מספר פניית פרסום"] = "649013, 651623"
+r2 = B.merge_contract("4502539235", [], [multi], ex_index, tn_index)
+ok("several comma-separated numbers are split, never welded together",
+   r2["publication"] == "651623" and "tn" in r2["sources"], r2["publication"])
+zero = dict(FILE_MILGAM); zero["מספר פניית פרסום"] = "0"
+r3 = B.merge_contract("4502539235", [], [zero], ex_index, tn_index)
+ok("'0' is the ministry's way of writing none — no join, no fake number",
+   r3["publication"] is None and "tn" not in r3["sources"])
+
+print("\none publication, several register rows:")
+other = dict(EX_569574); other["שם ספק"] = "ספק אחר"; other["מספר חפ ספק"] = "999999999"
+two_rows = {"569574": [other, EX_569574]}
+f_hp = {"הזמנת רכש": "7777", "מספר ח\"פ": "303739957", "מספר פניית פרסום": "569574"}
+p = B.merge_contract("7777", [], [f_hp], two_rows, None)
+ok("the row about OUR supplier wins over the one that merely came first",
+   p["supplier"] == "קריץ איגור", p["supplier"])
+
 print("\nunion — no source decides the population:")
 with tempfile.TemporaryDirectory() as d:
     fdir = os.path.join(d, "paid"); os.makedirs(fdir)
@@ -153,11 +266,37 @@ with tempfile.TemporaryDirectory() as d:
     with open(bkp, "w", encoding="utf-8") as fh:
         json.dump([BK_MILGAM, {"order_id": "8888888888", "budget_code": "0024010101",
                                "entity_name": "ספק שרק ב-BudgetKey", "payments": []}], fh)
-    built = B.build(fdir, bkp, os.path.join(d, "out"))
+    # the registers, in parse_portal_export's own shape: columns + rows-as-arrays
+    tnp = os.path.join(d, "tn.json")
+    cols = sorted(set(TN_651623))
+    with open(tnp, "w", encoding="utf-8") as fh:
+        json.dump({"columns": cols,
+                   "rows": [[TN_651623.get(c, "") for c in cols]]}, fh)
+    built = B.build(fdir, bkp, os.path.join(d, "out"), None, tnp,
+                    log=lambda *a: None)
     ids = {c["order_id"] for c in built}
     ok("a contract only in the file is kept", "9999999999" in ids)
     ok("a contract only in BudgetKey is kept", "8888888888" in ids)
     ok("one in both appears once", sum(1 for c in built if c["order_id"] == "4502539235") == 1)
+    ok("the register rode along end-to-end",
+       any("tn" in c["sources"] for c in built))
+    secs = json.load(open(os.path.join(d, "out", "index.json"), encoding="utf-8"))
+    ok("output is sharded by section, the cut parse_report makes",
+       "0020" in secs["sections"] and secs["contracts"] == len(built), secs)
+    sec20 = json.load(open(os.path.join(d, "out", "0020.json"), encoding="utf-8"))
+    ok("the section file holds its own contracts",
+       any(c["order_id"] == "4502539235" for c in sec20["contracts"]))
+
+print("\na register that is not one fails loudly:")
+with tempfile.TemporaryDirectory() as d:
+    bad = os.path.join(d, "bad.json")
+    with open(bad, "w", encoding="utf-8") as fh:
+        json.dump({"columns": ["שם", "ערך"], "rows": []}, fh)
+    try:
+        B.load_register(bad, log=lambda *a: None)
+        ok("a file with no מספר פרסום column is refused", False)
+    except SystemExit:
+        ok("a file with no מספר פרסום column is refused", True)
 
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

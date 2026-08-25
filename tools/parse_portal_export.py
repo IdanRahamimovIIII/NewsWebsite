@@ -50,13 +50,42 @@ def clean_copy(src, dst):
             o.write(b)
 
 
+SS = "{urn:schemas-microsoft-com:office:spreadsheet}"
+
+PARSER_VERSION = 2      # bump when parsing logic changes, so already-converted
+                        # months are re-converted instead of trusted
+
+
 def rows_of(path):
-    """One row at a time, elements freed as they pass — constant memory."""
+    """One row at a time, elements freed as they pass — constant memory.
+
+       THE ss:Index BUG (found 2026-08-24, by Mercy's currency question):
+       SpreadsheetML OMITS empty cells; the next cell then carries
+       ss:Index="N" saying which column it really is. Version 1 ignored
+       that and collected values in sequence — so every register row with
+       an empty middle cell had everything after it SHIFTED LEFT (topic
+       categories showing up in the currency column is how it surfaced).
+       Cells are now placed at their declared positions and the gaps stay
+       empty, as the file intends."""
     for ev, el in ET.iterparse(path, events=("end",)):
-        if el.tag.endswith("}Row"):
-            yield [(d.text or "").strip()
-                   for d in el.iter() if d.tag.endswith("}Data")]
-            el.clear()
+        if not el.tag.endswith("}Row"):
+            continue
+        vals, pos = [], 0
+        for cell in el:
+            if not cell.tag.endswith("}Cell"):
+                continue
+            idx = cell.get(SS + "Index")
+            pos = int(idx) if idx else pos + 1
+            while len(vals) < pos - 1:
+                vals.append("")
+            text = ""
+            for d in cell:
+                if d.tag.endswith("}Data"):
+                    text = (d.text or "").strip()
+                    break
+            vals.append(text)
+        yield vals
+        el.clear()
 
 
 DATE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{4})")     # the portal writes DD.MM.YYYY
