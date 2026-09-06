@@ -14,6 +14,7 @@ const COMMON_STR = {
     title: "הכסף שלנו",
     navBudget: "התקציב",
     navVotes: "הצבעות וחקיקה",
+    navMk: "חברי הכנסת",
     navCourt: "בית המשפט העליון",
     loading: "טוען נתונים…",
     searchBtn: "חיפוש",
@@ -28,6 +29,7 @@ const COMMON_STR = {
     title: "Our Money",
     navBudget: "The Budget",
     navVotes: "Votes & Legislation",
+    navMk: "Knesset Members",
     navCourt: "Supreme Court",
     loading: "Loading data…",
     searchBtn: "Search",
@@ -50,13 +52,15 @@ function t(k) {
 
 /* ---------- language & chrome (header + nav) ---------- */
 function buildChrome() {
-  // Pages that live in a subfolder (site/tools/…) set window.BASE = "../"
-  // before loading this file, so the nav points at the real pages, not 404s.
-  const BASE = window.BASE || "";
+  // Every page is site/<name>_page/index.html and every tool is site/tools/…,
+  // so from any of them the site root is one level up. A page that lives
+  // deeper can set window.BASE (e.g. "../../") before loading this file.
+  const BASE = window.BASE || "../";
   const tabs = [
-    ["budget", "index.html", "navBudget"],
-    ["votes", "votes.html", "navVotes"],
-    ["court", "court.html", "navCourt"],
+    ["budget", "budget_page/", "navBudget"],
+    ["votes", "votes_page/", "navVotes"],
+    ["mk", "mk_page/", "navMk"],
+    ["court", "court_page/", "navCourt"],
   ];
   const tabsHtml = tabs.map(([id, href, key]) =>
     `<a href="${BASE}${href}" class="${window.PAGE === id ? "active" : ""}" data-i18n="${key}"></a>`).join("");
@@ -64,7 +68,7 @@ function buildChrome() {
   const bar = document.querySelector("header.topbar");
   if (bar && !bar.childElementCount) {
     bar.innerHTML = `<div class="tbwrap">
-      <a class="brand" href="${BASE}index.html" data-i18n="title"></a>
+      <a class="brand" href="${BASE}budget_page/" data-i18n="title"></a>
       <nav class="tabs">${tabsHtml}</nav>
       <button class="langbtn" id="langbtn" onclick="toggleLang()">English</button>
     </div>`;

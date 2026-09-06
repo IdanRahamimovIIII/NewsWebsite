@@ -35,6 +35,8 @@
  *   GET  /build/votes[?reset=1&key=rebuild]    — one step of the index harvest
  *   GET  /search/votes?q=…[&qs=a|b][&from=&to=][&y0=&y1=][&limit=]
  *   GET  /data/votesmeta                       — index manifest (years, rows)
+ *   GET  /data/paid/index, /data/paid/<section> — the ministry-report paid
+ *        overlay, PUBLISHED into KV by the pipeline (pub:paid/*), served as-is
  *   GET  /data/<budget|votes|bills|verdicts>   — snapshot (auto-refreshes;
  *        serves the last good copy if the government source is down)
  *   GET/POST /?url=<encoded address>           — raw relay
@@ -245,9 +247,31 @@ async function refreshDataset(name, env) {
   return entry;
 }
 
+/* PUBLISHED datasets (2026-09-06): documents the PIPELINE writes into KV
+   under "pub:<name>" — already in the snapshot envelope {t, data} — that
+   the worker only hands out. First one: the ministry-report paid overlay,
+   pub:paid/index + pub:paid/<section> (pipeline/tools/publish_paid.py,
+   monthly from refresh-data.yml). Nothing here rebuilds them: if a key is
+   missing the answer is 404 "not published", never an upstream fetch.
+   Any /data/<name> that is not a built-in DATASET lands here. */
+async function servePublished(name, env) {
+  if (!/^[A-Za-z0-9_.\-\/]{1,64}$/.test(name))
+    return new Response('{"error":"bad dataset name"}', { status: 400, headers: { ...CORS, "Content-Type": "application/json" } });
+  if (!env.DATA)
+    return new Response('{"error":"KV binding DATA is missing — see setup step B in worker.js"}',
+      { status: 501, headers: { ...CORS, "Content-Type": "application/json" } });
+  // cacheTtl: a hot document is read from the edge for an hour, not from KV
+  const body = await env.DATA.get("pub:" + name, { cacheTtl: 3600 });
+  if (body == null)
+    return new Response(JSON.stringify({ error: "not published: " + name }),
+      { status: 404, headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "public, max-age=60" } });
+  return new Response(body,
+    { headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" } });
+}
+
 async function serveDataset(name, env) {
   const ds = DATASETS[name];
-  if (!ds) return new Response("Unknown dataset", { status: 404, headers: CORS });
+  if (!ds) return servePublished(name, env);
   if (!env.DATA)
     return new Response(JSON.stringify({ error: "KV binding DATA is missing — see setup step B in worker.js" }),
       { status: 501, headers: { ...CORS, "Content-Type": "application/json" } });

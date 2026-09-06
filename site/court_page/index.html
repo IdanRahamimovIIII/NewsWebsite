@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הכסף שלנו — בית המשפט העליון | Our Money — Supreme Court</title>
+<meta name="description" content="פסקי הדין וההחלטות האחרונים של בית המשפט העליון — מהמאגר הרשמי, בשפה פשוטה.">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  /* ---- court page only ---- */
+  .controls { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin-bottom: 6px; }
+  label.tech { font-size: 13px; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+
+  .statrow { display: flex; flex-wrap: wrap; gap: 8px 22px; color: var(--ink-2); font-size: 13.5px;
+    padding: 10px 0 4px; font-variant-numeric: tabular-nums; }
+  .statrow b { color: var(--ink-1); font-weight: 600; }
+
+  .daygroup { margin-top: 16px; }
+  .daygroup > h3 { font-size: 13.5px; color: var(--ink-2); font-weight: 600; margin: 0 0 2px;
+    border-bottom: 1px solid var(--grid); padding-bottom: 6px; }
+  .ruling { border-bottom: 1px solid var(--grid); padding: 11px 4px; }
+  .ruling:last-child { border-bottom: 0; }
+  .ruling .rtitle { font-size: 14.5px; }
+  .ruling .rtitle a { color: inherit; text-decoration: none; }
+  .ruling .rtitle a:hover { color: var(--accent-ink); text-decoration: underline; }
+  .ruling .rmeta { display: flex; flex-wrap: wrap; gap: 5px 14px; align-items: center;
+    font-size: 13px; color: var(--ink-2); margin-top: 4px; }
+  .badge { display: inline-block; border-radius: 999px; padding: 1px 10px; font-size: 12px; font-weight: 600; }
+  .badge.psak { background: color-mix(in srgb, var(--series-1) 14%, transparent); color: var(--accent-ink); }
+  .badge.other { background: color-mix(in srgb, var(--abstain) 16%, transparent); color: var(--ink-2); }
+  .badge.tech { background: transparent; border: 1px dashed var(--border); color: var(--ink-3); font-weight: 500; }
+  .doclink { color: var(--accent-ink); font-size: 13px; text-decoration: none; white-space: nowrap; }
+  .doclink:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<header class="topbar"></header>
+<div class="wrap">
+
+  <!-- fresh rulings -->
+  <div class="card">
+    <h2 data-i18n="freshTitle"></h2>
+    <p class="hint" data-i18n="freshHint"></p>
+
+    <div class="controls" id="rangechips"></div>
+    <div class="controls" id="typechips"></div>
+    <div class="controls">
+      <label class="tech"><input type="checkbox" id="showtech" onchange="renderList()"><span data-i18n="showTech"></span></label>
+    </div>
+    <div class="searchrow">
+      <input id="q" data-i18n-ph="qPh" onkeydown="if(event.key==='Enter')reload()">
+      <button onclick="reload()" data-i18n="searchBtn"></button>
+    </div>
+
+    <div class="statrow" id="stats"></div>
+    <div id="list"><div class="loading" data-i18n="loading"></div></div>
+  </div>
+
+  <!-- how to read this -->
+  <div class="card explain">
+    <h2 data-i18n="expTitle"></h2>
+    <p><span data-i18n="exp1"></span></p>
+    <p><span data-i18n="exp2"></span></p>
+    <p><span data-i18n="exp3"></span></p>
+  </div>
+
+  <footer>
+    <span data-i18n="credit"></span>
+    <a href="https://supremedecisions.court.gov.il" target="_blank" rel="noopener" data-i18n="srcName"></a>
+    <div id="debug" style="margin-top:6px"></div>
+  </footer>
+</div>
+
+<script src="../config.js"></script>
+<script>
+window.PAGE = "court";
+window.PAGE_STR = {
+  he: {
+    tagline: "מה החליט בית המשפט העליון? המסמכים הרשמיים, בשפה פשוטה.",
+    freshTitle: "פסיקה טרייה",
+    freshHint: "כל מה שפרסם בית המשפט העליון לאחרונה. לחיצה על שם התיק פותחת את המסמך הרשמי המלא.",
+    showTech: "הציגו גם החלטות טכניות (דחיות מועד, עניינים מנהליים)",
+    qPh: "חיפוש חופשי בפסיקה — לדוגמה: חופש הביטוי",
+    days7: "שבוע אחרון", days30: "חודש אחרון", days90: "3 חודשים",
+    typeAll: "הכל", typePsak: "פסקי דין", typeDecision: "החלטות",
+    statDocs: "מסמכים", statPsak: "פסקי דין", statTech: "מהם טכניים (מוסתרים)", statTechShown: "מהם טכניים",
+    capNote: "מוצגים 50 המסמכים האחרונים בטווח — צמצמו את הטווח או חפשו כדי לראות הכול.",
+    pagesN: "עמ׳",
+    techBadge: "טכני",
+    openDoc: "למסמך הרשמי ⇗",
+    emptyRange: "לא נמצאו מסמכים בטווח שנבחר.",
+    expTitle: "איך קוראים את זה?",
+    exp1: "‏<b>פסק דין</b> הוא ההכרעה הסופית בתיק — זה המסמך שמשנה את המציאות. <b>החלטה</b> היא כל צעד בדרך: צווים, בקשות, קביעות ביניים.",
+    exp2: "‏כשבית המשפט העליון יושב כ<b>בג\"ץ</b> (בית משפט גבוה לצדק), אזרחים עותרים נגד המדינה עצמה — ממשלה, שרים, רשויות. שם מתרחשות ההכרעות הגדולות על גבולות הכוח השלטוני.",
+    exp3: "‏פרשנות של העליון מחייבת את כל בתי המשפט האחרים. לכן גם \"החלטה קטנה\" יכולה לשנות בפועל את משמעותו של חוק — בלי שהכנסת שינתה מילה.",
+    credit: "מקור המידע: ",
+    srcName: "מאגר פסקי הדין של בית המשפט העליון",
+  },
+  en: {
+    tagline: "What did the Supreme Court decide? The official documents, in plain language.",
+    freshTitle: "Fresh rulings",
+    freshHint: "Everything the Supreme Court published recently. Click a case name to open the full official document (in Hebrew).",
+    showTech: "Also show technical decisions (scheduling, administrative matters)",
+    qPh: "Free-text search (Hebrew works best) — e.g. חופש הביטוי",
+    days7: "Last week", days30: "Last month", days90: "3 months",
+    typeAll: "All", typePsak: "Judgments", typeDecision: "Decisions",
+    statDocs: "documents", statPsak: "judgments", statTech: "technical (hidden)", statTechShown: "technical",
+    capNote: "Showing the 50 most recent documents in range — narrow the range or search to see everything.",
+    pagesN: "pp.",
+    techBadge: "technical",
+    openDoc: "Official document ⇗",
+    emptyRange: "No documents found in the chosen range.",
+    expTitle: "How to read this",
+    exp1: "A <b>judgment (פסק דין)</b> is the final ruling in a case — the document that changes reality. A <b>decision (החלטה)</b> is any step along the way: orders, motions, interim findings.",
+    exp2: "When the Supreme Court sits as the <b>High Court of Justice (בג\"ץ)</b>, citizens petition against the state itself — the government, ministers, authorities. That is where the big questions about the limits of state power are decided.",
+    exp3: "The Supreme Court's interpretation binds every other court in Israel. So even a \"small\" decision can change what a law means in practice — without the Knesset changing a word.",
+    credit: "Data source: ",
+    srcName: "The Supreme Court's official verdicts database",
+  }
+};
+</script>
+<script src="../shared/common.js"></script>
+<script>
+"use strict";
+/* =====================================================================
+   Our Money — Supreme Court (fresh rulings)
+   Data source (official): supremedecisions.court.gov.il, fetched through
+   the relay's named shortcut:
+     GET {PROXY}/preset/verdicts?from=YYYY-MM-DD&to=YYYY-MM-DD[&q=text]
+   Document links go straight to the court's official download endpoint.
+   ===================================================================== */
+
+const COURT = "https://supremedecisions.court.gov.il";
+
+function docUrl(r) {
+  return COURT + "/Home/Download?path=" + encodeURIComponent(r.PathForWeb || "")
+    + "&fileName=" + encodeURIComponent(r.FileName || "") + "&type=2";
+}
+
+/* ---------- state & controls ---------- */
+const state = { days: 30, type: "all", rows: null };
+
+window.onLangChange = () => {
+  renderChips();
+  if (state.rows) renderList();
+};
+
+function renderChips() {
+  const rc = document.getElementById("rangechips");
+  rc.innerHTML = [[7, t("days7")], [30, t("days30")], [90, t("days90")]]
+    .map(([d, l]) => `<button class="chipbtn ${state.days === d ? "on" : ""}" onclick="setDays(${d})">${l}</button>`).join("");
+  const tc = document.getElementById("typechips");
+  tc.innerHTML = [["all", t("typeAll")], ["psak", t("typePsak")], ["dec", t("typeDecision")]]
+    .map(([v, l]) => `<button class="chipbtn ${state.type === v ? "on" : ""}" onclick="setType('${v}')">${l}</button>`).join("");
+}
+function setDays(d) { state.days = d; renderChips(); reload(); }
+function setType(v) { state.type = v; renderChips(); renderList(); }
+
+/* ---------- data ---------- */
+async function reload() {
+  const out = document.getElementById("list");
+  out.innerHTML = `<div class="loading">${esc(t("loading"))}</div>`;
+  document.getElementById("stats").innerHTML = "";
+  try {
+    const from = isoDaysAgo(state.days);
+    const q = document.getElementById("q").value.trim();
+    let rows = null;
+    if (!q) {
+      // 1st choice for browsing: our snapshot dataset (covers 90 days back)
+      try {
+        const snap = await dataset("verdicts");
+        rows = (snap.data || []).filter(r => {
+          const d = dateOf(r.VerdictsDtString);
+          return d && d.toISOString().slice(0, 10) >= from;
+        });
+      } catch (e) { debug("snapshot: " + e.message); }
+    }
+    if (rows === null) {
+      // text search (always live) or snapshot unavailable
+      const params = { from, to: isoDaysAgo(-1) };
+      if (q) params.q = q;
+      const j = await preset("verdicts", params);
+      rows = (j && j.data) || [];
+    }
+    state.rows = rows;
+    renderList();
+  } catch (e) {
+    out.innerHTML = `<div class="error">${esc(friendly(e))}</div>`;
+    debug("court: " + e.message);
+  }
+}
+
+const isPsak = r => (r.Type || "").includes("פסק");
+
+function renderList() {
+  const out = document.getElementById("list");
+  const rows = state.rows || [];
+  const showTech = document.getElementById("showtech").checked;
+
+  let vis = rows.filter(r => showTech || !r.Technical);
+  if (state.type === "psak") vis = vis.filter(isPsak);
+  if (state.type === "dec") vis = vis.filter(r => !isPsak(r));
+  vis = vis.slice().sort((a, b) => (dateOf(b.VerdictsDtString) || 0) - (dateOf(a.VerdictsDtString) || 0));
+
+  // stats
+  const nPsak = rows.filter(isPsak).length;
+  const nTech = rows.filter(r => r.Technical).length;
+  document.getElementById("stats").innerHTML =
+    `<span><b>${rows.length}</b> ${esc(t("statDocs"))}</span>` +
+    `<span><b>${nPsak}</b> ${esc(t("statPsak"))}</span>` +
+    `<span><b>${nTech}</b> ${esc(showTech ? t("statTechShown") : t("statTech"))}</span>`;
+
+  if (!vis.length) { out.innerHTML = `<div class="loading">${esc(t("emptyRange"))}</div>`; return; }
+
+  // group by day
+  const groups = new Map();
+  for (const r of vis) {
+    const k = r.VerdictsDtString || "?";
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  }
+
+  let html = "";
+  for (const [day, list] of groups) {
+    html += `<div class="daygroup"><h3>${esc(fmtDate(day, "long") || day)}</h3>`;
+    for (const r of list) {
+      const badge = isPsak(r)
+        ? `<span class="badge psak">${esc(r.Type)}</span>`
+        : `<span class="badge other">${esc(r.Type || "")}</span>`;
+      const tech = r.Technical ? ` <span class="badge tech">${esc(t("techBadge"))}</span>` : "";
+      html += `<div class="ruling">
+        <div class="rtitle"><a href="${docUrl(r)}" target="_blank" rel="noopener">${esc(r.CaseName || r.CaseDesc || "")}</a></div>
+        <div class="rmeta">
+          ${badge}${tech}
+          <span>${esc(r.CaseDesc || "")}</span>
+          ${r.Pages ? `<span>${r.Pages} ${esc(t("pagesN"))}</span>` : ""}
+          <a class="doclink" href="${docUrl(r)}" target="_blank" rel="noopener">${esc(t("openDoc"))}</a>
+        </div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+  if (rows.length >= 50) html += `<p class="hint" style="margin-top:14px">${esc(t("capNote"))}</p>`;
+  out.innerHTML = html;
+}
+
+/* ---------- boot ---------- */
+applyLang();
+renderChips();
+reload();
+</script>
+</body>
+</html>

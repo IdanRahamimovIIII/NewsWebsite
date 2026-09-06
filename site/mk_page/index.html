@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הכסף שלנו — חברי הכנסת | Our Money — Knesset Members</title>
+<meta name="description" content="תיק לכל חבר/ת כנסת: הצעות החוק שהגישו (שעברו ושנפלו), התפקידים שמילאו לאורך השנים, ורשומת ההצבעה שלהם — מנתונים רשמיים.">
+<!-- the shared look, then this page's own bits -->
+<link rel="stylesheet" href="../shared/style.css">
+<link rel="stylesheet" href="mk.css">
+</head>
+<body>
+<header class="topbar"></header>
+<div class="wrap">
+
+  <!-- search: any Knesset member, past or present -->
+  <div class="card">
+    <h2 data-i18n="pageTitle"></h2>
+    <p class="hint" data-i18n="pageHint"></p>
+    <div class="searchrow">
+      <label style="flex:1 1 260px;position:relative;display:flex">
+        <input id="mkq" style="flex:1" data-i18n-ph="searchMkPh"
+               onkeydown="if(event.key==='Enter')mkSearch()">
+      </label>
+      <button onclick="mkSearch()" data-i18n="searchBtn"></button>
+    </div>
+    <div id="pick" style="display:none"></div>
+  </div>
+
+  <!-- the portfolio itself (hidden until someone is chosen) -->
+  <div id="profile" style="display:none">
+    <div class="card">
+      <div id="phead"></div>
+      <div id="ptiles" class="tiles"></div>
+    </div>
+
+    <div class="card" id="bioCard" style="display:none">
+      <h2 data-i18n="secBio"></h2>
+      <p class="hint" data-i18n="bioHint"></p>
+      <div id="bio"></div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="secPositions"></h2>
+      <p class="hint" data-i18n="posHint"></p>
+      <div id="positions"><div class="loading" data-i18n="loading"></div></div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="secBills"></h2>
+      <p class="hint" data-i18n="billsHint"></p>
+      <div id="bills"><div class="loading" data-i18n="loading"></div></div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="secVotes"></h2>
+      <p class="hint" data-i18n="votesHint"></p>
+      <div id="mkknessets"></div>
+      <div id="mkvotes"><div class="loading" data-i18n="loading"></div></div>
+    </div>
+  </div>
+
+  <!-- the directory (shown when nobody is chosen) -->
+  <div class="card" id="dirCard">
+    <h2 data-i18n="dirTitle"></h2>
+    <p class="hint" data-i18n="dirHint"></p>
+    <div id="dir"><div class="loading" data-i18n="loading"></div></div>
+  </div>
+
+  <footer>
+    <span data-i18n="credit"></span>
+    <a href="https://knesset.gov.il/Odata/ParliamentInfo.svc/" target="_blank" rel="noopener">Knesset OData</a> ·
+    <a href="https://oknesset.org" target="_blank" rel="noopener">Open Knesset</a>
+    · <span id="pagever"></span>
+    <div id="debug" style="margin-top:6px"></div>
+  </footer>
+</div>
+
+<!-- Load order matters. Each file has one job:
+       ../config.js     your relay address (shared, one level up)
+       mk.strings.js    every word this page says (Hebrew + English)
+       ../shared/common.js  shared header, language switch, relay helpers
+       mk.data.js       talks to the Knesset APIs (people, positions, bills, votes)
+       mk.view.js       draws the portfolio (and starts the page at the bottom) -->
+<script src="../config.js"></script>
+<script src="mk.strings.js"></script>
+<script src="../shared/common.js"></script>
+<script src="mk.data.js"></script>
+<script src="mk.view.js"></script>
+</body>
+</html>

@@ -98,7 +98,7 @@ Three checks only Mercy can run (each unlocks a section, none is blocking):
 - [ ] Historical votes (2003–2021) from the old OData Votes.svc (table names in CLAUDE.md)
 - [ ] Bill detail pages: initiators, full history, link to bill text (LegislationItem API)
 - [ ] Link votes ↔ bills (GetVoteDetails returns FK_ItemID = the bill's ItemId)
-- [ ] MK profile pages: attendance, bills initiated
+- [x] MK profile pages v1 (2026-08-25, see BIG ROCK 1 below) — attendance still open
 - [ ] Participation count shown prominently on every vote — e.g. "התקבל חוק — 5 מצביעים מתוך 120"
       (Mercy's request 2026-08-20; data already in GetVoteDetails: sum of VoteCounters)
 - [ ] Attendance score per MK — how often they participate in plenum votes
@@ -118,8 +118,33 @@ Three checks only Mercy can run (each unlocks a section, none is blocking):
       governments, elections, events (Mercy's idea #4)
 - [x] Old votes archive (pre-13.7.2021) wired into advanced date search — queried live from
       the frozen Votes.svc via the relay, with per-member breakdowns (2026-08-21)
-- [ ] BIG ROCK 1: MK portfolio pages — bills proposed (passed & rejected), positions held,
-      ministry budget under their term (KNS_BillInitiator + PersonToPosition + BudgetKey)
+- [x] BIG ROCK 1 v1 SHIPPED (2026-08-25): MK portfolio pages — `mk.html` + `site/mk/`,
+      fourth nav tab. Per person: positions held (KNS_PersonToPosition, back to 1951),
+      bills in three piles (passed / rejected / in process, exact status shown on
+      every row), voting record per Knesset with how THEY voted, directory of the
+      current Knesset, `?name=` deep links; MK names on votes.html now link here.
+      Tests: tests/test_mk.mjs (23 asserts, mocked APIs) + test_links updated.
+- [x] Portfolio search v2 (2026-08-25, Mercy's five): live as-you-type ranked search
+      (serving now → recency → weight of heaviest role → role count), position line
+      per result (current role, or last role + years, ever-PM shows "ראש הממשלה"
+      + year spans), avatars everywhere (initials until the photo URL pattern is
+      captured — PHOTO_URL in mk.data.js, one line, Mercy's F12), portfolio header
+      photo. 35 asserts green.
+- [ ] Mercy: run `get-photos.bat` — fully automatic now (her DevTools capture
+      revealed GetMkdetailsHeader carries each member's MkImage URL, verified
+      through the relay). Downloads all current members into site/photos/mk/;
+      the site starts showing faces by itself. `--all` collects past members,
+      `--refresh` re-downloads. Re-run after each election
+- [x] Personal-background card on the portfolio (2026-08-25, Mercy spotted the
+      data): birth, birthplace, aliyah, residence, education, military/national
+      service, profession, languages — from GetMkDetailsContent, only filled
+      fields shown, free-text Content deliberately NOT injected
+- [ ] Coalition/opposition per person, now + history — NO official dataset exists
+      (KNS_Faction has no coalition flag, probed 2026-08-25). Needs either a
+      DevTools capture of the current coalition list, or our own curated
+      faction→coalition dataset per Knesset (Claude drafts, Mercy checks)
+- [ ] BIG ROCK 1 v2: ministry budget under their term (BudgetKey by section + term
+      dates), attendance score, pre-2003 votes via the frozen archive per-member table
 - [ ] BIG ROCK 2: Laws registry by topic — KNS_IsraelLaw + classifications + validity +
       Basic Laws + link each law to the bills/votes/people that made it + official PDF
 - [ ] BIG ROCK 3: the "why" layer — surface דברי הסבר (official explanatory notes) per law

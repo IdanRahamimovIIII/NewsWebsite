@@ -5,6 +5,11 @@
 # The ministries' spreadsheets are BUILD INPUTS, not source. The workflow
 # caches them between runs; 82 files a quarter in git history would bloat the
 # repo forever to store something we can re-download in a minute.
+# the pipeline's work area and its fetched reports (pipeline/ since 2026-09-05;
+# the old root-level names stay so stragglers are still ignored)
+pipeline/build/
+pipeline/reports/*.xlsx
+pipeline/reports/manifest.json
 reports/*.xlsx
 reports/manifest.json
 
@@ -38,12 +43,23 @@ _old_delete_me/
 # and outputs of build-database.bat (added 2026-08-25). Hundreds of MB, all
 # reproducible: artifacts re-download from Actions, the databases rebuild
 # in one click.
+# Since 2026-09-05 they live in pipeline\inputs\ (zips + export folders) and
+# pipeline\out\ (the two databases); the older patterns stay so a copy left
+# at an old place is still ignored.
+/pipeline/inputs/
+/pipeline/out/
+/_inputs/
+/_out/
 /full-records.zip
 /budgetkey-raw.zip
 /portal-registers.zip
 /publications-register.zip
 /contracts.db
 /contracts-public.db
+
+# the D1 upload config — it holds an API TOKEN. Never in git.
+/pipeline/d1-config.json
+/d1-config.json
 
 # NOTE: site/data/**  IS committed on purpose. Those JSON files are what the
 # site actually reads, and what the monthly workflow updates. That is the
@@ -64,3 +80,7 @@ site/data/paid/*.full.json
 # they live on disk, never in git history.
 /Exemptions-*/
 /Tenders-*/
+
+# screenshots the Playwright tests write next to themselves
+site/tests/*.png
+pipeline/tests/*.png

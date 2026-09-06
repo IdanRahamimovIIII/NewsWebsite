@@ -17,16 +17,45 @@ NewsWebsite\
 ├─ site\            ← THE WEBSITE. This is the only copy. Upload this folder.
 │   ├─ index.html      the budget page
 │   ├─ votes.html      Knesset votes & legislation
+│   ├─ mk.html         MK portfolio pages
 │   ├─ court.html      Supreme Court rulings
 │   ├─ config.js       your one setting: the relay address
 │   ├─ shared\         style.css + common.js — used by every page
-│   ├─ budget\         everything the budget page needs
-│   ├─ votes\          everything the votes page needs
-│   └─ tools\          qa.html, build.html, selftest.html — for you, not visitors
-├─ worker\          worker.js — the code you paste into Cloudflare
-├─ tests\           automated checks Claude runs before saying "fixed"
+│   ├─ budget\ votes\ mk\   everything each page needs (+ its NOTES.md for Claude)
+│   ├─ tools\          qa.html, build.html, selftest.html — for you, not visitors
+│   ├─ tests\          the automated page checks (Claude runs them; harmless if uploaded)
+│   ├─ get-photos.bat + fetch_photos.py   downloads the MK photos into photos\
+│   ├─ data\  photos\  files the automations write — never edit by hand
+│   └─ CLAUDE.md, SOURCES.md   Claude's notes for page work
+├─ pipeline\        ← THE DATA FACTORY: everything behind the contracts database
+│   ├─ build-database.bat  upload-to-d1.bat  verify-d1.bat  audit.bat  clean-up.bat
+│   │                   your double-click actions (each explains itself when it opens)
+│   ├─ tools\          the Python those .bat files and the automations run
+│   ├─ audit\          compare.html + paidcheck.html — the audit tool (open via audit.bat)
+│   ├─ tests\          the pipeline's automated checks
+│   ├─ workflows\      the four GitHub automations — THE source; .github\ holds a copy
+│   ├─ setup\          install-workflows.bat — copies workflows\ into .github\workflows\
+│   ├─ build\          work area — everything in it can be rebuilt; clean-up.bat empties it
+│   ├─ reports\        ministry report files fetched one by one
+│   ├─ inputs\         the source files: the three zips + Tenders-…\ Exemptions-…\
+│   │                   "Files" below says which of these must never be deleted
+│   ├─ out\            contracts.db + contracts-public.db (built by build-database.bat)
+│   ├─ d1-config.json  your Cloudflare ids + token (never committed)
+│   ├─ FIELDS.xlsx     the schema constitution — the build follows this file
+│   └─ CLAUDE.md       Claude's notes for data work
+├─ worker\          worker.js — the code you paste into Cloudflare (+ CLAUDE.md)
+├─ scripts\         serve.bat (local preview of the site) + its two helper scripts
 └─ README.md, TODO.md, CLAUDE.md
 ```
+
+**Why the folder is split into zones (2026-09-05).** Working with Claude
+costs tokens per file it has to read. The folder is now arranged so that a
+chat about the pages connects only `site\`, a chat about the data connects
+`pipeline\`, and a chat about the relay connects `worker\` — each has its own
+CLAUDE.md with everything it needs. The root CLAUDE.md is just the map.
+`reorganize.bat` did the moves (it moves, never deletes, and tidies itself
+away when done); the GitHub automations were re-installed the same day with
+the new paths.
 
 **There is no second copy any more.** The old layout kept the same files at the
 top level *and* inside `site\`, and it was easy to edit one and deploy the
@@ -165,16 +194,84 @@ Inside `site\tools\` — pages for you, not for visitors:
   failed. It also sends the report to your Worker, so Claude can read exactly
   what broke without you copying anything. Add `?mk=שם` to test a specific MK
 
-Outside the site:
+The double-click actions — the five data ones live in `pipeline\` (each runs
+a script from `pipeline\tools\`), `serve.bat` in `scripts\`, `get-photos.bat`
+in `site\`; every one explains itself when it opens:
+
+- `pipeline\build-database.bat` — rebuilds `pipeline\out\contracts.db` and
+  `pipeline\out\contracts-public.db` from the source files in `pipeline\inputs\` (the zips
+  and export folders). Run it after new data arrives; it takes a while.
+- `pipeline\upload-to-d1.bat` — sends `pipeline\out\contracts-public.db` to Cloudflare D1 in
+  verified parts. Safe to re-run any time: finished parts are skipped, and a
+  rebuilt database triggers a fresh upload automatically.
+- `pipeline\verify-d1.bat` — proves the data in D1 really matches the local database,
+  content and all. Run it after every upload, or whenever in doubt.
+- `pipeline\audit.bat` — starts the local audit server and opens
+  `pipeline\audit\compare.html` on it, reading the FULL database (the audit
+  is for you only, never online; the page is no longer part of the website).
+- `scripts\serve.bat` — serves `site\` on your machine for local testing.
+- `site\get-photos.bat` — downloads the MK photos into `site\photos\`.
+- `pipeline\setup\install-workflows.bat` — copies `pipeline\workflows\*.yml`
+  into `.github\workflows\` (GitHub only reads them there). Run it after any
+  change to a workflow file, then commit both folders. It replaced the three
+  old `install-*` scripts on 2026-09-06.
+- `pipeline\clean-up.bat` — deletes the rebuildable files (everything in `pipeline\build\`
+  except the small upload-memory files, plus caches) when disk space runs
+  low. It lists what it will remove and waits for a key.
+- `reorganize.bat` (root) — the one-time move into the zone layout (2026-09-05/06).
+  Moves only, never deletes; when everything checks out it moves itself
+  into `_old_delete_me\`, so if you no longer see it, it ran.
+
+The data files — what they are and whether they can be lost. Since
+2026-09-05 the built databases live in `pipeline\out\` and the source files
+in `pipeline\inputs\` (both ignored by git):
+
+- `pipeline\out\contracts.db` — the FULL database (every field + provenance), used only by
+  the local audit. Rebuildable, but slowly — keep it.
+- `pipeline\out\contracts-public.db` — the public copy; this is exactly what lives in D1.
+  Rebuilt by `build-database.bat`.
+- `pipeline\inputs\full-records.zip` — **the only copy of the collected ministry reports.
+  Never delete.** (The online copy in GitHub Actions expires after a while.)
+- `pipeline\inputs\budgetkey-raw.zip` — the BudgetKey download the build reads. Keep it;
+  re-collecting takes hours of GitHub Actions time.
+- `pipeline\inputs\publications-register.zip` — the frozen data.gov.il snapshot (ends
+  2021-01-31, can never be downloaded again). **Never delete.**
+- `pipeline\inputs\Tenders-07082026\`, `pipeline\inputs\Exemptions-07082026\` — your manual portal exports
+  from 2026-08-07 with their parsed JSONs. That date's export can't be
+  re-downloaded — **never delete.**
+- `pipeline\reports\` — ministry report files fetched one by one.
+- `pipeline\build\` — the work area: everything inside is remade by
+  `build-database.bat` (only `build\d1\manifest.json` + `state.json` matter
+  between runs — they are how the uploader remembers what's already in D1).
+- `pipeline\d1-config.json` — your Cloudflare ids and token. Stays on this computer,
+  never committed.
+- `pipeline\FIELDS.xlsx` — the schema constitution: every field, every source, and
+  your decisions column. The build follows this file.
+
+And the rest:
 
 - `worker\worker.js` — the relay code you paste into Cloudflare
-- `tests\test_budget.mjs` — runs the real budget page against a fake budget
-  containing the same traps as the real one, and asserts the chart shows
-  ministries only
-- `tests\test_links.mjs` — loads every page and checks that every file it asks
-  for exists and every nav link works. This is the guard on the folder layout:
-  move a file without fixing a path and it fails immediately.
-  Both run with `node <file>` (needs Node + `npm i playwright`)
+- `pipeline\tools\` — the Python scripts the .bat files and the automations
+  run; each starts with a comment explaining itself and the lessons learned
+  the hard way
+- `scripts\` — `serve.bat` + `serve.mjs`/`serve.ps1`, kept outside `site\` so
+  they are not uploaded with it
+- `site\tests\test_budget.mjs` — runs the real budget page against a fake
+  budget containing the same traps as the real one, and asserts the chart
+  shows ministries only
+- `site\tests\test_mk.mjs` — the same for the MK portfolio page
+- `site\tests\test_links.mjs` — loads every page and checks that every file
+  it asks for exists and every nav link works. This is the guard on the
+  folder layout: move a file without fixing a path and it fails immediately.
+  All run with `node <file>` (needs Node + `npm i playwright`)
+- `pipeline\tests\` — checks for the parsers, the merge, the audit tool and
+  the fetchers (Python) plus `cmp_audit.mjs`; Claude runs the relevant one
+  before saying "fixed"
+- `pipeline\workflows\` — the monthly automations that collect data by
+  themselves; its README has the schedule table. `.github\workflows\` is the
+  copy GitHub reads — generated by `install-workflows.bat`, never edited
 - `TODO.md` — the roadmap
-- `CLAUDE.md` — notes for Claude between chats
+- `CLAUDE.md` — the map for Claude: which folder to connect for which work.
+  The detailed notes live in each zone: `site\CLAUDE.md` (+ a `NOTES.md`
+  per page and `SOURCES.md`), `pipeline\CLAUDE.md`, `worker\CLAUDE.md`
 - `README.md` — this file
