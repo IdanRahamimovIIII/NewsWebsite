@@ -46,3 +46,8 @@ manifest committed to `contractors/archive/`), portal-registers uploads a dated
 snapshot, budgetkey rotates latest/previous. **`bootstrap-archive.yml`** is the
 manual one-shot that harvests whatever the reports cache still holds — run it
 FIRST, before the cache evicts; re-running is harmless.
+
+**Phase 2 — `build-and-update.yml`** (manual-only until its first green run;
+schedule ready, commented): archive → parse → streaming merge → databases →
+DELTA to D1 (or the full first upload) → baseline rotation. Needs the three
+`CF_*` repo secrets. Details: `../contractors/NOTES.md`, PIPELINE v2.

@@ -454,7 +454,21 @@ working until its replacement is proven)
 - Item 5 of the old plan is superseded by phase 2.
 
 ### STATUS
-- 2026-09-08: plan written. PHASE 1 BUILT (awaiting green runs): archive.py
+- 2026-09-08 (later): PHASE 2 BUILT (awaiting its first green run):
+  pipeline2.py — fetch-inputs (archive → build inputs, newest revision per
+  report) · streaming merge (byte-identical to build_dataset.build, spilled
+  to sqlite — bounded memory) · public db with STABLE string ids
+  (build_sqlite public_copy strings_from=baseline; drifted ids refused) ·
+  delta diff/emit/apply with the >5% shrink guard (ALLOW_SHRINK=1
+  overrides) · baseline rotation. Workflow: build-and-update.yml —
+  MANUAL-ONLY until first green; its schedule (3rd monthly) is commented in
+  the file. Mercy must add the three CF_* repo secrets first. The first run
+  has no baseline → FULL upload (which also puts the ctr_* tables live —
+  the manual upload .bats become the recovery path). Tests:
+  test_pipeline2.py, 14 asserts green. Phase 3 (retiring paid\ + manual
+  loop) waits for phase 2's green.
+- 2026-09-08: plan written. PHASE 1 BUILT (bootstrap ran green — the cache
+  was empty, so the first collect run does the real harvest): archive.py
   (+ test_archive.py, 10 asserts green) · archive steps in refresh-data /
   portal / budgetkey · bootstrap-archive.yml. Mercy's checklist: install
   workflows → push → run "bootstrap the raw archive" NOW (the cache evicts!)

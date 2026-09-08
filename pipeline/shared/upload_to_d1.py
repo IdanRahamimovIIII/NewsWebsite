@@ -52,6 +52,13 @@ TABLES_LAST = ("index", "view")
 
 
 def config():
+    # CI (PIPELINE v2): the three values arrive as repo secrets via env —
+    # no config file ever exists on a runner
+    env = {k: os.environ.get(v) for k, v in
+           (("account_id", "CF_ACCOUNT_ID"), ("database_id", "CF_DATABASE_ID"),
+            ("api_token", "CF_API_TOKEN"))}
+    if all(env.values()):
+        return env
     if not os.path.exists(CONFIG):
         with open(CONFIG, "w", encoding="utf-8") as fh:
             json.dump({"account_id": "PASTE-FROM-DASHBOARD",

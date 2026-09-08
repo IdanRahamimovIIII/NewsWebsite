@@ -1,0 +1,81 @@
+# PIPELINE v2 phase 2 (2026-09-08) - THE AUTOMATED MONTHLY BUILD.
+# Mercy's requirement 2: "we update the dataset without me doing so manually."
+#
+# The chain: pull everything from the raw-archive Release (reports at their
+# NEWEST revision, the BudgetKey snapshot, the register conversions) ->
+# parse -> STREAMING merge (bounded memory) -> full db -> public db with
+# STABLE string ids (seeded from the baseline) -> ctr_* page tables ->
+# DELTA vs the baseline applied to D1 (row-count verified; >5% shrink
+# refused) -> rotate db-current/-previous on the Release.
+# With NO baseline it does the FULL upload - the self-sufficient first run
+# (which also puts the ctr_* tables + search index live, replacing the
+# manual upload-to-d1 .bats for good).
+#
+# SECRETS this needs (repo Settings -> Secrets and variables -> Actions):
+#   CF_ACCOUNT_ID / CF_DATABASE_ID / CF_API_TOKEN - the same three values
+#   as pipeline\d1-config.json. Without them the update step fails loudly.
+#
+# MANUAL-ONLY until its first green run (the standing rule); the schedule
+# below is ready - uncomment it in the same commit that records the green
+# run, so it fires on the 3rd (after the 1st's collect run).
+name: build and update the dataset
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "23 2 3 * *"    # the 3rd monthly, 02:23 UTC - after the 1st's
+  #                           # collect run; registers (12th) and budgetkey
+  #                           # (25th) feed the NEXT month's build
+
+permissions:
+  contents: write             # release assets (inputs + baseline rotation)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install openpyxl xlrd
+
+      - name: pull the build inputs from the raw archive
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 pipeline/contractors/pipeline2.py fetch-inputs --dest inputs
+
+      - name: fetch the baseline (what D1 holds now)
+        id: base
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          B=$(python3 pipeline/contractors/pipeline2.py get-baseline --dest . | tail -1)
+          echo "path=$B" >> "$GITHUB_OUTPUT"
+          echo "baseline: $B"
+
+      - name: parse, merge (streaming), build the databases
+        run: |
+          python3 pipeline/contractors/pipeline2.py build \
+            --inputs inputs --work work \
+            --baseline "${{ steps.base.outputs.path }}"
+
+      - name: update D1 (delta - or the full first upload)
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_DATABASE_ID: ${{ secrets.CF_DATABASE_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          python3 pipeline/contractors/pipeline2.py update-d1 \
+            --db work/contracts-public.db \
+            --baseline "${{ steps.base.outputs.path }}" \
+            --work work
+
+      - name: rotate the baseline window (current + previous)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 pipeline/contractors/pipeline2.py rotate-baseline \
+            --db work/contracts-public.db

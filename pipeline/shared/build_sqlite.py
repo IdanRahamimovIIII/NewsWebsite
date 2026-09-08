@@ -217,7 +217,7 @@ DICT_COLS = ["ministry", "unit", "purchase_group", "budget_title", "method",
              "publication_status", "topics", "continuation_reason"]
 
 
-def public_copy(full_db, out_path, log=print):
+def public_copy(full_db, out_path, log=print, strings_from=None):
     """The D1 version: same data, NO audit. Provenance and fingerprints are
        for Mercy's own verification (compare.html, which runs locally against
        the full db) and for the monthly delta — the website needs neither
@@ -225,7 +225,13 @@ def public_copy(full_db, out_path, log=print):
        a reader is entitled to know which sources fed a contract.
 
        The `contracts_v` VIEW undoes the dictionary encoding, so worker
-       queries can read plain text columns and pay nothing for it."""
+       queries can read plain text columns and pay nothing for it.
+
+       strings_from (PIPELINE v2, 2026-09-08): a PREVIOUS public db whose
+       string ids are copied in first, so ids stay STABLE across rebuilds
+       and a monthly delta stays a delta — without it a rebuild could
+       renumber the dictionary and make every row look changed. New values
+       only APPEND after the old ids."""
     if os.path.exists(out_path):
         os.unlink(out_path)
     db = sqlite3.connect(out_path)
@@ -235,8 +241,14 @@ def public_copy(full_db, out_path, log=print):
       CREATE TABLE allocations AS SELECT * FROM full.allocations;
       CREATE TABLE reports AS SELECT * FROM full.reports;
     """)
+    if strings_from:
+        db.execute("ATTACH DATABASE ? AS prev", (strings_from,))
+        db.execute("INSERT INTO strings (id, v) SELECT id, v FROM prev.strings")
+        db.commit()                       # a pending txn keeps prev locked
+        db.execute("DETACH DATABASE prev")
     db.execute("INSERT INTO strings (v) SELECT DISTINCT x FROM (%s) WHERE x "
-               "IS NOT NULL" % " UNION SELECT ".join(
+               "IS NOT NULL AND x NOT IN (SELECT v FROM strings) "
+               % " UNION SELECT ".join(
                    ("SELECT %s AS x FROM full.contracts" if i == 0 else
                     "%s FROM full.contracts") % c
                    for i, c in enumerate(DICT_COLS)))
