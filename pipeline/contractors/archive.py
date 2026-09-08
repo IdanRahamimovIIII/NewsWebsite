@@ -202,6 +202,11 @@ def ingest_reports(reports_dir, manifest_path, fetch_manifest_path,
         new_by_bundle.setdefault(bundle, []).append((key, path))
 
     if not new_by_bundle:
+        # still (create and) write the manifest: the workflows git-add its
+        # folder right after this, and a first run over an empty cache must
+        # leave a real file behind, not a missing pathspec (learned from the
+        # first live bootstrap run, 2026-09-08 — exit 128 on git add)
+        save_manifest(manifest_path, man, old_n)
         print("nothing new to archive (%d files already in)" % old_n)
         return {"new": 0, "bundles": []}
 

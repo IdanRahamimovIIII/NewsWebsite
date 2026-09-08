@@ -89,6 +89,14 @@ except SystemExit as e:
 ok("…and the manifest on disk is untouched",
    A.counts(A.load_manifest(manifest)) == 3)
 
+
+print("empty ingest still leaves a manifest (the git-add lesson):")
+empty = os.path.join(tmp, "empty"); os.makedirs(empty, exist_ok=True)
+man2 = os.path.join(tmp, "arch2", "manifest.json")
+A.ingest_reports(empty, man2, None, dry_run=True, bundle_dir=bundles)
+ok("manifest file created even with zero files",
+   os.path.exists(man2) and A.counts(A.load_manifest(man2)) == 0)
+
 shutil.rmtree(tmp, ignore_errors=True)
 print("\n%d passed, %d failed" % (npass, nfail))
 sys.exit(1 if nfail else 0)
