@@ -22,6 +22,9 @@ Uses the same d1-config.json and API helper as the uploader.
 """
 import json, os, random, sqlite3, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# upload_to_d1 lives in shared\ since 2026-09-08 (two jobs use its machinery)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "shared"))
 from upload_to_d1 import DB, OUT, api, config
 
 SAMPLE_IDS = 40      # random order_ids checked per big table

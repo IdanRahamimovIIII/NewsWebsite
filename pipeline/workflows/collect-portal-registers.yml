@@ -20,7 +20,9 @@ on:
   workflow_dispatch:          # and on demand
 
 permissions:
-  contents: read              # it never writes back to the repository
+  contents: write             # commits nothing; write is for uploading the
+                              # monthly snapshot onto the raw-archive Release
+                              # (PIPELINE v2 phase 1, 2026-09-08)
 
 jobs:
   collect:
@@ -56,7 +58,20 @@ jobs:
         run: python3 pipeline/tests/test_portal.py
 
       - name: read the news page and collect whatever is new
-        run: python3 pipeline/tools/fetch_portal_registers.py --out pipeline/build/portal
+        run: python3 pipeline/contractors/fetch_portal_registers.py --out pipeline/build/portal
+
+      # PIPELINE v2 phase 1: a dated, compressed snapshot of the converted
+      # registers goes onto the permanent raw-archive Release (~15-25 MB
+      # gzipped, kept forever - register rows get UPDATED at the portal, so
+      # dated snapshots preserve what the register claimed before a change).
+      - name: archive a dated snapshot, forever
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          tar -czf portal-registers.tar.gz -C pipeline/build/portal $(ls pipeline/build/portal | grep '\.json$')
+          python3 pipeline/contractors/archive.py ensure-release
+          python3 pipeline/contractors/archive.py upload-file \
+            --path portal-registers.tar.gz --name portal-registers.tar.gz --dated
 
       # ~150 MB of JSON belongs in a download, not in git history
       - name: keep the registers as a downloadable artifact

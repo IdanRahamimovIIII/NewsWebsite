@@ -59,7 +59,9 @@ fs.writeFileSync(path.join(TMP, 'tn.json'), JSON.stringify({
 
 /* ---- build the db with the real builder, registers embedded ---- */
 const DB = path.join(TMP, 'contracts.db');
-execFileSync(PY, [path.join(ROOT, 'tools', 'build_sqlite.py'),
+execFileSync(PY, [[path.join(ROOT, 'shared', 'build_sqlite.py'),   // home since 2026-09-08
+    path.join(ROOT, 'database', 'build_sqlite.py'),                  // fallback (forwarder)
+    path.join(ROOT, 'tools', 'build_sqlite.py')].find(p => fs.existsSync(p)),
   '--contracts', path.join(TMP, 'contracts'), '--out', DB,
   '--tenders', path.join(TMP, 'tn.json')], { stdio: 'inherit' });
 

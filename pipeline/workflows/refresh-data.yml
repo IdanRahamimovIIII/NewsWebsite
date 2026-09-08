@@ -1,6 +1,6 @@
 # Collects the ministries' quarterly procurement reports and parses them.
 # It does NOT combine the sources - that step is deliberately not wired in
-# until collection is finished. See CLAUDE.md, COLLECTION PIPELINE.
+# until collection is finished. See pipeline/contractors/NOTES.md, COLLECTION.
 #
 # WHY MONTHLY AND NOT QUARTERLY (measured 2026-08-23):
 #   - reports are quarterly but published LATE  -  the Q4-2024 education report
@@ -95,13 +95,28 @@ jobs:
       - name: ask where the reports are, and fetch the ones that changed
         timeout-minutes: 300
         run: |
-          python3 pipeline/tools/fetch_reports.py \
+          python3 pipeline/contractors/fetch_reports.py \
             --out pipeline/reports \
             --manifest pipeline/reports/manifest.json \
             --sections "${{ inputs.sections }}" \
             --years "${{ inputs.years || '2026,2025,2024,2023,2022' }}" \
             --deadline-minutes 240 \
             ${{ (inputs.wayback || 'yes') != 'no' && '--wayback' || '' }}
+
+      # PIPELINE v2 phase 1 (2026-09-08): every fetched report file goes into
+      # THE PERMANENT RAW ARCHIVE - the raw-archive GitHub Release - keyed by
+      # content hash, a revised report becoming a NEW entry beside its old
+      # one. This runs BEFORE parsing, so even a broken parse cannot lose a
+      # raw file. The archive's table of contents is committed below with
+      # the rest. Design: pipeline/contractors/NOTES.md, PIPELINE v2.
+      - name: archive the raw reports, forever
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 pipeline/contractors/archive.py ensure-release
+          python3 pipeline/contractors/archive.py ingest-reports \
+            --reports pipeline/reports \
+            --manifest pipeline/contractors/archive/manifest.json
 
       # oldest first, so the newest report has the last word on a cumulative
       # figure. An alphabetical shell loop got this right by luck and wrong by
@@ -114,7 +129,7 @@ jobs:
       # below has something real to compare against. No page reads them.
       - name: parse every report into pipeline/paid
         run: |
-          python3 pipeline/tools/parse_all.py \
+          python3 pipeline/contractors/parse_all.py \
             --reports pipeline/reports \
             --out pipeline/paid
 
@@ -132,7 +147,7 @@ jobs:
       - name: what have we collected so far
         run: |
           mkdir -p pipeline/collection
-          python3 pipeline/tools/inventory.py \
+          python3 pipeline/contractors/inventory.py \
             --reports pipeline/reports \
             --parsed pipeline/paid \
             --budgetkey pipeline/build/raw \
@@ -187,7 +202,7 @@ jobs:
           # until 2026-09-06 the data lived under site/data - if that folder is
           # still tracked, this run removes it from the index for good
           git rm -r --cached --ignore-unmatch -q site/data || true
-          git add pipeline/paid pipeline/collection
+          git add pipeline/paid pipeline/collection pipeline/contractors/archive
           git rm --cached --ignore-unmatch -q pipeline/paid/*.full.json || true
           if git diff --cached --quiet; then
             echo "nothing changed this month"

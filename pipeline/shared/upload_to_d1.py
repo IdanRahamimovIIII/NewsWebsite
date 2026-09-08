@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-"""
+r"""
 upload_to_d1.py — upload contracts-public.db into Cloudflare D1, in PARTS,
 each one VERIFIED by counting rows through the API before moving on.
-Run by double-clicking upload-to-d1.bat.
+Run by double-clicking contractors\upload-to-d1.bat.
+
+LIVES IN shared\ (since 2026-09-08): shared\ is the folder every pipeline
+chat connects, and this module's dump/import/verify machinery is used by
+both uploads of the contractors dataset — the full one (upload-to-d1.bat)
+and the small ctr_-tables one (upload_contractors.py), plus its test.
 
 WHY NOT WRANGLER: Cloudflare's CLI needs Node and this machine has none.
 The REST import flow is what wrangler uses underneath anyway:
@@ -29,12 +34,20 @@ import hashlib, json, os, sqlite3, sys, time, urllib.request, urllib.error
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG = os.path.join(ROOT, "d1-config.json")            # pipeline\d1-config.json (gitignored)
-DB = os.path.join(ROOT, "out", "contracts-public.db")    # ROOT = pipeline\ ; written by build-database.bat
+# the db lives in contractors\out\ since the 2026-09-08 by-DATASET reorg;
+# the old pipeline\out\ home is honoured until apply-dataset-reorg.bat moves it
+_DB_NEW = os.path.join(ROOT, "contractors", "out", "contracts-public.db")
+_DB_OLD = os.path.join(ROOT, "out", "contracts-public.db")
+DB = _DB_OLD if (os.path.exists(_DB_OLD) and not os.path.exists(_DB_NEW)) else _DB_NEW
 OUT = os.path.join(ROOT, "build", "d1")
 
 MAX_STMT = 60_000        # bytes per INSERT — D1 rejects overlong statements
 PART_MAX = 120_000_000   # bytes per upload part — small enough to see where
                          # a failure lives, big enough not to drown in parts
+FTS_PART_MAX = 30_000_000  # FTS5 inserts cost far more CPU per byte than
+                           # plain rows (the index is built as they land) —
+                           # smaller parts keep each import under D1's CPU
+                           # limit, the same lesson the indexes taught
 TABLES_LAST = ("index", "view")
 
 
@@ -45,7 +58,7 @@ def config():
                        "database_id": "PASTE-FROM-D1-PAGE",
                        "api_token": "PASTE-FROM-API-TOKENS"}, fh, indent=1)
         sys.exit("created %s — fill in the three values (the header of "
-                 "tools/upload_to_d1.py says where each lives) and run again."
+                 "shared/upload_to_d1.py says where each lives) and run again."
                  % os.path.basename(CONFIG))
     with open(CONFIG, encoding="utf-8") as fh:
         c = json.load(fh)
@@ -100,14 +113,15 @@ class Parts:
         self.manifest.append(entry)
         self.objects = []
 
-    def stmt(self, text, table=None, rows=0, obj=None):
+    def stmt(self, text, table=None, rows=0, obj=None, cap=None):
         """obj = name of an index/view this statement creates. Such a
            statement gets a part OF ITS OWN (learned 2026-08-26, part-011:
            ten CREATE INDEXes over millions of rows in one import blew
-           D1's CPU limit and the whole part was rolled back)."""
+           D1's CPU limit and the whole part was rolled back).
+           cap = a smaller per-part byte limit (FTS inserts)."""
         b = text.encode("utf-8")
         if self.size and (self.break_next or obj or
-                          self.size + len(b) > PART_MAX):
+                          self.size + len(b) > (cap or PART_MAX)):
             self._close()
             self._open()
         self.break_next = bool(obj)
@@ -124,7 +138,10 @@ class Parts:
         return self.manifest
 
 
-def dump(db_path, outdir, log=print):
+def dump(db_path, outdir, log=print, only=None):
+    """only=prefix — dump just the tables whose name starts with it (the
+       contractors upload sends its ctr_* tables without re-sending the
+       1.3 GB the database already holds). Default: everything."""
     os.makedirs(outdir, exist_ok=True)
     for old in os.listdir(outdir):
         os.unlink(os.path.join(outdir, old))
@@ -132,12 +149,25 @@ def dump(db_path, outdir, log=print):
     master = db.execute(
         "SELECT type, name, sql FROM sqlite_master "
         "WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%'").fetchall()
+    # FTS5 is a VIRTUAL table: creating it auto-creates its shadow tables
+    # (<name>_data, _idx, _content, _docsize, _config), which sqlite_master
+    # also lists. The dump must ship the CREATE VIRTUAL TABLE + the rows and
+    # SKIP the shadows — importing a shadow table beside the virtual one
+    # would collide with what CREATE VIRTUAL TABLE makes on D1's side.
+    virtual = {name for t, name, create in master
+               if t == "table" and
+               create.lstrip().upper().startswith("CREATE VIRTUAL TABLE")}
+    shadow = {name for t, name, create in master if t == "table" and
+              any(name.startswith(v + "_") for v in virtual)}
+    keep = lambda name: (name not in shadow and
+                         (only is None or name.startswith(only)))
     parts = Parts(outdir)
     for t, name, create in master:
-        if t != "table":
+        if t != "table" or not keep(name):
             continue
+        cap = FTS_PART_MAX if name in virtual else None
         parts.stmt('DROP TABLE IF EXISTS "%s";\n%s;\n' % (name, create),
-                   table=name, rows=0)
+                   table=name, rows=0, cap=cap)
         head = 'INSERT INTO "%s" VALUES ' % name
         batch, blen, brows, n = [], 0, 0, 0
         for row in db.execute('SELECT * FROM "%s"' % name):
@@ -148,17 +178,18 @@ def dump(db_path, outdir, log=print):
                                  "%r) — needs a chunked insert; tell Claude"
                                  % (name, pb, row[0]))
             if batch and blen + pb > MAX_STMT:
-                parts.stmt(head + ",\n".join(batch) + ";\n", name, brows)
+                parts.stmt(head + ",\n".join(batch) + ";\n", name, brows,
+                           cap=cap)
                 batch, blen, brows = [], 0, 0
             batch.append(piece)
             blen += pb + 2
             brows += 1
             n += 1
         if batch:
-            parts.stmt(head + ",\n".join(batch) + ";\n", name, brows)
+            parts.stmt(head + ",\n".join(batch) + ";\n", name, brows, cap=cap)
         log("  %s: %s rows" % (name, format(n, ",")))
     for t, name, create in master:
-        if t in TABLES_LAST:
+        if t in TABLES_LAST and keep(name):
             parts.stmt(create + ";\n", obj=name)
     manifest = parts.finish()
     db.close()
@@ -359,7 +390,7 @@ def import_part(cfg, outdir, part, meta, log=print):
 def main():
     cfg = config()
     if not os.path.exists(DB):
-        sys.exit("no contracts-public.db here — run build-database.bat first.")
+        sys.exit("no contracts-public.db — run contractors\\build-database.bat first.")
 
     man_path = os.path.join(OUT, "manifest.json")
     state_path = os.path.join(OUT, "state.json")

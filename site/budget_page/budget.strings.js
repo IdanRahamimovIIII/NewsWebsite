@@ -11,6 +11,9 @@ window.PAGE = "budget";
 window.PAGE_STR = {
   he: {
     tagline: "תקציב המדינה — מה קורה לכסף שלנו",
+    /* the sub-header shared by the two budget pages */
+    subBudget: "התקציב",
+    subSuppliers: "ספקים והתקשרויות",
     year: "שנה:",
     pickYear: "בחירת שנת הדוח",
     showYear: "הצגת שנת {y}",
@@ -100,13 +103,10 @@ window.PAGE_STR = {
     noTender: "ללא מכרז",
     entityCompany: "חברה", entityAssoc: "עמותה", entityMuni: "רשות מקומית",
 
-    /* ---- contracts search ---- */
-    searchTitle: "חיפוש התקשרויות וספקים",
-    searchHint: "מי מקבל כסף מהממשלה? חפשו שם ספק או מילה מתיאור ההתקשרות (למשל: פרסום, יועצים, אל על).",
-    searchPh: "לדוגמה: יועצים",
-    colSupplier: "ספק", colPurpose: "מטרה", colOffice: "משרד", colYears: "שנים",
+    /* the search itself lives on contractors.html now */
+    colSupplier: "ספק", colOffice: "משרד",
     purposeBtn: "פרטים",
-    colVolume: "היקף סה״כ (₪)", colPaid: "שולם (₪)",
+    colVolume: "היקף סה״כ (₪)",
     colPaidInYear: "שולם ב-{y} (₪)",
     colPaidTotal: "שולם סה״כ (₪)",
     colReportedYears: "דווח בשנים",
@@ -134,7 +134,6 @@ window.PAGE_STR = {
     tenderInfoB: "הכלל הוא מכרז פומבי: חוק חובת המכרזים קובע שגוף ציבורי לא יתקשר בחוזה אלא במכרז, כדי שלכל אדם תהיה הזדמנות שווה להשתתף. החוק מסמיך את שר האוצר לקבוע בתקנות סוגי התקשרויות הפטורות מכך — למשל בנסיבות מיוחדות ובדחיפות למניעת נזק משמעותי. התקנה שמכוחה ניתן הפטור מופיעה כאן למטה, כפי שנרשמה בדוח. פטור אינו מעיד על פסול: זו דרך חוקית ומתועדת. משמעותו היא שאף גורם אחר לא התמודד על העבודה.",
     tenderInfoSrc: "חוק חובת המכרזים, התשנ״ב-1992, סעיפים 2 ו-4.",
     colAllocated: "מקורי", colRevised: "מעודכן", colExecuted: "בוצע",
-    searchEmpty: "לא נמצאו תוצאות.",
 
     /* ---- explainer ---- */
     explainTitle: "איך קוראים את המספרים?",
@@ -148,6 +147,8 @@ window.PAGE_STR = {
 
   en: {
     tagline: "The state budget — what happens to our money",
+    subBudget: "The budget",
+    subSuppliers: "Suppliers & contracts",
     year: "Year:",
     pickYear: "Choose the year",
     showYear: "Show {y}",
@@ -229,12 +230,9 @@ window.PAGE_STR = {
     noTender: "no tender",
     entityCompany: "company", entityAssoc: "non-profit", entityMuni: "local authority",
 
-    searchTitle: "Search contracts & suppliers",
-    searchHint: "Who receives government money? Search a supplier name or a word from the contract description (try Hebrew terms — the data is in Hebrew).",
-    searchPh: "e.g. יועצים (consultants)",
-    colSupplier: "Supplier", colPurpose: "Purpose", colOffice: "Ministry", colYears: "Years",
+    colSupplier: "Supplier", colOffice: "Ministry",
     purposeBtn: "Details",
-    colVolume: "Total volume (₪)", colPaid: "Paid (₪)",
+    colVolume: "Total volume (₪)",
     colPaidInYear: "Paid in {y} (₪)",
     colPaidTotal: "Paid in total (₪)",
     colReportedYears: "Reported in",
@@ -262,7 +260,6 @@ window.PAGE_STR = {
     tenderInfoB: "A public tender is the rule: the Mandatory Tenders Law requires a public body to contract only through a tender, so that everyone has an equal opportunity to compete. The law authorises the Finance Minister to set out, in regulations, categories of contract that are exempt — for example in special circumstances and urgency, to prevent significant harm. The regulation the exemption rests on is shown below, as it was recorded in the report. An exemption is not evidence of wrongdoing: it is a lawful, documented route. What it does mean is that nobody else got to compete for the work.",
     tenderInfoSrc: "Mandatory Tenders Law, 1992, sections 2 and 4.",
     colAllocated: "Original", colRevised: "Revised", colExecuted: "Spent",
-    searchEmpty: "No results found.",
 
     explainTitle: "How to read the numbers",
     explain1: "“Original” is what the Knesset approved in the budget law. “Revised” includes changes approved during the year by the Finance Committee. “Spent” is actual execution.",

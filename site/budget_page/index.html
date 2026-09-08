@@ -10,6 +10,15 @@
 </head>
 <body>
 <header class="topbar"></header>
+
+<!-- the budget section has two pages; this bar is how you move between them -->
+<nav class="subnav">
+  <div class="subnav-in">
+    <a href="./" class="active" aria-current="page" data-i18n="subBudget"></a>
+    <a href="contractors.html" data-i18n="subSuppliers"></a>
+  </div>
+</nav>
+
 <div class="wrap">
 
   <!-- the year, always within reach -->
@@ -61,16 +70,7 @@
     <p class="scopenote" data-i18n="expenseOnly"></p>
   </div>
 
-  <!-- supplier / contract search -->
-  <div class="card">
-    <h2 data-i18n="searchTitle"></h2>
-    <p class="hint" data-i18n="searchHint"></p>
-    <div class="searchrow">
-      <input id="q" data-i18n-ph="searchPh" onkeydown="if(event.key==='Enter')doSearch()">
-      <button onclick="doSearch()" data-i18n="searchBtn"></button>
-    </div>
-    <div id="searchout"></div>
-  </div>
+  <!-- the supplier / contract search moved to its own page: contractors.html -->
 
   <!-- explainer -->
   <div class="card explain">

@@ -663,39 +663,7 @@ async function toggleNode(code) {
   if (leaf && canHoldContracts(state.mode, code) && !n.paidOpen) togglePaid(code);
 }
 
-/* ---------- contracts search ---------- */
-async function doSearch() {
-  const q = document.getElementById("q").value.trim();
-  if (!q) return;
-  const out = document.getElementById("searchout");
-  out.innerHTML = `<div class="loading">${esc(t("loading"))}</div>`;
-  try {
-    state.lastSearch = await searchContracts(q);
-    renderSearch(state.lastSearch);
-  } catch (e) {
-    out.innerHTML = `<div class="error">${esc(bkFriendly(e))}</div>`;
-    debug("search: " + e.message);
-  }
-}
-
-function renderSearch(rows) {
-  const out = document.getElementById("searchout");
-  if (!rows.length) { out.innerHTML = `<div class="loading">${esc(t("searchEmpty"))}</div>`; return; }
-  const nf = v => v == null ? "—" : nfmt().format(Math.round(v));
-  out.innerHTML = `<div style="overflow-x:auto"><table>
-    <thead><tr>
-      <th>${t("colSupplier")}</th><th>${t("colPurpose")}</th><th>${t("colOffice")}</th>
-      <th>${t("colYears")}</th><th>${t("colVolume")}</th><th>${t("colPaid")}</th>
-    </tr></thead>
-    <tbody>${rows.map(r => `<tr>
-      <td>${esc(cleanName(r.supplier_name))}</td>
-      <td>${esc(r.purpose)}</td>
-      <td>${esc(r.publisher_name)}</td>
-      <td class="num">${esc(r.min_year ?? "")}${r.max_year && r.max_year !== r.min_year ? "–" + esc(r.max_year) : ""}</td>
-      <td class="num">${nf(r.volume)}</td>
-      <td class="num">${nf(r.executed)}</td>
-    </tr>`).join("")}</tbody></table></div>`;
-}
+/* the free-text supplier search lives on contractors.html now */
 
 function cleanName(v) {
   if (Array.isArray(v)) return v.join(", ");
@@ -714,7 +682,6 @@ window.onLangChange = () => {
   renderModeSwitch();
   if (state.flows) renderFlowsAll();
   if (state.rows[state.mode]) renderTree();
-  if (state.lastSearch) renderSearch(state.lastSearch);
 };
 
 /* ---------- loading a year ---------- */

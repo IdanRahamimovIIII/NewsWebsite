@@ -8,7 +8,8 @@ refresh pipeline's files.
 """
 import io, json, os, sys, tempfile, zipfile
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))       # pre-2026-09-08 fallback
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "contractors"))  # the real home
 import fetch_portal_registers as FP
 import parse_portal_export as PX
 

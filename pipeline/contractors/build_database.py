@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
 build_database.py — the whole database build, one command, on Mercy's own
-computer. Run by double-clicking build-database.bat at the project root.
+computer. Run by double-clicking contractors\build-database.bat.
+(Lives in pipeline\contractors\ since the 2026-09-08 by-DATASET reorg —
+older notes saying tools\ or database\build_database.py mean this file.)
 
 WHY THIS EXISTS: the databases come out at 1–2 GB — too big for the device
 bridge and pointless in git — so the build has to be reproducible LOCALLY
@@ -32,12 +34,16 @@ Standard library + the project's own tools. Nothing to install.
 import glob, gzip, json, os, shutil, sys, zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# build_sqlite lives in shared\ since 2026-09-08 (several jobs import it)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "shared"))
 import build_dataset
 import build_sqlite
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-INPUTS = "inputs"      # pipeline\inputs\ — the zips and the export folders
-OUT = "out"            # pipeline\out\ — the one output, contracts-public.db
+INPUTS = os.path.join("contractors", "inputs")   # the zips and export folders
+OUT = os.path.join("contractors", "out")         # the one output, contracts-public.db
+OLD_INPUTS = "inputs"  # pre-2026-09-08 home — still searched as a fallback
 FULL_DB = os.path.join("build", "contracts-full.db")   # intermediate; audit reads it
 
 
@@ -47,6 +53,7 @@ def newest(patterns):
     hits = []
     for p in patterns:
         hits += glob.glob(os.path.join(ROOT, INPUTS, p))
+        hits += glob.glob(os.path.join(ROOT, OLD_INPUTS, p))
         hits += glob.glob(os.path.join(ROOT, p))
     return max(hits, key=os.path.getmtime) if hits else None
 
@@ -81,7 +88,8 @@ def main():
             z.extractall(full_dir)
     if not os.path.isdir(full_dir) or not any(
             n.endswith(".full.json") for n in os.listdir(full_dir)):
-        sys.exit("no full records: put full-records.zip in pipeline\inputs "
+        sys.exit("no full records: put full-records.zip in "
+                 "pipeline\\contractors\\inputs "
                  "(GitHub → Actions → the latest green 'refresh data' run → "
                  "Artifacts → full-records) and run this again.")
 
@@ -133,8 +141,17 @@ def main():
     print("deriving the public copy…")
     build_sqlite.public_copy(full_db, public_db)
 
+    # ---- the contractors page's precomputed tables (2026-09-08) ----
+    # part of every full build, so a rebuild never loses them; the same
+    # script (in this folder) can also run alone on an existing db via
+    # build-contractors.bat. Definitions: NOTES.md here.
+    print("\nprecomputing the contractors page tables "
+          "(build_contractors.py)…")
+    import build_contractors
+    build_contractors.build(public_db)
+
     print("\ndone:")
-    print("  %-30s %6.1f MB   <- upload-to-d1.bat sends this"
+    print("  %-30s %6.1f MB   <- contractors\\upload-to-d1.bat sends this"
           % (public_db, os.path.getsize(public_db) / 1e6))
     print("  %-30s %6.1f MB   <- audit.bat reads this; clean-up.bat deletes it"
           % (full_db, os.path.getsize(full_db) / 1e6))

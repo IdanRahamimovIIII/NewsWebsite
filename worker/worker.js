@@ -1,11 +1,35 @@
 /**
- * Our Money — data relay + snapshot store + vote index + contracts DB (Cloudflare Worker) — v8
+ * Our Money — data relay + snapshot store + vote index + contracts DB (Cloudflare Worker) — v9
  * ----------------------------------------------------------------
+ * WHAT'S NEW IN v9: THE CONTRACTORS PAGE's data is served from here.
+ *   The pipeline now PRECOMPUTES the page's aggregates at build time
+ *   (pipeline\contractors\build_contractors.py → tables ctr_years, ctr_top,
+ *   ctr_ex, ctr_sup and the FTS5 search index ctr_fts, uploaded by
+ *   contractors\upload-to-d1-contractors.bat) and five read-only endpoints
+ *   serve them dumb and fast — no live aggregation ever touches the big
+ *   contracts table:
+ *     /contractors/summary[?year=]           — the headline tiles, ALL years in
+ *                                              one tiny read (year switch = free)
+ *     /contractors/top?year=&lens=all|exempt — top 25 suppliers
+ *     /contractors/exemptions?year=[&n=10]   — the regulations ranking
+ *     /contractors/supplier?sid=             — one profile: facts + byOffice +
+ *                                              series + 25 largest contracts,
+ *                                              in ONE response
+ *     /contractors/search?q=                 — free-text over name + purpose
+ *                                              (FTS5 — the day it moved, it got
+ *                                              its index)
+ *   sid is COALESCE(entity_id, supplier name) — the same identity rule the
+ *   page always used. The definitions behind the numbers (in-force years,
+ *   junk-year exclusion, פטור ממכרז by the record's own words) live in the
+ *   BUILD, not here — pipeline\contractors\NOTES.md is the contract.
+ *   A "no such table: ctr_years" error means the tables were never uploaded:
+ *   run pipeline\contractors\build-contractors.bat, then its upload .bat.
+ *
  * WHAT'S NEW IN v8: the CONTRACTS DATABASE is served from here.
  *   The pipeline built one deduplicated record per government contract
  *   (986,942 of them — ministry files + BudgetKey + the mr.gov.il registers,
  *   merged field by field) and uploaded it to Cloudflare D1 with
- *   pipeline\upload-to-d1.bat. Three read-only endpoints serve it:
+ *   pipeline\contractors\upload-to-d1.bat. Three read-only endpoints serve it:
  *     /contracts?code=<budget line>[&year=YYYY][&n=25]  — who was paid from a line
  *     /contract?id=<order_id>                           — one contract, in full
  *     /supplier?hp=<ח"פ>[&n=50]                          — one supplier's contracts
@@ -54,6 +78,11 @@
  *   GET  /contracts?code=…[&year=…][&n=…]      — contracts under a budget line (D1)
  *   GET  /contract?id=…                        — one contract in full (D1)
  *   GET  /supplier?hp=…[&n=…]                  — a supplier's contracts by ח"פ (D1)
+ *   GET  /contractors/summary[?year=]          — the contractors page's tiles (D1, v9)
+ *   GET  /contractors/top?year=&lens=…         — top-25 supplier ranking (D1, v9)
+ *   GET  /contractors/exemptions?year=[&n=]    — exemption regulations ranking (D1, v9)
+ *   GET  /contractors/supplier?sid=…           — one supplier profile (D1, v9)
+ *   GET  /contractors/search?q=…               — free-text FTS search (D1, v9)
  *   GET  /build/votes[?reset=1&key=rebuild]    — one step of the index harvest
  *   GET  /search/votes?q=…[&qs=a|b][&from=&to=][&y0=&y1=][&limit=]
  *   GET  /data/votesmeta                       — index manifest (years, rows)
@@ -338,7 +367,7 @@ async function serveDataset(name, env) {
 /* =====================================================================
    THE CONTRACTS DATABASE (D1, v8) — read-only endpoints over contracts_v
    ---------------------------------------------------------------------
-   Tables (built by pipeline\tools\build_sqlite.py --public, uploaded by
+   Tables (built by pipeline\shared\build_sqlite.py --public, uploaded by
    upload-to-d1.bat): contracts (one deduplicated row per order_id, fields
    merged per-source, 13 Hebrew text columns dictionary-encoded), strings,
    allocations (order ↔ budget_code, live vs historical), reports (the
@@ -453,6 +482,112 @@ async function d1Supplier(url, env) {
   const out = rows.results || [];
   for (const r of out) r.sources = parseJs(r.sources);
   return jres({ hp, total: ((cnt.results || [])[0] || {}).n || 0, rows: out }, 200, true);
+}
+
+/* =====================================================================
+   THE CONTRACTORS PAGE (D1, v9) — precomputed aggregates, served dumb
+   ---------------------------------------------------------------------
+   Everything here reads the ctr_* tables that
+   pipeline\contractors\build_contractors.py precomputed at build time.
+   NOTHING aggregates live: a year's tiles are ONE row, a ranking is 25
+   rows by primary key, a profile is one row plus 25 primary-key lookups,
+   and search is an FTS5 MATCH. The definitions (in-force years, the
+   junk-year rule, פטור ממכרז counted by the record's own words) are the
+   BUILD's job — pipeline\contractors\NOTES.md holds them; this code must
+   not re-derive or "fix" a number.
+   ===================================================================== */
+
+/* the display columns a contract row carries in rankings/search/profile */
+const CTR_ROW_COLS =
+  "order_id, supplier, entity_id, ministry, purpose, method, exemption, " +
+  "volume, paid, currency, first_year, last_year, publication";
+
+async function ctrRowsByIds(env, ids) {
+  if (!ids.length) return [];
+  const q = `SELECT ${CTR_ROW_COLS} FROM contracts_v ` +
+    `WHERE order_id IN (${ids.map(() => "?").join(",")})`;
+  const rows = (await env.CONTRACTS.prepare(q).bind(...ids).all()).results || [];
+  const by = {};
+  for (const r of rows) by[r.order_id] = r;
+  return ids.map(id => by[id]).filter(Boolean);   // keep the caller's order
+}
+
+/* /contractors/summary[?year=YYYY] — all years by default: the whole table
+   is ~a dozen rows, and shipping them all makes a year switch free (the
+   page's old BudgetKey year switch cost ~4s of live aggregation). */
+async function d1CtrSummary(url, env) {
+  const y = url.searchParams.get("year") || "";
+  if (y && !/^\d{4}$/.test(y)) return jerr(400, "bad year");
+  const q = "SELECT year, n, suppliers, total, exempt_n, exempt_vol, top10_vol " +
+    "FROM ctr_years" + (y ? " WHERE year = ?1" : "") + " ORDER BY year";
+  const st = env.CONTRACTS.prepare(q);
+  const rows = (await (y ? st.bind(+y) : st).all()).results || [];
+  return jres({ years: rows }, 200, true);
+}
+
+/* /contractors/top?year=&lens=all|exempt — 25 rows straight off the PK */
+async function d1CtrTop(url, env) {
+  const p = url.searchParams;
+  const year = p.get("year") || "";
+  if (!/^\d{4}$/.test(year)) return jerr(400, "bad year");
+  const lens = p.get("lens") || "all";
+  if (lens !== "all" && lens !== "exempt") return jerr(400, "lens is all|exempt");
+  const rows = (await env.CONTRACTS.prepare(
+    "SELECT rank, sid, name, kind, n, volume, paid FROM ctr_top " +
+    "WHERE year = ?1 AND lens = ?2 ORDER BY rank").bind(+year, lens).all())
+    .results || [];
+  return jres({ year: +year, lens, rows }, 200, true);
+}
+
+/* /contractors/exemptions?year=[&n=10] — the build keeps 25 per year */
+async function d1CtrExemptions(url, env) {
+  const year = url.searchParams.get("year") || "";
+  if (!/^\d{4}$/.test(year)) return jerr(400, "bad year");
+  const limit = Math.min(Math.max(+(url.searchParams.get("n") || 10) | 0, 1), 25);
+  const rows = (await env.CONTRACTS.prepare(
+    "SELECT rank, citation, n, volume FROM ctr_ex " +
+    "WHERE year = ?1 AND rank <= ?2 ORDER BY rank").bind(+year, limit).all())
+    .results || [];
+  return jres({ year: +year, rows }, 200, true);
+}
+
+/* /contractors/supplier?sid= — the whole profile in ONE response (the page
+   used to fire 4 parallel BudgetKey queries for this). sid may be a ח"פ-like
+   entity_id or an exact supplier name (Hebrew) — same COALESCE identity as
+   the rankings. */
+async function d1CtrSupplier(url, env) {
+  const sid = String(url.searchParams.get("sid") || "").trim();
+  if (!sid || sid.length > 200) return jerr(400, "bad sid");
+  const row = ((await env.CONTRACTS.prepare(
+    "SELECT * FROM ctr_sup WHERE sid = ?1").bind(sid).all()).results || [])[0];
+  if (!row) return jerr(404, "no such supplier: " + sid);
+  const top = parseJs(row.top) || [];
+  const contracts = await ctrRowsByIds(env, top);
+  return jres({
+    sid, name: row.name, kind: row.kind,
+    facts: { n: row.n, volume: row.volume, paid: row.paid,
+             first_year: row.first_year, last_year: row.last_year },
+    byOffice: parseJs(row.offices) || [],
+    series: parseJs(row.series) || [],       // [[year, volume, n], …]
+    contracts,                                // the 25 largest, whole rows
+    of: row.n,                                // "מוצגות {contracts.length} מתוך {of}"
+  }, 200, true);
+}
+
+/* /contractors/search?q= — FTS5 over supplier name + purpose. The user's
+   text is NEVER passed to MATCH raw: FTS5 has its own query syntax, so each
+   word is quoted (AND-ed, order-free) and the syntax characters are dropped. */
+async function d1CtrSearch(url, env) {
+  const raw = String(url.searchParams.get("q") || "").slice(0, 100);
+  const words = raw.replace(/["'״׳*^:(){}]/g, " ").split(/\s+/)
+    .filter(Boolean).slice(0, 6);
+  if (!words.length) return jerr(400, "empty query");
+  const match = words.map(w => '"' + w + '"').join(" ");
+  const hits = (await env.CONTRACTS.prepare(
+    "SELECT order_id FROM ctr_fts WHERE ctr_fts MATCH ?1 ORDER BY rank LIMIT 25")
+    .bind(match).all()).results || [];
+  const rows = await ctrRowsByIds(env, hits.map(h => h.order_id));
+  return jres({ q: raw, rows, more: hits.length === 25 }, 200, true);
 }
 
 /* Cache API in front of D1: the SAME URL is served from the edge for
@@ -845,6 +980,17 @@ export default {
       return d1Cached(request, ctx, env, () => d1Contract(reqUrl, env));
     if (reqUrl.pathname === "/supplier")
       return d1Cached(request, ctx, env, () => d1Supplier(reqUrl, env));
+
+    /* ---- the contractors page (D1, v9 — precomputed ctr_* tables) ---- */
+    const CTR = {
+      "/contractors/summary": d1CtrSummary,
+      "/contractors/top": d1CtrTop,
+      "/contractors/exemptions": d1CtrExemptions,
+      "/contractors/supplier": d1CtrSupplier,
+      "/contractors/search": d1CtrSearch,
+    };
+    if (CTR[reqUrl.pathname])
+      return d1Cached(request, ctx, env, () => CTR[reqUrl.pathname](reqUrl, env));
 
     /* per-bill info: built on first request, stored forever (immutable) */
     if (reqUrl.pathname.startsWith("/data/billinfo/"))

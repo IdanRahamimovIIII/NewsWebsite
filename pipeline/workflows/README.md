@@ -7,7 +7,7 @@ cannot write under `.github\` anyway).
 
 | file | schedule | what it does | commits? |
 |---|---|---|---|
-| `refresh-data.yml` | 1st of the month 03:17 UTC + manual | fetch the ministries' quarterly reports (+ wayback), parse into `pipeline/paid`, run the tests, **publish the paid documents to Cloudflare KV** (`tools/publish_paid.py`; needs the repo secrets `CF_API_TOKEN` + `CF_ACCOUNT_ID`, otherwise a NOTE) | yes — `pipeline/paid` (the lean documents, kept in git so the parser merges into last month's) + `pipeline/collection` (inventory + failure lists); never `site/` since 2026-09-06 |
+| `refresh-data.yml` | 1st of the month 03:17 UTC + manual | fetch the ministries' quarterly reports (+ wayback), parse into `pipeline/paid`, run the tests (the publish-to-KV step was deleted 2026-09-08 with the paid overlay) | yes — `pipeline/paid` (the lean documents, kept in git so the parser merges into last month's) + `pipeline/collection` (inventory + failure lists); never `site/` since 2026-09-06 |
 | `collect-portal-registers.yml` | 12th 04:43 UTC + manual | mr.gov.il tender/exemption export zips → JSON | no (artifact) |
 | `collect-budgetkey.yml` | 25th 03:37 UTC + manual | BudgetKey `contract_spending` per section → `pipeline/build/raw` | no (artifact) |
 | `collect-publications.yml` | manual only (the data.gov.il register is frozen at 2021-01-31) | Origin B's history from data.gov.il, ~180k records | no (artifact) |
@@ -20,7 +20,8 @@ the change is done when the next run is green. `refresh-data.yml`'s final
 the collectors commit nothing and can run any time.
 
 **Paths inside the files are relative to the repository root** (the runner's
-checkout), hence `pipeline/tools/…`, `pipeline/tests/…`, `pipeline/build/…`,
+checkout), hence `pipeline/contractors/…` (the collection scripts live in the
+contractors dataset folder since 2026-09-08), `pipeline/tests/…`, `pipeline/build/…`,
 `pipeline/reports`, `pipeline/paid`, `pipeline/collection`.
 
 **Secrets the workflows use** (GitHub → repo Settings → Secrets and variables
@@ -35,3 +36,13 @@ root-level path, and that step moves it once instead of re-downloading.
 Until 2026-09-06 these lived as PowerShell here-strings inside three
 `install-*.ps1` scripts; the plain files replaced them so Claude can read the
 automations from the pipeline zone without opening `.github\`.
+
+## PIPELINE v2 phase 1 (2026-09-08) — the raw archive
+
+All three collectors now feed THE PERMANENT RAW ARCHIVE (the `raw-archive`
+GitHub Release; design in `../contractors/NOTES.md`, PIPELINE v2): refresh-data
+archives every fetched report file forever (content-addressed, revisions kept,
+manifest committed to `contractors/archive/`), portal-registers uploads a dated
+snapshot, budgetkey rotates latest/previous. **`bootstrap-archive.yml`** is the
+manual one-shot that harvests whatever the reports cache still holds — run it
+FIRST, before the cache evicts; re-running is harmless.

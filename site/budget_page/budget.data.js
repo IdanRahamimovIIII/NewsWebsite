@@ -94,7 +94,6 @@ const state = {
   showAll: { admin: false, func: false },
   nodeByCode: {},
   total: null,
-  lastSearch: null,
   flows: null,        // [{y, tax:[plan,actual], fees, other, debt, int, prin}]
   flowByYear: {},
   debt: null,         // {year: total government debt in ₪} — OECD, may be absent
@@ -382,17 +381,8 @@ function lastReport(r) {
 /* a budget line can hold contracts only in the administrative tree */
 const canHoldContracts = (mode, code) => mode === "admin" && isAdminCode(code);
 
-/* Free-text search STAYS on BudgetKey live — deliberately. Our D1 database
-   has no text index (SQLite cannot index an infix LIKE), so a search there
-   would scan ~1M rows and D1 bills every row read. An FTS table is the day
-   this moves; until then BudgetKey answers, and its rows carry the same
-   columns this table shows. */
-async function searchContracts(q) {
-  return bk(`SELECT supplier_name, purpose, publisher_name, min_year, max_year, volume, executed
-     FROM contract_spending
-     WHERE supplier_name::text ILIKE '%${sqlq(q)}%' OR purpose ILIKE '%${sqlq(q)}%'
-     ORDER BY volume DESC NULLS LAST`, 25);
-}
+/* The free-text supplier search moved to contractors.html (2026-09-08);
+   this page queries BudgetKey only for the budget tree and the flows. */
 
 /* ---------- small helpers ---------- */
 const val = r => +r.net_revised || +r.net_allocated || 0;

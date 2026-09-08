@@ -1,27 +1,26 @@
 @echo off
 REM ---------------------------------------------------------------------
-REM  clean-up.bat (2026-09-05) - deletes the REBUILDABLE files, ~9.6 GB.
+REM  clean-up.bat - deletes the REBUILDABLE files, ~10 GB.
+REM  (in contractors\ since the 2026-09-08 by-DATASET reorg)
 REM
 REM  Everything below can be recreated by build-database.bat from the
-REM  files we KEEP (inputs\: the three zips + the export folders), or is
-REM  already superseded. What is NEVER touched: out\ (contracts-public.db),
-REM  inputs\ (full-records.zip, budgetkey-raw.zip, publications-register.zip,
-REM  Tenders-07082026, Exemptions-07082026), reports, tools, tests, audit,
-REM  FIELDS.xlsx, d1-config.json.
+REM  files we KEEP (contractors\inputs\: the three zips + the export
+REM  folders), or is superseded. NEVER touched: contractors\inputs\ and
+REM  contractors\out\ (contracts-public.db), the job folders, d1-config.json.
 REM
-REM  build\contracts-full.db IS on the list (since 2026-09-06): it is the
-REM  full database audit\audit.bat reads, ~2.3 GB, and build-database.bat
-REM  recreates it in minutes. Keep it only while you are auditing.
+REM  ..\build\contracts-full.db IS on the list: it is the full database
+REM  audit\audit.bat reads, ~2.3 GB, and build-database.bat recreates it
+REM  in minutes. Keep it only while you are auditing.
 REM
-REM  build\d1\manifest.json + state.json are kept on purpose: they are
-REM  how upload-to-d1.bat remembers the upload is complete.
+REM  ..\build\d1\manifest.json + state.json are kept on purpose (and the
+REM  same pair in ..\build\d1\ctr\): they are how the uploaders remember
+REM  an upload is complete.
 REM
-REM  Unlike the old tidy-up bats, this one really DELETES (Mercy asked,
-REM  2026-09-05). It shows the list first and waits for a key.
+REM  This one really DELETES (Mercy asked, 2026-09-05). It shows the list
+REM  first and waits for a key.
 REM ---------------------------------------------------------------------
-REM  (lives in pipeline\ since 2026-09-06 - paths below are relative to it)
-cd /d "%~dp0"
-if not exist tools\build_database.py (
+cd /d "%~dp0.."
+if not exist contractors\build_database.py (
   echo This does not look like the pipeline folder - stopping.
   pause
   exit /b 1
@@ -36,8 +35,9 @@ echo   build\mr-exemptions.json  (re-gunzipped from Exemptions folder)
 echo   build\contracts-full.db   (the audit's full database, ~2.3 GB - rebuilt by build-database.bat)
 echo   build\d1-upload.sql     (old single-file dump, superseded)
 echo   build\d1\part-*.sql     (uploaded to D1 and verified)
+echo   build\d1\ctr\part-*.sql (the contractors-tables upload's parts)
 echo   ..\_old_delete_me\         (marked for deletion on 2026-08-25)
-echo   tools\__pycache__\      (Python cache)
+echo   __pycache__ folders     (Python cache)
 echo.
 echo Close this window to cancel, or
 pause
@@ -49,13 +49,16 @@ if exist "build\mr-exemptions.json" del /q "build\mr-exemptions.json"
 if exist "build\contracts-full.db"  del /q "build\contracts-full.db"
 if exist "build\d1-upload.sql"      del /q "build\d1-upload.sql"
 if exist "build\d1\part-001.sql"    del /q "build\d1\part-*.sql"
+if exist "build\d1\ctr\part-001.sql" del /q "build\d1\ctr\part-*.sql"
 if exist "..\_old_delete_me"           rd /s /q "..\_old_delete_me"
 if exist "tools\__pycache__"        rd /s /q "tools\__pycache__"
+if exist "contractors\__pycache__"  rd /s /q "contractors\__pycache__"
+if exist "shared\__pycache__"       rd /s /q "shared\__pycache__"
 
 echo.
 echo Checking...
 set OK=1
-for %%p in ("build\raw" "build\contracts" "build\full" "..\_old_delete_me" "tools\__pycache__") do (
+for %%p in ("build\raw" "build\contracts" "build\full" "..\_old_delete_me" "tools\__pycache__" "contractors\__pycache__" "shared\__pycache__") do (
   if exist %%p (
     echo   STILL THERE: %%p  ^(a file may be open in another program^)
     set OK=0

@@ -22,7 +22,9 @@ on:
   workflow_dispatch:          # and on demand
 
 permissions:
-  contents: read              # it never writes back to the repository
+  contents: write             # commits nothing; write is for uploading the
+                              # rotating snapshot onto the raw-archive Release
+                              # (PIPELINE v2 phase 1, 2026-09-08)
 
 jobs:
   collect:
@@ -58,9 +60,23 @@ jobs:
       - name: collect every section, resumably
         timeout-minutes: 300
         run: |
-          python3 pipeline/tools/fetch_budgetkey_all.py \
+          python3 pipeline/contractors/fetch_budgetkey_all.py \
             --out pipeline/build/raw \
             --deadline-minutes 240
+
+      # PIPELINE v2 phase 1: BudgetKey is a SECONDARY source (their scrape of
+      # the same ministry reports) and changes wholesale at ~180 MB zipped, so
+      # the archive keeps a ROTATING window - budgetkey-latest.zip +
+      # budgetkey-latest-previous.zip - not every month forever.
+      - name: archive the pull (rotating latest/previous)
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          cd pipeline/build/raw && zip -q -r ../../../budgetkey.zip *.json && cd ../../..
+          python3 pipeline/contractors/archive.py ensure-release
+          python3 pipeline/contractors/archive.py upload-file \
+            --path budgetkey.zip --name budgetkey-latest.zip --rotate
 
       # ~1.5 GB of JSON belongs in a download, not in git history
       - name: keep the raw pull as a downloadable artifact

@@ -12,7 +12,12 @@ year" column that was really a lifetime total divided by four.
 """
 import json, os, sys, tempfile
 
+# build_dataset lives in contractors\ since the 2026-09-08 by-DATASET reorg
+# (tools\ keeps the collection scripts the workflows run); the older paths
+# stay as fallbacks for a checkout from before the moves.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "database"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "contractors"))
 import build_dataset as B
 
 PASS = FAIL = 0

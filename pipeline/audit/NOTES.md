@@ -18,7 +18,7 @@ here and what each file is for:
 | `fixtures-paid.json` | the paid documents the tests use (real records, lean + full shape) |
 
 Outside this folder the audit touches, read-only: `..\build\contracts-full.db`
-(the database it audits), `..\tools\build_sqlite.py` (cmp_audit builds its
+(the database it audits), `..\shared\build_sqlite.py` (cmp_audit builds its
 fixture db with it), and the site zone `..\..\site\shared\` (style, common.js, config.js).
 Tests: `node audit\cmp_audit.mjs` / `node audit\cmp.mjs` from `pipeline\`
 (playwright + python3; Claude runs them in its container, Mercy has no node).

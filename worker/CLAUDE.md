@@ -93,6 +93,9 @@ KV values, `servePhoto`: name must be `<digits>-<8 hex>.<ext>` else 400,
 **`/contracts?code=` + `/contract?id=` + `/supplier?hp=` (v8, 2026-09-08 —
 the D1 contracts database; see the v8 section below; the budget page reads
 `/contracts`)** ·
+**`/contractors/{summary,top,exemptions,supplier,search}` (v9, 2026-09-08 —
+the contractors page's precomputed tables; see the v9 section below; the
+page still reads BudgetKey until its swap session)** ·
 `/search/votes?qs=&from=&to=&y0=&y1=&limit=` · `/build/votes[?resume=archive|finish=1]`
 · `/qa/report` (POST from selftest.html, GET by Claude with `?fresh=N`).
 `ALLOWED()` (worker.js ~line 49, read 2026-09-05): knesset.gov.il and
@@ -125,10 +128,52 @@ the pages carry a single PROXY base URL, Mercy deploys by pasting a single
 file, and splitting the API would double both. The site worker is separate
 because it is not an API at all.
 
-Queued for this zone: **worker v9** — store the bill id (`sess_item_id` /
+Queued for this zone: **worker v10** — store the bill id (`sess_item_id` /
 FK_ItemID) on every vote-index row so "bills proposed by X" becomes one exact
 request (the client side of that story is in `site\votes\NOTES.md`, "THE REAL
-FIX STILL PENDING").
+FIX STILL PENDING"). (Was queued as "v9" until 2026-09-08; v9 became the
+contractors endpoints.)
+
+## WORKER v9 — THE CONTRACTORS PAGE'S ENDPOINTS (2026-09-08, awaiting Mercy's deploy)
+
+The pipeline precomputes the contractors page's aggregates at build time
+(`pipeline\contractors\build_contractors.py` → D1 tables `ctr_years`,
+`ctr_top`, `ctr_ex`, `ctr_sup` + the FTS5 index `ctr_fts`, uploaded by
+`pipeline\contractors\upload-to-d1-contractors.bat`). Five read-only routes
+serve them; NOTHING aggregates live, and the definitions (in-force years,
+the junk-year rule, פטור ממכרז by the record's own words, sid =
+COALESCE(entity_id, supplier)) are the BUILD's job — the contract is
+`pipeline\contractors\NOTES.md`; this worker must not re-derive a number.
+
+- **`/contractors/summary[?year=]`** — ctr_years, ALL years by default
+  (~a dozen rows): the page's three tiles, and a year switch costs nothing
+  (the old BudgetKey year switch was ~4s of live aggregation).
+- **`/contractors/top?year=&lens=all|exempt`** — 25 rows off the PK.
+- **`/contractors/exemptions?year=[&n=10]`** — the regulations ranking
+  (build keeps 25/year, page shows 10).
+- **`/contractors/supplier?sid=`** — the WHOLE profile in one response
+  (facts + byOffice + series + the 25 largest contracts as full display
+  rows + `of` for "מוצגות X מתוך Y"): one ctr_sup read + 25 PK reads on
+  contracts_v. sid may be an entity_id or an exact Hebrew supplier name.
+- **`/contractors/search?q=`** — FTS5 MATCH over supplier name + purpose,
+  25 hits joined back to contracts_v by order_id. The user's text is never
+  passed to MATCH raw (FTS5 has its own query syntax): syntax characters
+  dropped, each word quoted, up to 6 words AND-ed.
+
+Same discipline as v8: every query hits an index or the FTS, the Cache API
+fronts everything (6h, `&fresh=1` bypasses), LIMIT everywhere, missing
+binding → 501. No new bindings — the same `CONTRACTS` D1 database. A 502
+mentioning "no such table: ctr_years" means the tables were never uploaded
+(run the two contractors .bats). The "מדוע פטור?" register-text popover has
+NO endpoint here on purpose — our db lacks BudgetKey's description/reason
+texts, so the page keeps reading BudgetKey live for that one popover
+(accepted interim; `pipeline\contractors\NOTES.md`, open question 1).
+
+Tests: `worker\wtest_contractors.mjs` (like wtest_d1.mjs: real
+build_sqlite.py + build_contractors.py fixtures, fake D1 over node:sqlite,
+the real worker.fetch — 27 asserts, green 2026-09-08; run in Claude's cloud,
+node --experimental-sqlite). The front-end swap to these endpoints is a
+budget_page session's job, not this zone's.
 
 ## WORKER v8 — THE D1 CONTRACTS ENDPOINTS (deployed + verified live 2026-09-08)
 

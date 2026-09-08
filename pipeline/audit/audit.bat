@@ -10,7 +10,7 @@ REM  what the built dataset really holds, next to what every live source
 REM  says.
 REM
 REM  The full database is a BUILD INTERMEDIATE since 2026-09-06:
-REM     ..\build\contracts-full.db     written by ..\build-database.bat,
+REM     ..\build\contracts-full.db     written by ..\contractors\build-database.bat,
 REM                                    deleted by ..\clean-up.bat, rebuildable.
 REM  (out\contracts-public.db is the D1 upload - it has no provenance and
 REM   cannot feed an audit.)
@@ -24,7 +24,7 @@ echo.
 
 if not exist ..\build\contracts-full.db (
   echo ..\build\contracts-full.db is not there.
-  echo Run ..\build-database.bat first - it writes the full database there
+  echo Run ..\contractors\build-database.bat first - it writes the full database there
   echo ^(a few minutes^). clean-up.bat deletes it again; it is rebuildable.
   echo.
   pause

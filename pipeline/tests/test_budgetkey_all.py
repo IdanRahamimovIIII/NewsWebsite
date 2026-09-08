@@ -7,7 +7,8 @@ fakes. Its own file, its own workflow; nothing the other pipelines use.
 """
 import json, os, sys, tempfile, time
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))       # pre-2026-09-08 fallback
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "contractors"))  # the real home
 import fetch_budgetkey_all as A
 import fetch_budgetkey as K
 

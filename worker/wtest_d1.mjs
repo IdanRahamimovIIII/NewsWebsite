@@ -6,7 +6,7 @@
 
    Run (Claude's cloud workspace — Mercy has no node):
      node --experimental-sqlite worker/wtest_d1.mjs
-   Needs: python3 + ../pipeline/tools/build_sqlite.py (or set BUILD_SQLITE). */
+   Needs: python3 + ../pipeline/shared/build_sqlite.py (or set BUILD_SQLITE). */
 import { DatabaseSync } from 'node:sqlite';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -15,8 +15,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const BUILD_SQLITE = process.env.BUILD_SQLITE ||
-  path.join(HERE, '..', 'pipeline', 'tools', 'build_sqlite.py');
+const firstThere = (...cands) => cands.find(p => fs.existsSync(p));
+const BUILD_SQLITE = process.env.BUILD_SQLITE || firstThere(
+  path.join(HERE, '..', 'pipeline', 'shared', 'build_sqlite.py'),
+  path.join(HERE, '..', 'pipeline', 'database', 'build_sqlite.py'),
+  path.join(HERE, '..', 'pipeline', 'tools', 'build_sqlite.py'));
 
 /* ---------- the fixture dataset, in build_dataset.py's output shape ---------- */
 const rep = (year, period, paid_cumulative, volume, url) =>

@@ -169,8 +169,11 @@ function contractsEndpoint(u) {
 
 /* ---------- a tiny SQL matcher (also validates the SQL we generate) ---------- */
 function runSql(sql) {
-  if (/FROM\s+contract_spending/i.test(sql) && !/ILIKE/i.test(sql))
-    throw new Error('the page went back to BudgetKey for contracts: ' + sql.slice(0, 120));
+  /* since the search moved to contractors.html (2026-09-08), the budget page
+     has NO business in BudgetKey's contract table at all — its contracts
+     come from our D1 database via the relay */
+  if (/FROM\s+contract_spending/i.test(sql))
+    throw new Error('the budget page queried contract_spending: ' + sql.slice(0, 120));
   if (/DISTINCT\s+year/i.test(sql)) return [{ year: 2026 }, { year: 2025 }, { year: 2024 }];
   if (!/FROM\s+raw_budget/i.test(sql)) throw new Error('unexpected table in: ' + sql);
 
@@ -310,6 +313,23 @@ const page = await openPage({ snapshot: false });
   ok('15 rows before "show all"', c.length === 15, String(c.length));
   ok('no single "total budget" headline is claimed any more',
     (await page.$$('#t-total')).length === 0);
+}
+
+/* === 2b. the sub-header, and the search that moved out === */
+console.log('\nsub-header / the search moved to contractors.html:');
+{
+  const links = await page.$$eval('.subnav a', els =>
+    els.map(a => ({ href: a.getAttribute('href'), text: a.textContent.trim(),
+                    active: a.classList.contains('active') })));
+  ok('the budget section carries a sub-header with its two pages',
+     links.length === 2, JSON.stringify(links));
+  ok('this page is marked as the current one', links[0] && links[0].active && !links[1].active,
+     JSON.stringify(links));
+  ok('…and the second tab leads to the contractors page',
+     links[1] && links[1].href === 'contractors.html', JSON.stringify(links));
+  ok('the tabs are named (התקציב · ספקים והתקשרויות)',
+     links[0].text === 'התקציב' && links[1].text === 'ספקים והתקשרויות', JSON.stringify(links));
+  ok('the search card is gone from this page', !(await page.$('#q')));
 }
 
 /* === 3. drilldown to תקנה level (10 chars) === */

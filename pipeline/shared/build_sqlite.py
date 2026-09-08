@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
-"""
-build_sqlite.py — turn the built dataset (site/data/contracts/<sec>.json,
-build_dataset.py's output) into ONE SQLite database: contracts.db.
+r"""
+build_sqlite.py — turn the built dataset (build/contracts/<sec>.json,
+build_dataset.py's output) into ONE SQLite database.
+
+LIVES IN shared\ (since 2026-09-08): shared\ is the folder every pipeline
+chat connects, and this module is infrastructure several jobs build on —
+database\build_database.py (the build), contractors\test_*.py and
+worker\wtest_*.mjs (they build their fixture dbs with the REAL schema),
+audit\cmp_audit.mjs (same). database\build_sqlite.py is a forwarder.
 
 WHY SQLITE (Mercy, 2026-08-25: "what is the correct way to do it?")
   The JSON shards are the database's SOURCE, not its serving form. SQLite is

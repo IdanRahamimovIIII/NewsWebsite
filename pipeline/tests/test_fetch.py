@@ -12,7 +12,8 @@ cannot come back:
 """
 import datetime, json, os, sys, tempfile
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))       # pre-2026-09-08 fallback
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "contractors"))  # the real home
 import fetch_reports as R
 import fetch_budgetkey as K
 import build_dataset as B
@@ -526,7 +527,8 @@ else:
     print("  (xlwt not installed — .xls round-trip not exercised here)")
 
 print("\ncollection must never quietly shrink:")
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))       # pre-2026-09-08 fallback
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "contractors"))  # the real home
 import inventory as I
 SMALL = "  56 publishers:\n  total        224741       230 MB\n"
 BIG   = "  59 publishers:\n  total        257910       263 MB\n"

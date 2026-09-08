@@ -38,7 +38,7 @@ jobs:
       # every field of every record, paged by what the server actually
       # returns; fails loudly if a resource comes back short
       - name: pull the whole register
-        run: python3 pipeline/tools/fetch_publications.py --out pipeline/build/publications
+        run: python3 pipeline/contractors/fetch_publications.py --out pipeline/build/publications
 
       # ~100 MB of JSON belongs in a download, not in git history.
       # Artifacts are kept 90 days - re-run the workflow to regenerate,

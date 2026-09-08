@@ -1,7 +1,22 @@
 /* =====================================================================
-   Our Money — styling for the budget page only.
-   Shared tokens and components live in style.css.
+   Our Money — styling for the BUDGET SECTION's two pages:
+   index.html (the budget) and contractors.html (ספקים והתקשרויות).
+   Both load this file. Shared tokens and components live in style.css.
    ===================================================================== */
+
+/* ---------- the sub-header: the budget section has two pages ---------- */
+.subnav { background: var(--surface-1); border-bottom: 1px solid var(--border); }
+.subnav-in { max-width: 1200px; margin: 0 auto; padding: 0 20px;
+  display: flex; gap: 2px; }
+.subnav a { text-decoration: none; font-size: 14px; color: var(--ink-2);
+  padding: 8px 14px 6px; border-bottom: 2.5px solid transparent; white-space: nowrap; }
+.subnav a:hover { color: var(--accent-ink); }
+.subnav a.active { color: var(--accent-ink); font-weight: 600;
+  border-bottom-color: var(--series-1); }
+.subnav a:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
+@media (max-width: 640px) {
+  .subnav-in { padding: 0 14px; overflow-x: auto; scrollbar-width: none; }
+}
 
 /* ---------- the year bar: sticky, so the control is always within reach ---------- */
 .yearbar { position: sticky; top: var(--topbar-h, 56px); z-index: 20;
@@ -205,6 +220,54 @@ details.tabletoggle summary { cursor: pointer; font-size: 14px; color: var(--acc
 #tip .r { display: flex; justify-content: space-between; gap: 16px; color: var(--ink-2); }
 #tip .r b { color: var(--ink-1); font-weight: 500; font-variant-numeric: tabular-nums; }
 #tip .r.tt { border-top: 1px solid var(--grid); margin-top: 5px; padding-top: 5px; }
+
+/* =====================================================================
+   contractors.html — ספקים והתקשרויות
+   ===================================================================== */
+
+/* the year select sits inside the card head, next to the title */
+.cardhead select { background: var(--surface-1); color: var(--ink-1); font-weight: 700;
+  border: 1px solid var(--border); border-radius: 8px; padding: 4px 9px; font-size: 15px;
+  font-variant-numeric: tabular-nums; }
+.cardhead select:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+
+/* a supplier's name is a door, wherever it appears */
+.supbtn { font: inherit; font-size: inherit; font-weight: 600; color: var(--accent-ink);
+  background: none; border: 0; padding: 0; cursor: pointer; text-align: start;
+  border-bottom: 1px dotted currentColor; }
+.supbtn:hover { color: var(--ink-1); }
+.supbtn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; border-radius: 2px; }
+
+/* the supplier profile */
+#supcard { border-top: 3px solid var(--series-1); }
+.suphead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.suphead h2 { font-size: 20px; }
+.supclose { font: inherit; font-size: 13px; color: var(--ink-3); background: none;
+  border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px; cursor: pointer; }
+.supclose:hover { color: var(--ink-1); border-color: var(--baseline); }
+.supclose:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+.supfacts { display: flex; gap: 8px 22px; flex-wrap: wrap; margin: 8px 0 4px;
+  color: var(--ink-2); font-size: 14px; }
+.supfacts b { color: var(--ink-1); font-variant-numeric: tabular-nums; }
+.subhead2 { font-size: 15.5px; font-weight: 700; margin: 20px 0 8px; }
+
+/* long purpose texts wrap; everything else stays on its line */
+.tw td.wrap { white-space: normal; min-width: 22ch; }
+
+/* On a phone, wide tables become labelled cards — same reasoning as the
+   contract table on the budget page: every figure on screen, no sideways
+   scroll hiding the money behind a gesture nobody discovers. */
+@media (max-width: 700px) {
+  .cardify thead { display: none; }
+  .cardify table, .cardify tbody, .cardify tr, .cardify td { display: block; width: auto; }
+  .cardify tr { padding: 9px 4px; border-bottom: 1px solid var(--grid); }
+  .cardify tbody tr:last-child { border-bottom: 0; }
+  .cardify td { border: 0; padding: 2px 6px; white-space: normal; text-align: start; }
+  .cardify td.num { text-align: start; }
+  .cardify td:first-child { min-width: 0; font-weight: 600; }
+  .cardify td[data-l]::before { content: attr(data-l) ": "; color: var(--ink-3); font-weight: 400; }
+  .cardify td:empty { display: none; }
+}
 
 @media (max-width: 640px) {
   .kpis { grid-template-columns: 1fr 1fr; gap: 10px; }

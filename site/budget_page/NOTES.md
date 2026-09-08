@@ -1,20 +1,34 @@
-# NOTES.md — the budget page (site\budget_page\)
+# NOTES.md — the budget SECTION (site\budget_page\)
 
-Everything settled about THIS page: layout, the data model of raw_budget,
+Everything settled about THIS section: layout, the data model of raw_budget,
 Mercy's rulings, the traps the tests arm. Shared front-end rules are in
 `site\CLAUDE.md`; upstream API facts in `site\SOURCES.md`. Same
 keep-it-current rule as CLAUDE.md.
 
-Files (load order: ../shared/config → budget.strings → ../shared/common →
-budget.data → budget.view): `index.html` shell only · `budget.css` ·
-`budget.strings.js` (window.PAGE + PAGE_STR, all wording) · `budget.data.js`
+SINCE 2026-09-08 THIS FOLDER HOLDS TWO PAGES, joined by a sub-header
+(tabs: התקציב · ספקים והתקשרויות — Mercy's call: no new button in the main
+nav, this is all part of תקציב; both pages keep `window.PAGE = "budget"` so
+the main nav tab stays lit, and both load budget.css, which styles the
+section, not one page):
+- `index.html` — the budget (flows, debt, the tree, contracts per line)
+- `contractors.html` — ספקים והתקשרויות (the top suppliers of a year, the
+  free-text search that used to be a card on the budget page, and a
+  per-supplier profile). See "THE CONTRACTORS PAGE" below.
+
+Files (load order: ../shared/config → <page>.strings → ../shared/common →
+<page>.data → <page>.view): `index.html` / `contractors.html` shells only ·
+`budget.css` (both pages) ·
+`budget.strings.js` / `contractors.strings.js` (window.PAGE + PAGE_STR, all
+wording) · `budget.data.js`
 (SQL for the budget tree/flows, the code-tree map, `state`, and
 `loadContracts()` — since 2026-09-08 the contracts come from OUR OWN
 database on Cloudflare D1 via the relay, `GET <PROXY>/contracts?code=…
 &year=…&n=25`, worker v8; the `/data/paid/*` overlay era is over, see
-"THE CONTRACTS NOW COME FROM D1" below) · `budget.view.js` (all DOM, init
-at the bottom) · `test_budget.mjs` (Playwright, mocked upstreams — to RUN
-it Claude also needs `../shared/`, which the page loads and which carries
+"THE CONTRACTS NOW COME FROM D1" below) · `contractors.data.js` (the
+contract_spending SQL) · `budget.view.js` / `contractors.view.js` (all DOM,
+init at the bottom) · `test_budget.mjs` + `test_contractors.mjs`
+(Playwright, mocked upstreams — to RUN
+them Claude also needs `../shared/`, which the pages load and which carries
 config.js since 2026-09-08).
 
 ## THIS FOLDER IS THE WHOLE PAGE (Mercy's rule, 2026-09-06; + shared\, 2026-09-08)
@@ -51,6 +65,150 @@ touches are three shared ones it must NOT edit from here:
 If a change needs something NEW from common.js or style.css, say so and ask
 for `../shared/` — don't copy code from there into this folder.
 
+
+### THE CONTRACTORS PAGE — ספקים והתקשרויות (2026-09-08)
+
+Mercy asked to take the חיפוש התקשרויות וספקים card off the budget page and
+give contractors a page of their own, reached through a sub-header rather
+than a new main-nav button. What the page is, and the rulings baked into it:
+
+- Three doors into the same table, all BudgetKey's `contract_spending`,
+  LIVE (the D1 ruling stands — no text index there, and the worker has no
+  supplier endpoints): the top suppliers of a year · the moved free-text
+  search · a per-supplier profile (totals, per-ministry breakdown, the 25
+  largest contracts). A profile is addressable (`#s=<entity_id or name>`),
+  so it can be sent to someone and the back button behaves.
+- **The ranking's definition is the caption's first job.** "The top
+  suppliers of {y}" = contracts IN FORCE in y (min_year ≤ y ≤ max_year),
+  ranked by sum of VOLUME — the whole-contract figure, same number the
+  reader sees, NOT what moved that year (BudgetKey cannot answer that;
+  reports[]-differencing lives on the budget page against our D1). The hint
+  says "היקף אינו תשלום" out loud, and warns that years near the present
+  are partially reported.
+- **Grouping is `COALESCE(entity_id, supplier_name::text)`** — entity_id
+  is NULL on ~a quarter of rows and clumping those into one NULL supplier
+  would invent a giant. Drill-down for a no-entity_id supplier matches
+  `supplier_name::text = '<JSON.stringify(the array)>'` — VERIFIED
+  2026-09-08 that the jsonb ::text form round-trips JSON.stringify exactly
+  (spacing included), quotes-in-names too.
+- **The years are dirty at BOTH edges** (1899 · 2099 · 9999 all live).
+  A junk max means "open-ended" → the contract still counts as in force;
+  a junk MIN would put it in force since 1899 → `min_year > 1990` is in
+  every in-force filter (the test fixture arms a 50bn contract "running
+  since 1899" that must never top a list). For DISPLAY both edges are
+  clamped (`saneYear`, ≤ THIS_YEAR+20 — 2099 slipped past the old < 2100
+  rule); never print a placeholder as a date.
+- **Postgres SUM over only-NULLs is NULL, and stays a dash.** A supplier
+  whose contracts never reported a payment gets — , not an invented 0 ₪.
+  The mock mimics that semantics; don't "fix" it back to 0.
+- `executed` here is BudgetKey's cumulative paid, which its ingest often
+  drops from 2024 on — the paid column explains it can undercount and
+  points to the budget page's per-line table (the merged D1 figures).
+  The explainer card says the same, and why defence is absent entirely.
+- Years span 2015..now (coverage counted live: 111,865 contracts in force
+  2015 vs 2,873 in 2014); default year = last full calendar year. The
+  top-of-year aggregation costs ~4s at BudgetKey — cached per year.
+- The search query gained `entity_id` (to open profiles) and an explicit
+  `LIMIT 25` (it leaned on num_rows only). test_budget.mjs now throws on
+  ANY contract_spending query from the budget page — index.html has no
+  business there since the search moved out.
+- `test_contractors.mjs` (71 asserts): the mock projects every answer
+  through the query's own SELECT list and throws on any expression it does
+  not model — the honour-the-SELECT-list lesson, third outing. It also
+  mimics Postgres SUM-over-only-NULLs (→ NULL, → a dash on the page).
+
+### CONTRACTORS v2 — "raise questions, no opinions" (2026-09-08, same day)
+
+Mercy: most readers give a table 10 seconds. The brief was to make the data
+raise its own questions — surface what might be problematic — WITHOUT the
+page holding an opinion. The device, as everywhere on the site: choose
+which facts stand next to each other, phrase headers as questions, let the
+reader supply the judgment. What was added, and the rulings:
+
+- **The page opens with three tiles, not a table** ("כמה מהרכש עובר בלי
+  תחרות?"): total volume in force · the share of it recorded as פטור ממכרז
+  · the share held by the ten largest suppliers. Verified 2024: 210.4bn in
+  force, 66.7bn = **31.7% carries "פטור ממכרז"** in its own record.
+  **NOTHING IS COLOURED RED HERE** — an exemption is lawful, and colour is
+  opinion; the budget page's red is for debt, not for this. The words and
+  the question buttons carry it (the פטור explainer keeps the both-ways
+  wording: lawful and documented / nobody else competed, citing the law).
+- **THE METHOD FIELD IS DIRTY, SO THE COUNT USES THE RECORD'S OWN WORDS.**
+  purchase_method (an array) carries currency codes ("ILS"), empty arrays,
+  and contradictory combos ("מכרז פומבי"+"פטור ממכרז") — verified live. Any
+  clean tender/no-tender taxonomy would be OUR judgment call. Instead one
+  exact query counts contracts whose method text contains "פטור ממכרז",
+  and the explainer says exactly that. Don't replace it with a bucket table
+  without a ruling from Mercy.
+- **The top list grew a second lens** (segmented switch): the same ranking
+  restricted to exempt contracts — "מי מקבל הכי הרבה כשאף אחד לא התמודד".
+  Same definition, one condition; the unfiltered list still always loads,
+  because the concentration tile is computed from it (top-10 volume ÷ the
+  tiles query's total; supplier count via COUNT(DISTINCT COALESCE(...))).
+- **The exemption regulations are ranked by the money riding on them**
+  ("באילו פטורים נעשה שימוש?"), verbatim as recorded — 2024 verified: תקנה
+  3(16) רשות מקומית 30bn · 3(5) חברה ממשלתית 9.6bn · ספק יחיד 1.87bn over
+  2,236 contracts. The field carries junk (an order number was seen in it):
+  the query keeps only citations containing "תקנה", requires the contract
+  itself to be recorded פטור ממכרז (the caption promises exempt contracts,
+  so the query must too), and combos are shown joined, as reported, per
+  the card's note.
+- **The reporting gap is counted out loud under the top list**: suppliers
+  with executed NULL **or 0** are "לא מופיע במקור ולו תשלום אחד" — 0 and
+  NULL are the same statement here (BudgetKey's ingest writes 0 where the
+  paid column was dropped; the מילגם lesson).
+- **The defence absence is a card, not a footnote** ("ומשרד הביטחון?") —
+  the approved wording, no size claims (procurement scale unverified).
+- **The supplier profile draws a year-by-year chart.** Mercy doubted
+  per-year numbers; the answer is a series with the SAME definition as the
+  rest of the page — a contract counts, in full, in every year it is in
+  force (generate_series over the span, min_year > 1990, clamped) — so the
+  chart can never disagree with the tables. Validated live on three big
+  suppliers before building: the series are stable and legible (דן's 2022
+  franchise jump is plainly visible). The two youngest years are hatched
+  (the budget chart's plan-year convention) and the caption says partially
+  reported years "עשויות להיראות נמוכות מכפי שיתבררו" — the fade near the
+  present is the reporting horizon, never a finding.
+- Per-resident framing (Mercy's idea #7) was NOT built: it needs a live
+  population figure and she rated it marginal; percent-of-total framing
+  covers it. Revisit only with a trustworthy live source (CBS).
+- **"מדוע פטור?" — the exemption's own publication (Mercy asked; added
+  same day).** ~9% of exempt contracts carry a `tender_key` into the
+  mr.gov.il exemptions register (3,822 of 41,180 in force 2024). Each
+  tender_key element is a JSON **string** encoding [publication_id, type,
+  tender_id]; type 'exemptions' joins `procurement_tenders` on
+  publication_id (139,576 exemption publications; reason filled on ~102k;
+  decision always; page_url always). The profile's contract rows show the
+  button ONLY where a publication exists — never a column of dashes — and
+  the popover prints description, reason, regulation, decision verbatim
+  plus the mr.gov.il link, with a source line saying when the button
+  appears. `explanation` and `manof_excerpts` on contract_spending were
+  checked and are empty/near-useless — don't go back to them.
+
+### WHY THIS PAGE READS BUDGETKEY AND NOT OUR D1 (Mercy asked, 2026-09-08)
+
+Not a preference — a constraint, twice over: (a) worker v8 serves only
+`/contracts?code=…`; there are no supplier or aggregate endpoints. (b) D1
+bills every row read and has no text index, so a top-suppliers or method
+aggregation there would scan the ~1M-row table per page view — the same
+economics that kept free-text search on BudgetKey (the 2026-09-08 ruling).
+
+THE MIGRATION IS STILL RIGHT, done properly: these aggregates change at
+most quarterly, so the PIPELINE should precompute them at build time
+(top suppliers per year · the tiles · the regulations ranking · per-supplier
+series) into D1 tables or KV, and the worker should grow endpoints for them
+plus a supplier-profile lookup (needs an entity_id index in build_sqlite.py).
+Then this page serves OUR merged figures — better `paid`, one data story —
+at snapshot speed. Needs `worker\` + `pipeline\` folders and a redeploy;
+queued for after the polish pass. Until then: BudgetKey live, limits stated.
+
+Also queued by Mercy (2026-09-08): unify the site's search bars (hers to
+explore); link supplier names in the budget page's per-line contracts table
+to contractors.html#s=<entity_id> (agreed, later).
+- Relay trivia for future spot-checks: WebFetch-style fetchers get 403 on
+  SQL-looking relay URLs (a WAF pattern, plain and /b64/ alike); the
+  in-browser fetch to next.obudget.org works fine and is how everything
+  above was verified.
 
 ### THE CONTRACTS NOW COME FROM D1 (2026-09-08) — read this before the older contract notes
 

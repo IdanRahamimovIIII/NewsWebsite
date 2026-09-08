@@ -9,7 +9,8 @@ its tests must not touch — or depend on — anything that pipeline uses.
 """
 import json, os, sys, tempfile
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))       # pre-2026-09-08 fallback
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "contractors"))  # the real home
 import fetch_publications as PB
 
 PASS = FAIL = 0
