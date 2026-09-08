@@ -158,7 +158,6 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; direct
   .whopaid td:empty { display: none; }
   .whopaid td:last-child { margin-top: 4px; }
 }
-.fromreport { color: var(--accent-ink); font-weight: 700; margin-inline-start: 2px; cursor: help; }
 .purposebtn { font: inherit; font-size: 12px; font-weight: 600; color: var(--accent-ink);
   background: none; border: 1px solid var(--border); border-radius: 6px;
   padding: 2px 9px; cursor: pointer; white-space: nowrap; }

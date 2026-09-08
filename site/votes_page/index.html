@@ -90,14 +90,14 @@
 </div>
 
 <!-- Load order matters. Each file has one job:
-       ../config.js       your relay address (shared, one level up)
+       ../shared/config.js       your relay address (shared, one level up)
        votes.strings.js   every word this page says (Hebrew + English)
        ../shared/common.js  shared header, language switch, relay helpers
        votes.data.js      talks to the Knesset APIs and to our vote index
        votes.search.js    decides WHICH votes to show
        votes.view.js      draws them (and starts the page at the bottom)
        votes.bills.js     the second tab, bills in the legislative process -->
-<script src="../config.js"></script>
+<script src="../shared/config.js"></script>
 <script src="votes.strings.js"></script>
 <script src="../shared/common.js"></script>
 <script src="votes.data.js"></script>

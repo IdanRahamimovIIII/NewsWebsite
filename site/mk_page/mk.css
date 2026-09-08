@@ -1,22 +1,53 @@
-/* mk page only — the shared look lives in style.css */
+/* mk.css — this page only; the shared look (tokens, cards, topbar) lives in ../shared/style.css.
+   Ordered like the page: the directory grid → the hero → positions → bills → votes → shared bits. */
 
-/* the person's name header */
-.mkname { font-size: 24px; margin: 4px 0 6px; letter-spacing: -0.01em; }
+/* ---- 1. avatars: the official photo when the relay's manifest names one, initials otherwise ---- */
+.avatar { width: 40px; height: 40px; border-radius: 50%; flex: 0 0 auto; object-fit: cover;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--series-1) 14%, transparent);
+  color: var(--accent-ink); font-weight: 700; font-size: 15px; }
+.avatar.avxl { width: 96px; height: 96px; font-size: 34px; margin-bottom: 4px; }     /* a directory card */
+.avatar.avxxl { width: 128px; height: 128px; font-size: 44px; }                        /* the hero */
+
+/* ---- 2. the directory: profile cards in one continuous grid, a sentinel at the end ---- */
+.dirgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 6px; }
+.dircard { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 3px;
+  padding: 16px 10px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--page);
+  font: inherit; color: inherit; cursor: pointer; min-width: 0; transition: border-color .15s, box-shadow .15s; }
+.dircard:hover { border-color: var(--accent-ink); box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+.dircard:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.dircard > span { max-width: 100%; }
+.dcname { font-weight: 600; font-size: 14.5px; line-height: 1.3; margin-top: 4px; }
+.dcrole { color: var(--accent-ink); font-weight: 600; font-size: 12.5px; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dcparty { color: var(--ink-1); font-size: 12.5px; margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dcyears { color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.dcbills { color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.dchit { color: var(--accent-ink); font-size: 12px; margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--grid); }   /* why the card matched the search */
+.dirmore { text-align: center; color: var(--ink-3); font-size: 13px; padding: 22px 0 6px; }   /* "loading more…" / "that's all" */
+
+/* ---- 3. the hero: a column — portrait, name · role, the story line, the bills sentence, the background table ---- */
 .backbtn { border: 0; background: none; color: var(--accent-ink); cursor: pointer;
   font-size: 13.5px; padding: 0; margin-bottom: 4px; }
+.pheadcol { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; margin-top: 6px; }
+.mkname { font-size: 24px; margin: 4px 0 6px; letter-spacing: -0.01em; }
+.pheadcol .mkname { margin: 8px 0 0; font-size: 26px; }
+.mkrole { font-weight: 500; color: var(--accent-ink); }   /* same size as the name — one line, two weights */
+.factionname { color: var(--accent-ink); font-weight: 600; }   /* the same blue the cards use for the party; the tooltip rides on it */
+.story { color: var(--ink-2); font-size: 14px; line-height: 1.6; text-align: center; }
+.story .sep { color: var(--ink-3); }
+/* #ptiles (class "tiles" from the four-tiles days): the bills sentence + counts, the background table under it */
+.tiles { display: block; margin-top: 14px; }
+.billsbar { max-width: 640px; margin: 18px auto 2px; }
+.bhead { font-size: 15px; font-weight: 600; text-align: center; margin-bottom: 8px; }
+.bleg { justify-content: center; margin-top: 2px; }
+.biot { max-width: 640px; margin: 16px auto 0; padding-top: 12px; border-top: 1px solid var(--grid);
+  display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; font-size: 13px; line-height: 1.45; text-align: start; }
+.biot .bk { color: var(--ink-3); white-space: nowrap; }
+.biot .bv { min-width: 0; }
 
-/* the four summary numbers */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px; margin-top: 14px; }
-.tile { background: var(--page); border: 1px solid var(--border); border-radius: 10px;
-  padding: 10px 14px; }
-.tile .tv { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.tile .tl { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
-
-/* the directory of current members */
-.dirchip { margin: 0 0 6px; }
-
-/* positions timeline */
+/* ---- 4. positions: the timeline ---- */
 .posrow { display: flex; gap: 14px; padding: 8px 0; border-bottom: 1px solid var(--grid);
   font-size: 13.5px; line-height: 1.55; }
 .posrow:last-of-type { border-bottom: 0; }
@@ -26,17 +57,46 @@
 .nowchip { background: color-mix(in srgb, var(--for) 15%, transparent); color: var(--for-ink);
   border-radius: 999px; padding: 1px 9px; font-size: 12px; font-weight: 600; }
 
-/* bill piles + lead-sponsor tag */
-.bucket { margin: 18px 0 6px; padding-top: 12px; border-top: 1px solid var(--grid); }
-.bucket:first-child { margin-top: 4px; padding-top: 0; border-top: 0; }
-.bucket h4 { font-size: 14.5px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
-.bucket h4 .n { color: var(--ink-2); font-weight: 500; }
-.faction { margin: 8px 0; font-size: 13.5px; line-height: 1.6; }
-.faction span.names { color: var(--ink-2); }
+/* ---- 5. bills: the radio check-circles, a search box, one row per bill, the documents block ---- */
+.billsctl { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin: 4px 0 10px; }
+.fchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fchip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); background: var(--page);
+  color: var(--ink-2); border-radius: 999px; padding: 4px 12px 4px 10px; font: inherit; font-size: 12.5px; cursor: pointer;
+  font-variant-numeric: tabular-nums; opacity: .6; }
+.fchip.on { color: var(--ink-1); opacity: 1; border-color: var(--accent-ink); }
+.fchip .ck { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--abstain); display: inline-flex;
+  align-items: center; justify-content: center; font-size: 10px; color: #fff; flex: 0 0 auto; }
+.fchip .ck.for { border-color: var(--for); } .fchip .ck.against { border-color: var(--against); }
+.fchip .ck.pending { border-color: var(--series-1); } .fchip .ck.abstain { border-color: var(--abstain); }
+.fchip.on .ck { background: currentColor; }
+.fchip.on .ck.for { background: var(--for); } .fchip.on .ck.against { background: var(--against); }
+.fchip.on .ck.pending { background: var(--series-1); } .fchip.on .ck.abstain { background: var(--abstain); }
+.fchip.on .ck::after { content: "✓"; line-height: 1; }
+.billq { flex: 1 1 200px; min-width: 160px; font: inherit; font-size: 13px; padding: 5px 10px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--page); color: var(--ink-1); }   /* also the votes' subject search (.voteq) */
+.brow { display: flex; align-items: baseline; gap: 9px; padding: 7px 4px; border: 0; border-bottom: 1px solid var(--grid); font-size: 13.5px; line-height: 1.55;
+  width: 100%; text-align: start; font-family: inherit; color: inherit; background: none; cursor: pointer; }
+.brow:hover { background: color-mix(in srgb, var(--series-1) 6%, transparent); }
+.brow:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
+.brow.sel { background: color-mix(in srgb, var(--series-1) 7%, transparent); border-radius: 6px; }
+.brow.sel .bname { font-weight: 600; }
+.brow:last-of-type { border-bottom: 0; }
+.brow .dot { flex: 0 0 auto; position: relative; top: -1px; }
+.brow .names { color: var(--ink-2); }
 .leadchip { background: color-mix(in srgb, var(--series-1) 14%, transparent); color: var(--accent-ink);
   border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; }
+.docs { margin-top: 6px; }
+.dtitle { font-size: 12.5px; color: var(--ink-3); margin-bottom: 4px; }
+.drow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 3px 0; font-size: 13px; }
+.dtype { color: var(--ink-1); }
+.dlink { display: inline-block; border: 1px solid var(--border); border-radius: 6px; padding: 0 7px; font-size: 11.5px; font-weight: 600;
+  color: var(--accent-ink); text-decoration: none; letter-spacing: .02em; }
+.dlink:hover { border-color: var(--accent-ink); }
 
-/* voting record rows (same language as the votes page) */
+/* ---- 6. the voting record (same language as the votes page) ---- */
+.vcount { margin-bottom: 8px; text-align: start; }
+.votectl { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin: 6px 0 10px; }
+.kchips { display: flex; flex-wrap: wrap; gap: 6px; }
 .vote { width: 100%; text-align: start; font: inherit; color: inherit; background: none;
   border: 0; border-bottom: 1px solid var(--grid); padding: 13px 8px; cursor: pointer; display: block; }
 .vote:hover { background: color-mix(in srgb, var(--series-1) 6%, transparent); }
@@ -44,14 +104,6 @@
 .vote .vtitle { font-size: 14.5px; line-height: 1.45; }
 .vote.sel { background: color-mix(in srgb, var(--series-1) 7%, transparent); border-radius: 6px; }
 .vote.sel .vtitle { font-weight: 600; }
-.vmeta { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
-  font-size: 12.5px; color: var(--ink-3); margin-top: 6px; }
-.kidsbox { border-inline-start: 2px solid var(--grid); margin: 2px 10px 12px;
-  padding: 8px 14px; font-size: 13.5px; }
-.sub { color: var(--ink-2); font-size: 13.5px; }
-.chip { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
-.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-.dot.for { background: var(--for); } .dot.against { background: var(--against); } .dot.abstain { background: var(--abstain); }
 .passed { font-weight: 600; }
 .passed.yes { color: var(--for-ink); } .passed.no { color: var(--against-ink); }
 .myvote { font-weight: 600; border-radius: 999px; padding: 1px 9px; font-size: 12px; }
@@ -61,50 +113,28 @@
 .pager { display: flex; align-items: center; justify-content: center; gap: 12px;
   padding: 14px 0 2px; font-size: 13px; color: var(--ink-3); }
 
-/* autocomplete dropdown (anchored to the search field's label) */
-.aclist { display: none; position: absolute; top: 100%; inset-inline-start: 0; z-index: 25;
-  min-width: 100%; max-height: 230px; overflow: auto;
-  background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
-.aclist button { display: block; width: 100%; text-align: start; padding: 8px 12px;
-  border: 0; background: none; color: var(--ink-1); cursor: pointer; font-size: 13.5px; }
-.aclist button:hover { background: color-mix(in srgb, var(--series-1) 10%, transparent); }
+/* ---- 7. shared bits: meta lines, chips, dots, the expanded box, pill buttons ---- */
+.vmeta { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
+  font-size: 12.5px; color: var(--ink-3); margin-top: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.dot.for { background: var(--for); } .dot.against { background: var(--against); } .dot.abstain { background: var(--abstain); }
+.dot.pending { background: var(--series-1); }   /* a bill still alive in this Knesset */
+.kidsbox { border-inline-start: 2px solid var(--grid); margin: 2px 10px 12px;
+  padding: 8px 14px; font-size: 13.5px; }   /* an opened bill or vote */
+.sub { color: var(--ink-2); font-size: 13.5px; }
+/* pill buttons: the Knesset chips in the votes section, "show all" / "more" */
 .votechip { border: 1px solid var(--border); background: var(--page); color: var(--ink-1);
   border-radius: 999px; padding: 3px 12px; font-size: 12.5px; cursor: pointer;
   font-variant-numeric: tabular-nums; }
 .votechip:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
 .votechip.on { background: var(--series-1); border-color: var(--series-1); color: #fff; }
 
+/* ---- phones ---- */
 @media (max-width: 640px) {
-  .posdates { flex-basis: 120px; }
+  .dirgrid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; }
+  .avatar.avxl { width: 76px; height: 76px; font-size: 28px; }
+  .avatar.avxxl { width: 104px; height: 104px; font-size: 36px; }
   .mkname { font-size: 20px; }
+  .posdates { flex-basis: 120px; }
 }
-
-/* avatars: official photo, or initials until we have the photo pattern */
-.avatar { width: 40px; height: 40px; border-radius: 50%; flex: 0 0 auto; object-fit: cover;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: color-mix(in srgb, var(--series-1) 14%, transparent);
-  color: var(--accent-ink); font-weight: 700; font-size: 15px; }
-.avatar.avsm { width: 22px; height: 22px; font-size: 10.5px; margin-inline-end: 7px; vertical-align: -6px; }
-.avatar.avlg { width: 72px; height: 72px; font-size: 26px; }
-.dirchip { display: inline-flex; align-items: center; padding-block: 4px; }
-
-/* live-search result cards */
-.mkcard { display: flex; align-items: center; gap: 12px; width: 100%; text-align: start;
-  font: inherit; color: inherit; background: none; border: 0; cursor: pointer;
-  border-bottom: 1px solid var(--grid); padding: 10px 8px; }
-.mkcard:hover { background: color-mix(in srgb, var(--series-1) 6%, transparent); }
-.mkcard:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
-.mcbody { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.mcname { font-weight: 600; font-size: 14.5px; }
-.mcsub { color: var(--ink-2); font-size: 12.5px; }
-
-/* the portfolio header row */
-.pheadrow { display: flex; align-items: center; gap: 16px; margin-top: 4px; }
-
-/* personal background rows */
-.biorow { display: flex; gap: 14px; padding: 7px 0; border-bottom: 1px solid var(--grid);
-  font-size: 13.5px; line-height: 1.55; }
-.biorow:last-of-type { border-bottom: 0; }
-.biok { flex: 0 0 110px; color: var(--ink-3); }
-@media (max-width: 640px) { .biok { flex-basis: 84px; } }

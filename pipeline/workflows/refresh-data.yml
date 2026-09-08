@@ -11,7 +11,7 @@
 #   Quarterly checking would match the publication rhythm and miss both the
 #   stragglers and every revision. Monthly is cheap because fetch_reports.py
 #   asks for each file's size first and only downloads what actually changed.
-name: refresh data
+name: collect ministry reports
 
 on:
   schedule:
@@ -106,11 +106,12 @@ jobs:
       # oldest first, so the newest report has the last word on a cumulative
       # figure. An alphabetical shell loop got this right by luck and wrong by
       # the same luck.
-      # SINCE 2026-09-06 nothing is written into site/ (Mercy: the site holds
-      # page code only; every figure a page shows comes from an API or from
-      # Cloudflare). The documents land in pipeline/paid (tracked, so the
-      # parser merges into last month's files) and are PUBLISHED to KV
-      # below; the budget page reads them through the relay.
+      # WHY THIS STILL RUNS after the paid overlay was deleted (2026-09-08):
+      # the .full.json parsed beside the lean documents are the full-records
+      # artifact — the DATABASE build's input (build-database.bat) — and the
+      # lean documents in git are what parse_report merges into, so a report
+      # that became unreachable keeps its figures, and the inventory guard
+      # below has something real to compare against. No page reads them.
       - name: parse every report into pipeline/paid
         run: |
           python3 pipeline/tools/parse_all.py \
@@ -168,31 +169,15 @@ jobs:
           retention-days: 90
           if-no-files-found: warn
 
-      # THE MINISTRY DATASET GOES TO CLOUDFLARE (Mercy, 2026-09-06: "upload
-      # the ministry data as its own dataset and update it once a month").
-      # publish_paid.py writes the 52 lean documents + index into KV
-      # (pub:paid/<section>), reads every key back and compares, and asks the
-      # relay whether the worker serves them. Needs the repo secrets
-      # CF_API_TOKEN (a token with "Workers KV Storage: Edit") and
-      # CF_ACCOUNT_ID: Settings -> Secrets and variables -> Actions. Without
-      # them --optional makes this a printed NOTE, not a failure, so the
-      # collection and the commit below still happen.
-      - name: publish the ministry documents to Cloudflare KV
-        env:
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-          RELAY_URL: ${{ vars.RELAY_URL }}
-        run: |
-          python3 pipeline/tools/publish_paid.py \
-            --paid pipeline/paid \
-            --config /nonexistent \
-            --optional
+      # (the "publish to Cloudflare KV" step lived here 2026-09-06 →
+      # 2026-09-08 — deleted with the paid overlay once the budget page
+      # switched to the D1 contracts database.)
 
       # what is committed: pipeline/paid (the lean documents, ~20 MB) and
       # pipeline/collection (inventory + failure lists). The documents STAY in
       # git on purpose: parse_all.py merges into last month's files, so a
       # section whose report has become unreachable (gov.il blocks, an evicted
-      # reports cache) keeps its figures instead of vanishing from the site -
+      # reports cache) keeps its figures instead of vanishing from the record -
       # and the inventory guard above has something real to compare against.
       # The .full.json beside them never enter git (artifact only).
       - name: commit whatever changed

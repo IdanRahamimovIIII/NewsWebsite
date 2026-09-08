@@ -1,0 +1,9 @@
+This folder is made to collect pohots of historical and current members of Israel Kneset.
+
+Clicking [get-photos.bat] will get us the images of all the current members which we didnt already had
+
+Running [get-photos.bat --refresh] will get us the images of all the current members including does we already downloded for the sake of updating old images
+
+Running [get-photos.bat --all] in the cmd will collect all the images in [mk] folder
+
+Clicking [publish-photos.bat] will upload/update the images to our dataset in Cloud Flare.

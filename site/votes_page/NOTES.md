@@ -17,14 +17,15 @@ it loads the page's real files and runs them against live data. Tests:
 `test_votes.mjs` / `test_index.mjs` / `test_selftest.mjs` live in Claude's
 cloud workspace (mocked Knesset). Links to an MK are `../mk_page/?name=…`.
 
-## THIS FOLDER IS THE WHOLE PAGE (Mercy's rule, 2026-09-06)
+## THIS FOLDER IS THE WHOLE PAGE (Mercy's rule, 2026-09-06; + shared\, 2026-09-08)
 
-To change this page, a chat needs THIS folder and nothing else. Everything
+To change this page, a chat needs THIS folder plus `../shared/` (which
+holds config.js since 2026-09-08) and nothing else. Everything
 the page shows comes from a public API or from Cloudflare (via the relay);
 nothing is read from disk. The only files outside this folder the page
 touches are three shared ones it must NOT edit from here:
 
-- `../config.js` — `window.PROXY_URL`, the relay address. Read-only.
+- `../shared/config.js` — `window.PROXY_URL`, the relay address. Read-only.
 - `../shared/style.css` — design tokens + shared components. Read-only;
   page styling goes in this folder's own `.css`.
 - `../shared/common.js` — loaded AFTER this page's strings file and BEFORE

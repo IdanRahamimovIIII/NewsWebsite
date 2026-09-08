@@ -73,7 +73,7 @@
 </main>
 
 <script>window.BASE = "/site/";</script>   <!-- nav links point at the site, mounted under /site/ by audit_server -->
-<script src="/site/config.js"></script>
+<script src="/site/shared/config.js"></script>
 <script src="/site/shared/common.js"></script>
 <script>
 "use strict";
@@ -83,7 +83,7 @@
 
 /* Bumped on every change to this page. When something looks wrong, the first
    question is which build is on screen — a cached copy answers differently. */
-const BUILD = "2026-09-06a";
+const BUILD = "2026-09-08a";
 const API = "https://next.obudget.org/api/query?query=";
 const $ = id => document.getElementById(id);
 const out = $("out"), status = $("status");
@@ -157,13 +157,13 @@ function findInFile(doc, orderId, code) {
   return null;
 }
 
-/* Since 2026-09-06 the site keeps NO data: the ministry-report documents are
-   pipeline territory. The .full.json (every column, what THIS column shows)
-   is served locally by audit_server from pipeline\build\full\ — extracted
-   from inputs\full-records.zip by build-database.bat, never published. The
-   lean docs ([paid, volume] per order) come from pipeline\paid\ locally,
-   else from the relay's published dataset (<PROXY>/data/paid/<section>,
-   envelope {t, data}) — that is what the public site reads. */
+/* The ministry-report documents are pipeline territory. The .full.json
+   (every column, what THIS column shows) is served locally by audit_server
+   from pipeline\build\full\ — extracted from inputs\full-records.zip by
+   build-database.bat, never published. The lean docs ([paid, volume] per
+   order) come from pipeline\paid\ locally. The relay fallback that used to
+   sit here went with the paid overlay (2026-09-08): the pub:paid/* keys no
+   longer exist, so LOCAL files are the only source — run audit.bat. */
 const paidBase = () => (AUDIT === null ? "" : AUDIT) + "/paid/";
 async function ourFile(section, full) {
   const name = section + (full ? ".full" : "") + ".json";
@@ -173,13 +173,7 @@ async function ourFile(section, full) {
     try {
       const r = await fetch(paidBase() + name);
       if (r.ok) paidCache[name] = await r.json();
-    } catch (e) { /* no local copy — the relay may still have the lean doc */ }
-    if (!paidCache[name] && !full && PROXY) {
-      try {
-        const r = await fetch(PROXY + "/data/paid/" + section);
-        if (r.ok) { const j = await r.json(); paidCache[name] = (j && j.data) || null; }
-      } catch (e) { /* not published yet */ }
-    }
+    } catch (e) { /* no local copy */ }
   }
   return paidCache[name];
 }
@@ -188,13 +182,8 @@ async function ourIndex() {
   try {
     const r = await fetch(paidBase() + "index.json");
     if (r.ok) return await r.json();
-  } catch (e) { /* fall through to the relay */ }
-  if (PROXY) {
-    const r = await fetch(PROXY + "/data/paid/index");
-    if (r.ok) { const j = await r.json(); return (j && j.data) || null; }
-    throw new Error("data/paid/index — HTTP " + r.status + " מהממסר");
-  }
-  throw new Error("אין קובצי משרדים מקומיים ואין כתובת ממסר (config.js)");
+  } catch (e) { /* no local copy */ }
+  throw new Error("אין קובצי משרדים מקומיים — הפעילו את audit.bat (מאז מחיקת שכבת ה-overlay, 2026-09-08, אין העתק בממסר)");
 }
 
 /* ---------- find candidate contracts ---------- */
@@ -860,7 +849,7 @@ async function runOurs() {
     if (FROM_DISK) throw new Error(DISK_MSG);
     const man = await ourIndex();
     const secs = (man && man.sections) || [];
-    if (!secs.length) throw new Error("אין קובצי משרדים — לא מקומית ולא בממסר (ראו paidcheck)");
+    if (!secs.length) throw new Error("אין קובצי משרדים מקומיים — הפעילו את audit.bat אחרי build-database.bat");
     const sec = secs[Math.floor(Math.random() * secs.length)];
     const doc = await ourFile(sec);
     if (!doc) throw new Error(`אין מסמך לסעיף ${sec} — לא מקומית ולא בממסר`);

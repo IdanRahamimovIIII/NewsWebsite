@@ -78,16 +78,21 @@ Routes the pages call (documented for the pages in `site\CLAUDE.md`):
 with body · `/preset/<name>?params` — `verdicts`, `votes`, `reports?sec=` ·
 `/data/{budget|votes|bills|verdicts|persons}` + `/data/billinfo/<id>` from KV,
 envelope `{t, stale?, data}`, 501 when DATA is unbound · `/data/votesmeta` ·
-**`/data/paid/index` + `/data/paid/<section>` (2026-09-06, worker v7 —
-PUBLISHED datasets)**: any `/data/<name>` that is not a built-in DATASET is
-answered from the KV key `pub:<name>` as-is (`servePublished`) — the
-PIPELINE writes those keys already in the envelope (`pipeline/tools/publish_paid.py`,
-monthly from refresh-data.yml), the worker never rebuilds them; missing key
-→ 404 `{"error":"not published: …"}`, `cacheTtl` 3600 on the KV read,
-`Cache-Control: max-age=3600`. The budget page reads the paid overlay this
-way; `pipeline\audit\paidcheck.html` checks it. The MK photo manifest
-(`/data/mkphotos`) will use the same door; the images themselves need R2
-(queued). **v7 needs Mercy to paste worker.js and Deploy** ·
+any `/data/<name>` that is not a built-in DATASET is answered from the KV
+key `pub:<name>` as-is (`servePublished`, worker v7) — missing key → 404
+`{"error":"not published: …"}`, `cacheTtl` 3600 on the KV read,
+`Cache-Control: max-age=3600`. (The paid overlay rode this 2026-09-06 →
+2026-09-08; its `pub:paid/*` keys are deleted — the budget page reads the
+D1 `/contracts` family now.) **`/data/mkphotos` +
+`/photos/mk/<MkId>-<hash8>.jpg` (v7, same day)**: the MK portrait manifest
+(`pub:mkphotos`, through servePublished) and the bytes (`photo:mk/*`, binary
+KV values, `servePhoto`: name must be `<digits>-<8 hex>.<ext>` else 400,
+`Content-Type` by extension, `Cache-Control: max-age=31536000, immutable`
+— the name carries a content hash; KV read `cacheTtl` one day). Written by
+`pipeline\photos\publish_photos.py`; contract in `pipeline\photos\NOTES.md`.
+**`/contracts?code=` + `/contract?id=` + `/supplier?hp=` (v8, 2026-09-08 —
+the D1 contracts database; see the v8 section below; the budget page reads
+`/contracts`)** ·
 `/search/votes?qs=&from=&to=&y0=&y1=&limit=` · `/build/votes[?resume=archive|finish=1]`
 · `/qa/report` (POST from selftest.html, GET by Claude with `?fresh=N`).
 `ALLOWED()` (worker.js ~line 49, read 2026-09-05): knesset.gov.il and
@@ -97,18 +102,68 @@ report files — added after the 403 lesson below). NOT on it: edge.boi.gov.il
 (Bank of Israel SDMX), api.cbs.gov.il — adding a host is a deliberate change
 plus a re-deploy by Mercy.
 
-Queued for this zone: **worker v8** — store the bill id (`sess_item_id` /
+## THE CLOUDFLARE ACCOUNT — WHAT EXISTS AND WHY (2026-09-08, from Mercy's dashboard)
+
+Two workers, one KV namespace, one D1 database. The split is deliberate —
+the SITE and the DATA change for different reasons and deploy separately:
+
+| resource | name | role |
+|---|---|---|
+| Worker | **our-money** | THE RELAY + data API — this zone's worker.js. Its workers.dev URL is baked into `site\shared\config.js`, so RENAMING IT BREAKS EVERY DEPLOYED PAGE — don't. Bindings: `DATA` (the KV namespace), `CONTRACTS` (the D1 database). Cron `0 */6 * * *`. |
+| Worker | **our-money-site** | serves the WEBSITE (the deployed copy of `site\`). No bindings, no data — page code only, per Mercy's rule. |
+| KV namespace | titled **DATA** | one namespace, key FAMILIES keep it legible: `ds:<name>` (worker-built snapshots) · `pub:<name>` (pipeline-published datasets — today `pub:mkphotos`) · `photo:mk/<file>` (portrait bytes) · `vi:<year>` + `vi:meta` + `vi:live` (the vote index) · `bi:<id>` (bill info) · `qa:last`. `pub:paid/*` was deleted 2026-09-08 with the overlay. |
+| D1 database | (id in `pipeline\d1-config.json`) | the contracts database — 986,942 merged contracts, uploaded by `upload-to-d1.bat`, served by this worker's `/contracts` family. |
+
+Naming rules going forward (Mercy, 2026-09-08 — "as this project grows the
+naming gets confusing"): a NEW resource is named `our-money-<what it is>`
+and gets a row in this table in the same chat that creates it. Existing
+names stay: renaming the relay worker changes its URL (config.js, every
+open tab), a D1 database cannot be renamed, and the KV namespace's title
+is referenced by the pipeline's publishers (`cf_kv.py` NAMESPACE_TITLES) —
+none of them is worth the churn. One relay worker stays ONE on purpose:
+the pages carry a single PROXY base URL, Mercy deploys by pasting a single
+file, and splitting the API would double both. The site worker is separate
+because it is not an API at all.
+
+Queued for this zone: **worker v9** — store the bill id (`sess_item_id` /
 FK_ItemID) on every vote-index row so "bills proposed by X" becomes one exact
 request (the client side of that story is in `site\votes\NOTES.md`, "THE REAL
-FIX STILL PENDING"); fix the `/data/budget` snapshot query (`length(code)=4`
-mixes both trees — the page filters it client-side today); the D1 endpoints.
+FIX STILL PENDING").
 
-Coming from the pipeline (`pipeline\CLAUDE.md`): D1 database with tables
-`strings`, `allocations`, `reports`, `contracts`, view `contracts_v`, 10
-indexes — 986,942 contracts. Endpoints to add: `/contract?id=`,
-`/supplier?hp=`. RULES agreed with Mercy: every query hits an index (a full
-scan of 513K+ rows bills 513K reads), Cache API in front so repeats never
-reach D1, LIMIT on every list endpoint.
+## WORKER v8 — THE D1 CONTRACTS ENDPOINTS (deployed + verified live 2026-09-08)
+
+The pipeline's database (tables `strings`, `allocations`, `reports`,
+`contracts`, view `contracts_v`, 10 indexes — 986,942 contracts, uploaded
+2026-08-26, verified 2026-09-05) is served by three read-only routes:
+
+- **`/contracts?code=<budget line>[&year=YYYY][&n=25]`** — the budget page's
+  route: contracts whose LIVE allocation sits under the code prefix
+  (historical allocations deliberately do not resurrect a moved charge),
+  filtered to the year (contracts with no known years EXCLUDED — Mercy's
+  rule), volume DESC, n+1 fetched so `more` is honest, each row carrying its
+  `reports[]` and its parsed `sources`. The prefix join is a RANGE
+  (`budget_code >= code AND < code || 'A'` — codes are digits, 'A' > '9'),
+  never a LIKE, so it always rides ix_allocations_code.
+- **`/contract?id=<order_id>`** — one contract in full: every contracts_v
+  column + all allocations (historical labelled) + all reports.
+- **`/supplier?hp=<ח"פ>[&n=50]`** — by `company_id`, with a COUNT so a cut
+  list is never passed off as complete.
+
+RULES (agreed 2026-08-25, now code): every query hits an index — there is NO
+free-text route, and none should be added without FTS (an infix LIKE bills
+~1M reads per call; the site's text search stays on BudgetKey live). The
+Cache API fronts all three (6h, `&fresh=1` bypasses — re-upload day). LIMIT
+everywhere. Missing binding → 501, same convention as the KV routes.
+
+Setup was step D in worker.js — the D1 database is bound as variable
+**`CONTRACTS`** (done 2026-09-08, first live answer verified the same day:
+the מילגם contract with the ministry file's paid figure). Tests: `worker\wtest_d1.mjs` (run
+by Claude in the cloud — node + python3; builds a real tiny db with
+build_sqlite.py and drives the real worker.fetch). Also in v8: the
+`/data/budget` snapshot stores the administrative sections only
+(`code LIKE '00%' AND length(code)=4 AND code <> '0000'`) — the old mixed
+query is gone from the worker; the page keeps its client-side filter as a
+belt-and-braces.
 
 Claude probes the live worker READ-ONLY via WebFetch (URL ceiling ~248 chars,
 cache ~15 min → add `?fresh=N`). Never call a mutating route as a probe —

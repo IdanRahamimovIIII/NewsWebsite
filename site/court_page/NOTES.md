@@ -7,7 +7,7 @@ keep-it-current rule as CLAUDE.md.
 
 Files: `index.html` only — shell, page CSS (`<style>` block), strings
 (`window.PAGE = "court"`, `PAGE_STR`) and the script are all inline, in that
-order around `../config.js` and `../shared/common.js`. It is the one page
+order around `../shared/config.js` and `../shared/common.js`. It is the one page
 not yet split into `.css/.strings.js/.data.js/.view.js`; do that the day it
 outgrows one file (the votes page's split is the pattern), not before.
 Data: `preset("verdicts", {…})` through the relay (`/preset/verdicts`), or
@@ -15,14 +15,15 @@ the `/data/verdicts` snapshot; documents link to the court's own download
 URL — never re-hosted. No Playwright test yet; `tools\qa.html` checks the
 verdicts snapshot live.
 
-## THIS FOLDER IS THE WHOLE PAGE (Mercy's rule, 2026-09-06)
+## THIS FOLDER IS THE WHOLE PAGE (Mercy's rule, 2026-09-06; + shared\, 2026-09-08)
 
-To change this page, a chat needs THIS folder and nothing else. Everything
+To change this page, a chat needs THIS folder plus `../shared/` (which
+holds config.js since 2026-09-08) and nothing else. Everything
 the page shows comes from a public API or from Cloudflare (via the relay);
 nothing is read from disk. The only files outside this folder the page
 touches are three shared ones it must NOT edit from here:
 
-- `../config.js` — `window.PROXY_URL`, the relay address. Read-only.
+- `../shared/config.js` — `window.PROXY_URL`, the relay address. Read-only.
 - `../shared/style.css` — design tokens + shared components. Read-only;
   page styling goes in this folder's own `.css`.
 - `../shared/common.js` — loaded AFTER this page's strings file and BEFORE

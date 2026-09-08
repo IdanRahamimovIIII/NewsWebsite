@@ -3,6 +3,9 @@
    both trees ('00xx' and 'Cxxx') plus the revenue root '0000' — the exact
    shape that produced the live bug. Also feeds the OLD, mixed snapshot to
    prove the page filters it client-side (no worker redeploy needed).
+   Contracts are served by a FAKE of the worker's D1 endpoint
+   (/contracts?code=…&year=…, worker v8) — the page no longer reads them
+   from BudgetKey, and the fake 404s any relay route this file doesn't model.
 
    node site/budget_page/test_budget.mjs   (needs: npm i playwright)                    */
 import { chromium } from 'playwright';
@@ -61,100 +64,113 @@ for (const year of [2026, 2025, 2024]) {
   row(year, '0020600101', 'תקנה: הזנה בגני ילדים',   1e9 * k,  1e9 * k,  0.95e9 * k);
 }
 
-/* contracts_data keys lines as '20.60.01.01'; the budget calls the same line
-   '0020600101'. The page has to translate, and this fixture only answers the
-   dotted form — so a wrong translation shows up as an empty list, not a pass. */
-/* contract_spending keys lines with the budget's OWN 10-digit code, so a
-   prefix match is the join. payments[] is the real money: one entry per
-   published quarterly report, carrying the CUMULATIVE paid to that date.
-   Every trap the live data actually contains is armed here:
-     - the same report published twice (two URLs) → must be deduped
+/* ---------- the fake CONTRACTS DATABASE, served by the fake worker ----------
+   Since 2026-09-08 the page reads contracts from OUR OWN database (Cloudflare
+   D1 via the relay: /contracts?code=…&year=…), not from BudgetKey. The mock
+   below answers in the worker's exact shape — {code, year, rows, more}, each
+   row carrying ONLY the worker's CONTRACT_COLS plus reports[]. Handing the
+   page a field the worker does not send is the same trap as the old
+   ignore-the-SELECT-list fixture: it would let the page read a column that
+   does not exist live, and pass. Every trap the live data contains is armed:
+     - the same report published at two addresses (the build dedupes by
+       (year, period); the page must not double-count either way)
      - an annual report with period null, which lands AFTER Q4
-     - executed dropping to 0 in the newest reports → "not reported", and the
-       page must print a dash rather than invent a collapse
-     - a contract with no years at all → must NOT be assumed to be running now
-     - purchase_method / exemption_reason arrive as ARRAYS, not strings */
-const P = (year, period, executed, volume, url) => ({ year: String(year), period, executed, volume, url });
+     - paid_cumulative dropping to 0 in the newest reports → "not reported",
+       and the page must print a dash rather than invent a collapse
+     - a contract with no years at all → the WORKER excludes it from a year-
+       filtered list; the mock enforces the same, so it must never render
+     - a merged paid of 0 whose only source is BudgetKey → unknowable, a dash
+       (BudgetKey's ingest drops the paid column), while the מילגם contract
+       carries the ministry file's real figure with sources ["file","bk"] */
+const R = (year, period, paid_cumulative, volume, url) =>
+  ({ year: String(year), period, paid_cumulative, volume, url });
+const C = (o) => ({ order_id: o.id, section: o.budget_code.slice(0, 4),
+  supplier: o.supplier, entity_id: null, entity_kind: o.kind || 'company',
+  company_id: o.hp || null, ministry: 'משרד החינוך', unit: null,
+  budget_code: o.budget_code, budget_title: null, purpose: o.purpose,
+  method: o.method || 'תקנה 1ב - מכרז פומבי רגיל', exemption: o.exemption || null,
+  volume: o.volume, paid: o.paid, paid_in_period: null, currency: null,
+  first_year: o.y0 ?? null, last_year: o.y1 ?? null, publication: null,
+  sources: o.sources || ['bk'], reports: o.reports || [] });
 const CONTRACTS = [
-  { budget_code: '0020600101', supplier_name: 'קייטרינג הדגל', entity_name: 'קייטרינג הדגל בע"מ',
-    entity_kind: 'company', purpose: 'הזנה בגני ילדים',
-    publisher_name: 'משרד החינוך', purchase_method: ['תקנה 3(4) - פטור ממכרז'],
-    exemption_reason: ['תקנה 3(4) - התקשרות עם ספק יחיד'],
-    volume: 40e6, executed: 30e6, min_year: 2019, max_year: 2026,
-    payments: [
-      P(2024, 4, 18e6, 40e6, 'https://foi.gov.il/a.xlsx'),
-      P(2024, 4, 18e6, 40e6, 'https://gov.il/a.xlsx'),     // same report, twice
-      P(2025, 2, 26e6, 40e6, 'https://foi.gov.il/b.xlsx'),
-      P(2025, null, 30e6, 40e6, 'https://foi.gov.il/c.xlsx'), // annual, after Q4
-    ] },
-  { budget_code: '0020600101', supplier_name: 'עמותת מזון לכל', entity_name: 'עמותת מזון לכל',
-    entity_kind: 'association', purpose: 'הזנה בבתי ספר',
-    publisher_name: 'משרד החינוך', purchase_method: ['תקנה 1ב - מכרז פומבי רגיל'],
-    exemption_reason: [],
-    volume: 12e6, executed: 11e6, min_year: 2018, max_year: 2021,
-    payments: [P(2021, 4, 11e6, 12e6, 'https://foi.gov.il/d.xlsx')] },
+  C({ id: '4501000001', budget_code: '0020600101', supplier: 'קייטרינג הדגל בע"מ',
+      purpose: 'הזנה בגני ילדים', method: 'תקנה 3(4) - פטור ממכרז',
+      exemption: 'תקנה 3(4) - התקשרות עם ספק יחיד',
+      volume: 40e6, paid: 30e6, y0: 2019, y1: 2026, sources: ['file', 'bk'],
+      reports: [
+        R(2024, 4, 18e6, 40e6, 'https://foi.gov.il/a.xlsx'),
+        R(2024, 4, 18e6, 40e6, 'https://gov.il/a.xlsx'),     // same report, twice
+        R(2025, 2, 26e6, 40e6, 'https://foi.gov.il/b.xlsx'),
+        R(2025, null, 30e6, 40e6, 'https://foi.gov.il/c.xlsx'), // annual, after Q4
+      ] }),
+  C({ id: '4501000002', budget_code: '0020600101', supplier: 'עמותת מזון לכל',
+      kind: 'association', purpose: 'הזנה בבתי ספר',
+      volume: 12e6, paid: 11e6, y0: 2018, y1: 2021,
+      reports: [R(2021, 4, 11e6, 12e6, 'https://foi.gov.il/d.xlsx')] }),
   // deliberately NOT on the deepest line: a section must answer for what is under it
-  { budget_code: '0020610207', supplier_name: 'הסעות הדרום', entity_name: 'הסעות הדרום בע"מ',
-    entity_kind: 'company', purpose: 'הסעות תלמידים',
-    publisher_name: 'משרד החינוך', purchase_method: ['תקנה 1ב - מכרז פומבי רגיל'],
-    exemption_reason: [],
-    volume: 300e6, executed: 290e6, min_year: 2020, max_year: 2027,
-    payments: [
-      P(2024, 4, 200e6, 300e6, 'https://foi.gov.il/e.xlsx'),
-      P(2025, 3, 0, 300e6, 'https://foi.gov.il/f.xlsx'),   // stopped reporting
-    ] },
+  C({ id: '4501000003', budget_code: '0020610207', supplier: 'הסעות הדרום בע"מ',
+      purpose: 'הסעות תלמידים',
+      volume: 300e6, paid: 290e6, y0: 2020, y1: 2027,
+      reports: [
+        R(2024, 4, 200e6, 300e6, 'https://foi.gov.il/e.xlsx'),
+        R(2025, 3, 0, 300e6, 'https://foi.gov.il/f.xlsx'),   // stopped reporting
+      ] }),
   /* reported in 2023 and again in 2025, nothing in 2024 — a real pattern
      (מ. מ. ירוחם is reported in 2017 then not again until 2023). The gap must
      not be silently spanned: 9m − 5m would blame 2025 for two years of money. */
-  { budget_code: '0020600101', supplier_name: 'תשתיות הנגב', entity_name: 'תשתיות הנגב בע"מ',
-    entity_kind: 'company', purpose: 'תחזוקת מבנים',
-    publisher_name: 'משרד החינוך', purchase_method: ['תקנה 1ב - מכרז פומבי רגיל'],
-    exemption_reason: [],
-    volume: 20e6, executed: 9e6, min_year: 2019, max_year: 2026,
-    payments: [P(2023, 4, 5e6, 20e6, 'https://foi.gov.il/g.xlsx'),
-               P(2025, 2, 9e6, 20e6, 'https://foi.gov.il/h.xlsx')] },
-  /* THE מילגם CASE. BudgetKey stores the order value to the agora and the
-     amount paid as 0.0 — so the ministry's own published file is the only
-     place the payment exists. The relay's /data/paid/<section> document must
-     fill it in, and the row must say the figure came from somewhere else. */
-  { budget_code: '0020670205', supplier_name: 'מילגם', entity_name: 'מילגם בע"מ',
-    entity_kind: 'company', purpose: 'הזנה בניצנים',
-    publisher_name: 'משרד החינוך', purchase_method: ['תקנה 1ב - מכרז פומבי רגיל'],
-    exemption_reason: [], order_id: '4502539235',
-    volume: 409961432.74, executed: 0, min_year: 2024, max_year: 2026,
-    payments: [P(2024, 4, 0, 409961432.74, 'https://foi.gov.il/i.xlsx'),
-               P(2025, 1, 0, 409961432.74, 'https://foi.gov.il/j.xlsx')] },
-  // no years at all — must never be assumed to be running in the chosen year
-  { budget_code: '0020600101', supplier_name: 'ספק בלי שנים', entity_name: 'ספק בלי שנים',
-    entity_kind: 'company', purpose: 'לא ידוע',
-    publisher_name: 'משרד החינוך', purchase_method: ['תקנה 1ב - מכרז פומבי רגיל'],
-    exemption_reason: [],
-    volume: 900e6, executed: 0, min_year: null, max_year: null, payments: [] },
+  C({ id: '4501000004', budget_code: '0020600101', supplier: 'תשתיות הנגב בע"מ',
+      purpose: 'תחזוקת מבנים',
+      volume: 20e6, paid: 9e6, y0: 2019, y1: 2026,
+      reports: [R(2023, 4, 5e6, 20e6, 'https://foi.gov.il/g.xlsx'),
+                R(2025, 2, 9e6, 20e6, 'https://foi.gov.il/h.xlsx')] }),
+  /* THE מילגם CASE. BudgetKey's ingest reads the paid column as 0.0; the
+     merge takes the figure from the ministry's own published file, and the
+     record says so in its sources. The reports (BudgetKey's copies) still
+     read 0 — so the per-year cell stays a dash while the total is real. */
+  C({ id: '4502539235', budget_code: '0020670205', supplier: 'מילגם בע"מ',
+      purpose: 'הזנה בניצנים',
+      volume: 409961432.74, paid: 235298429.36, y0: 2024, y1: 2026,
+      sources: ['file', 'bk'],
+      reports: [R(2024, 4, 0, 409961432.74, 'https://foi.gov.il/i.xlsx'),
+                R(2025, 1, 0, 409961432.74, 'https://foi.gov.il/j.xlsx')] }),
+  /* paid = 0 with BudgetKey as the only source: unknowable (its parser drops
+     the column) — the total must be a dash, never a confident 0 ₪ */
+  C({ id: '4501000005', budget_code: '0020600101', supplier: 'אלמוני אפס בע"מ',
+      purpose: 'שירותי ייעוץ',
+      volume: 5e6, paid: 0, y0: 2024, y1: 2026, sources: ['bk'],
+      reports: [R(2024, 4, 0, 5e6, 'https://foi.gov.il/k.xlsx')] }),
+  // no years at all — the worker (and this mock) excludes it from a year list
+  C({ id: '4501000006', budget_code: '0020600101', supplier: 'ספק בלי שנים',
+      purpose: 'לא ידוע',
+      volume: 900e6, paid: null, y0: null, y1: null }),
+  /* a section whose only contracts sit OUTSIDE the chosen year — its empty
+     2025 list must say "other periods have some", not "nothing is public" */
+  C({ id: '4501000007', budget_code: '0024000107', supplier: 'ספק היסטורי',
+      purpose: 'שירות ישן',
+      volume: 3e6, paid: 3e6, y0: 2018, y1: 2020,
+      reports: [R(2020, 4, 3e6, 3e6, 'https://foi.gov.il/y.xlsx')] }),
 ];
-let lastContractSql = '';
+let lastContractsReq = '';
+
+/* the worker's /contracts, faithfully: prefix join, year filter (contracts
+   with no known years EXCLUDED), volume-desc order, limit+more */
+function contractsEndpoint(u) {
+  const code = u.searchParams.get('code') || '';
+  if (!/^\d{2,10}$/.test(code)) return { status: 400, body: { error: 'bad code' } };
+  const year = +(u.searchParams.get('year') || 0) || null;
+  const limit = Math.min(+(u.searchParams.get('n') || 25), 100);
+  let rows = CONTRACTS.filter(c => c.budget_code.startsWith(code));
+  if (year) rows = rows.filter(c => c.first_year != null && c.last_year != null
+    && c.first_year <= year && c.last_year >= year);
+  rows = rows.slice().sort((a, b) => (b.volume || 0) - (a.volume || 0));
+  const more = rows.length > limit;
+  return { status: 200, body: { code, year, rows: rows.slice(0, limit), more } };
+}
 
 /* ---------- a tiny SQL matcher (also validates the SQL we generate) ---------- */
 function runSql(sql) {
-  if (/FROM\s+contract_spending/i.test(sql)) {
-    lastContractSql = sql;
-    const pre = (sql.match(/budget_code\s+LIKE\s+'([^%']*)%'/i) || [])[1];
-    if (pre == null) throw new Error('contracts query with no budget_code filter');
-    const from = (sql.match(/min_year\s*<=\s*(\d+)/) || [])[1];
-    const to = (sql.match(/max_year\s*>=\s*(\d+)/) || [])[1];
-    const needYears = /min_year\s+IS\s+NOT\s+NULL/i.test(sql) && /max_year\s+IS\s+NOT\s+NULL/i.test(sql);
-    /* Honour the SELECT list. A fixture that hands back every column no matter
-       what was asked for lets a missing column pass here and fall back to the
-       wrong number live — the whole point of this test is to catch that. */
-    const cols = (sql.match(/SELECT([\s\S]*?)FROM/i) || [, ''])[1]
-      .split(',').map(s => s.trim()).filter(Boolean);
-    const project = c => Object.fromEntries(cols.filter(k => k in c).map(k => [k, c[k]]));
-    return CONTRACTS.filter(c => c.budget_code.startsWith(pre)
-      && (!needYears || (c.min_year != null && c.max_year != null))
-      && (!from || (c.min_year != null && c.min_year <= +from))
-      && (!to || (c.max_year != null && c.max_year >= +to)))
-      .sort((a, b) => b.volume - a.volume)
-      .map(project);
-  }
+  if (/FROM\s+contract_spending/i.test(sql) && !/ILIKE/i.test(sql))
+    throw new Error('the page went back to BudgetKey for contracts: ' + sql.slice(0, 120));
   if (/DISTINCT\s+year/i.test(sql)) return [{ year: 2026 }, { year: 2025 }, { year: 2024 }];
   if (!/FROM\s+raw_budget/i.test(sql)) throw new Error('unexpected table in: ' + sql);
 
@@ -233,6 +249,22 @@ async function openPage({ snapshot, noDebt }) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
 
+  /* anything the page asks the relay for that this test does not model is a
+     bug — 404 it loudly rather than let it fall through to the live worker */
+  await page.route('**/our-money.idannhhb.workers.dev/**', route => {
+    console.log('    [unmocked relay request]', route.request().url());
+    route.fulfill({ status: 404, body: '{"error":"unmocked route"}' });
+  });
+
+  /* the contracts database, as the worker serves it from D1 (v8) */
+  await page.route('**/our-money.idannhhb.workers.dev/contracts**', route => {
+    const u = new URL(route.request().url());
+    lastContractsReq = u.pathname + u.search;
+    const r = contractsEndpoint(u);
+    route.fulfill({ status: r.status, contentType: 'application/json',
+                    body: JSON.stringify(r.body) });
+  });
+
   await page.route('**/our-money.idannhhb.workers.dev/data/budget', route => {
     if (!snapshot) return route.fulfill({ status: 404, body: 'no snapshot' });
     // deliberately the OLD mixed query: every length-4 row, both trees + '0000'
@@ -244,23 +276,6 @@ async function openPage({ snapshot, noDebt }) {
         total: T.find(r => r.year === 2026 && r.code === '00'),
       } }),
     });
-  });
-
-  /* the ministry-report overlay, as the relay serves it since 2026-09-06
-     (before that the page read site/data/paid/*.json from its own folder).
-     One section only — משרד החינוך — with the מילגם order the assertions
-     below look for. */
-  await page.route('**/our-money.idannhhb.workers.dev/data/paid/**', route => {
-    const name = new URL(route.request().url()).pathname.split('/').pop();
-    const env = data => ({ status: 200, contentType: 'application/json',
-                           body: JSON.stringify({ t: Date.now(), data }) });
-    if (name === 'index') return route.fulfill(env({ sections: ['0020'] }));
-    if (name === '0020') return route.fulfill(env({
-      sources: ['https://www.gov.il/BlobFolder/dynamiccollectorresultitem/education_1_2025/he/repository-of-answers_ministry-of-education_education_1_2025.xlsx'],
-      reports: { education: '2025Q1' },
-      orders: { '4502539235:0020670205': [235298429.36, 409961432.74] },
-    }));
-    route.fulfill({ status: 404, body: 'no such section' });
   });
 
   await page.goto(`http://localhost:${PORT}/budget_page/index.html`);
@@ -501,13 +516,9 @@ console.log('\nthe contract trail:');
   await p6.click('.barrow[data-code="0020600101"]');
   await p6.waitForSelector('.whopaid', { timeout: 6000 });   // a leaf opens straight to the money
 
-  ok('the budget line joins straight to the contracts table, no translation',
-     /budget_code\s+LIKE\s+'0020600101%'/.test(lastContractSql), lastContractSql.slice(0, 200));
-  ok('…and it queries the indexed column, not a replace() over a million rows',
-     !/replace\s*\(/i.test(lastContractSql));
-  ok('…and it asks for the payment reports, the only real per-year money',
-     /payments/.test(lastContractSql) && !/per_year/.test(lastContractSql),
-     lastContractSql.slice(0, 200));
+  ok('the contracts come from OUR database via the relay, keyed by the line itself',
+     lastContractsReq.startsWith('/contracts?code=0020600101'), lastContractsReq);
+  ok('…scoped to the year on screen', /year=2025/.test(lastContractsReq), lastContractsReq);
 
   const body = await p6.textContent('.whopaid');
   ok('the suppliers paid from that line are listed', /קייטרינג הדגל/.test(body));
@@ -607,17 +618,26 @@ console.log('\nthe contract trail:');
      /אין דיווח/.test(secBody), secBody.slice(-220));
   ok('…and the ones on its deepest lines too', /קייטרינג הדגל/.test(secBody));
 
-  /* THE OVERLAY, end to end against the file we actually ship. BudgetKey has
-     this contract's paid amount as 0.0; משרד החינוך's own published report has
-     ₪235,298,429.36. The page must show the ministry's figure and must mark it
-     as coming from somewhere else. */
-  ok('a payment BudgetKey records as zero is filled from the ministry report',
+  /* THE מילגם CASE, end to end against the database we actually ship.
+     BudgetKey's ingest reads this contract's paid amount as 0.0; the merge
+     carries משרד החינוך's own ₪235,298,429.36, and the record's sources say
+     where it came from. The page must show the figure and name the sources. */
+  ok('a payment BudgetKey reads as zero carries the ministry file\'s figure',
      /235\.3 מיליון/.test(secBody), secBody.slice(0, 500));
-  ok('…and the figure is marked, not passed off as the same source',
-     (await p6.$$eval('.whopaid .fromreport', e => e.length)) === 1);
-  ok('…while a figure BudgetKey does have is left alone',
-     /290 מיליון/.test(secBody) &&
-     (await p6.$$eval('.whopaid .fromreport', e => e.length)) === 1, secBody.slice(0, 300));
+  const secLine = p6.locator('.barrow[data-code="0020"] ~ .kids > .paidline').first();
+  await secLine.locator('tr', { hasText: 'מילגם' }).locator('.purposebtn').click();
+  await p6.waitForTimeout(150);
+  const mpop = await p6.textContent('#pop');
+  ok('…and its details name the sources, the ministry\'s own report among them',
+     /הדוח שפרסם המשרד/.test(mpop) && /מפתח התקציב/.test(mpop), mpop.slice(0, 220));
+  await p6.keyboard.press('Escape');
+  await p6.waitForTimeout(120);
+  ok('a figure BudgetKey does have is shown as-is', /290 מיליון/.test(secBody), secBody.slice(0, 300));
+  /* the zero rule, both ways: a merged 0 backed only by BudgetKey is
+     unknowable (its parser drops the column) — a dash, never a confident 0 */
+  const zeroCell = (await secLine.locator('tr', { hasText: 'אלמוני אפס' })
+    .locator('td').nth(4).textContent()).trim();
+  ok('a merged 0 whose only source is BudgetKey stays a dash', zeroCell === '—', zeroCell);
   await p6.waitForTimeout(200);
   // the func tree has no contracts at all — its leaves must stay dead ends
   await p6.click('#modeswitch .segbtn:nth-child(2)');
@@ -629,6 +649,32 @@ console.log('\nthe contract trail:');
      !/שכר והעברות/.test(await p6.textContent('#chart')));
   ok('a leaf in the by-purpose tree stays a dead end (contracts do not join to it)',
      cCaret === '', JSON.stringify(cCaret));
+
+  /* THREE KINDS OF EMPTY (Mercy, 2026-09-08: "the readers should know").
+     An empty list must say WHICH empty it is: nothing this year (but other
+     periods have some) · nothing in the public reporting at all · and for
+     the defence sections, the verified explanation — the contracts exist,
+     they are just not public. */
+  await p6.click('#modeswitch .segbtn:nth-child(1)');
+  await p6.waitForTimeout(300);
+  const openPaid = async (code) => {
+    await p6.click(`.barrow[data-code="${code}"]`);
+    await p6.waitForSelector(`.barrow[data-code="${code}"] ~ .kids > .paidline .paidbtn`);
+    await p6.click(`.barrow[data-code="${code}"] ~ .kids > .paidline .paidbtn`);
+    await p6.waitForTimeout(400);
+    return p6.$eval(`.barrow[data-code="${code}"] ~ .kids > .paidline`, e => e.textContent);
+  };
+  const empty0024 = await openPaid('0024');
+  ok('empty-this-year says other periods have some',
+     /בתקופות אחרות/.test(empty0024) && !/אינן ציבוריות/.test(empty0024), empty0024.slice(0, 200));
+  const empty0079 = await openPaid('0079');
+  ok('empty-at-source says the line is absent from the public reporting',
+     /לא מופיעות כלל/.test(empty0079), empty0079.slice(0, 200));
+  const empty0015 = await openPaid('0015');
+  ok('the defence section explains itself: contracts exist, they are not public',
+     /משרד הביטחון/.test(empty0015) && /אינן ציבוריות/.test(empty0015), empty0015.slice(0, 300));
+  ok('…and does not pretend the treasury simply has no suppliers',
+     !/אין לנו מידע/.test(empty0015), empty0015.slice(0, 200));
 
   /* PHONE. Seven columns need 542px in a 312px well, so on a narrow screen each
      contract becomes a labelled card. Two things must hold: every field is

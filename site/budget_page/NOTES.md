@@ -5,24 +5,28 @@ Mercy's rulings, the traps the tests arm. Shared front-end rules are in
 `site\CLAUDE.md`; upstream API facts in `site\SOURCES.md`. Same
 keep-it-current rule as CLAUDE.md.
 
-Files (load order: ../config → budget.strings → ../shared/common →
+Files (load order: ../shared/config → budget.strings → ../shared/common →
 budget.data → budget.view): `index.html` shell only · `budget.css` ·
 `budget.strings.js` (window.PAGE + PAGE_STR, all wording) · `budget.data.js`
-(SQL, the code-tree map, `state`, `attachReportedPaid()` — reads the
-ministry-report overlay from the relay: `/data/paid/index` and
-`/data/paid/<section>`, since 2026-09-06; before that it was
-`data\paid\*.json` on disk) · `budget.view.js` (all DOM, init at the bottom)
-· `test_budget.mjs` (Playwright, mocked upstreams — to RUN it Claude also
-needs `../config.js` and `../shared/`, which the page loads).
+(SQL for the budget tree/flows, the code-tree map, `state`, and
+`loadContracts()` — since 2026-09-08 the contracts come from OUR OWN
+database on Cloudflare D1 via the relay, `GET <PROXY>/contracts?code=…
+&year=…&n=25`, worker v8; the `/data/paid/*` overlay era is over, see
+"THE CONTRACTS NOW COME FROM D1" below) · `budget.view.js` (all DOM, init
+at the bottom) · `test_budget.mjs` (Playwright, mocked upstreams — to RUN
+it Claude also needs `../shared/`, which the page loads and which carries
+config.js since 2026-09-08).
 
-## THIS FOLDER IS THE WHOLE PAGE (Mercy's rule, 2026-09-06)
+## THIS FOLDER IS THE WHOLE PAGE (Mercy's rule, 2026-09-06; + shared\, 2026-09-08)
 
-To change this page, a chat needs THIS folder and nothing else. Everything
+To change this page, a chat needs THIS folder plus `../shared/` and nothing
+else (shared\ holds config.js too since 2026-09-08, so the pair also runs
+the Playwright test). Everything
 the page shows comes from a public API or from Cloudflare (via the relay);
 nothing is read from disk. The only files outside this folder the page
 touches are three shared ones it must NOT edit from here:
 
-- `../config.js` — `window.PROXY_URL`, the relay address. Read-only.
+- `../shared/config.js` — `window.PROXY_URL`, the relay address. Read-only.
 - `../shared/style.css` — design tokens + shared components. Read-only;
   page styling goes in this folder's own `.css`.
 - `../shared/common.js` — loaded AFTER this page's strings file and BEFORE
@@ -47,6 +51,66 @@ touches are three shared ones it must NOT edit from here:
 If a change needs something NEW from common.js or style.css, say so and ask
 for `../shared/` — don't copy code from there into this folder.
 
+
+### THE CONTRACTS NOW COME FROM D1 (2026-09-08) — read this before the older contract notes
+
+The contracts table under a budget line reads the WORKER's D1 endpoint
+(`/contracts?code=<line>&year=<y>&n=25`, worker v8), which serves the
+pipeline's merged database: one deduplicated record per order — ministry
+files + BudgetKey + the mr.gov.il registers, merged field by field. What
+changed on this page, and why:
+
+- `loadContracts()` is one fetch; the worker does the prefix join (on live
+  allocations — a moved charge is not double-listed), the year filter (a
+  contract with no known years is still EXCLUDED), the volume-DESC order and
+  the limit. Field names are the database's: `supplier`, `ministry`,
+  `method`, `exemption`, `volume`, `paid`, `first_year`/`last_year`,
+  `sources`, `reports[]`.
+- `reports[]` replaces BudgetKey's `payments[]`; each entry still carries the
+  CUMULATIVE paid per published report (`paid_cumulative`), and
+  `paidInYear()` still derives the per-year figure HERE, under the same
+  refusal rules (zero-after-positive, gaps, restatements). The build dedupes
+  a report published at two addresses; the zero trap is in the reports as
+  published, so it survives the merge and the guards stay.
+- **The `*` marking is gone.** `paid` is now the merged best figure (the
+  ministry's file outranks BudgetKey on payment, per the pipeline's
+  precedence table), so a per-row asterisk had nothing precise left to say.
+  Instead every contract's פרטים popover carries a מקורות line built from
+  the record's `sources` — the tags the build actually writes, verified
+  against the live db 2026-09-08: file → "הדוח שפרסם המשרד", bk →
+  "מפתח התקציב", tn/ex → the registers. Per-field provenance exists only
+  in Mercy's local audit db — deliberately not public (2026-08-25 ruling).
+- **A merged `paid` of 0 is a dash unless the ministry's own file is among
+  the sources.** The build holds zeros back, so 0 means "every source wrote
+  0" — credible from a ministry file (they write 0 when they mean 0),
+  unknowable from BudgetKey alone (its ingest drops the paid column).
+  `totalPaid()` encodes exactly that.
+- **Free-text search STAYS on BudgetKey live**, deliberately: D1 has no text
+  index, and an infix LIKE would scan ~1M billed rows per search. An FTS
+  table is the day it moves.
+- `attachReportedPaid()` and the `/data/paid/*` overlay are DELETED — that
+  bridge existed only because BudgetKey read the paid column as 0. The
+  full teardown (KV keys, publisher, workflow step) happened 2026-09-08 —
+  `pipeline\CLAUDE.md`, section "THE PAID OVERLAY IS GONE".
+- **THREE KINDS OF EMPTY (Mercy, 2026-09-08: "the readers should know").**
+  An empty contracts list says WHICH empty it is. Empty for the chosen
+  year but not overall → `noContracts` ("reported in other periods"; one
+  extra n=1 request without the year tells them apart, cached by the
+  worker). Empty at the source entirely → `noContractsAtAll`. And for the
+  DEFENCE sections (0015, 0016 — `DEFENCE_SECTIONS` in budget.data.js) →
+  `noContractsDefence`: the contracts exist, they are not public. Verified
+  live 2026-09-08 before writing it: BudgetKey's contract table has ZERO
+  rows under '0015'/'0016' (so the old page was just as empty — this is
+  the source, not the D1 switch), while 0007 (משטרה/כבאות/שב"ס) answers
+  normally. The wording claims only what was verified: defence procurement
+  runs under separate exemption regulations and a partly classified
+  budget; it does NOT claim whether the reporting duty legally binds the
+  MoD. No opinions on the page — this is a fact about the data.
+- test_budget.mjs mocks the WORKER (`/contracts`) instead of BudgetKey's
+  contract_spending, hands back only the worker's columns (the old
+  honour-the-SELECT-list lesson, same trap, new shape), and 404s any relay
+  route it does not model. The worker's own SQL is tested in
+  `worker\wtest_d1.mjs` against a db built by the real build_sqlite.py.
 
 ### PAID COVERAGE, paidInYear() AND THE ORDERING (2026-08-22)
 

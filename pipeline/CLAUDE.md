@@ -68,24 +68,62 @@ per-zone files 2026-09-05, both at Mercy's request; full history in git.)
 because a zone session never sees the root — if it changes, change it in all
 four files: root, site\, pipeline\, worker\.)
 
+## THE PAID OVERLAY IS GONE (2026-09-08) — and what deliberately stayed
+
+The budget page reads the D1 contracts database (worker v8 `/contracts`,
+verified live by Mercy 2026-09-08), so the overlay bridge came down the
+same day, per the plan that used to sit here as "TEMPORARY":
+`attachReportedPaid()` + the `/data/paid/*` reads are out of
+`site\budget_page\` (its NOTES has the story), compare.html lost its relay
+fallback, paidcheck.html + check_paid.mjs were deleted, the workflow's
+publish step is gone (and the workflow is now named *collect ministry
+reports* — same file, refresh-data.yml), and `delete-paid-overlay.bat`
+deletes the pub:paid/* KV keys plus the leftover files, reads every key
+back to prove it, then tells Mercy to delete the .bat itself. The `*`
+marking on the page became a מקורות line from D1's `sources`, as planned.
+
+**What deliberately STAYED, against the original delete-list:**
+- `pipeline\paid\` (tracked) and the parse steps in the workflow. Three
+  reasons, none about the overlay: the `.full.json` parsed beside the lean
+  docs ARE the full-records artifact (the database build's input);
+  parse_all merges into last month's documents, so a report that became
+  unreachable keeps its figures; and inventory.py's never-shrink guard
+  counts them. Delete the folder and the next run's inventory "shrinks"
+  and refuses to commit.
+- `audit\fixtures-paid.json` — cmp.mjs and cmp_audit.mjs still feed
+  compare.html's ministry-file column from it.
+- `servePublished` in the worker — the photo manifest uses it.
+NOTE for the next audit chat: cmp.mjs/cmp_audit.mjs were not re-run after
+compare.html lost the relay fallback (cmp.mjs already mocks the relay as
+404, so nothing should notice) — run them before trusting the audit again.
+
 ## LAYOUT CHANGE 2026-09-05 — read before trusting any path below
 
 ```
 pipeline\
 ├─ CLAUDE.md        this file
-├─ build-database.bat  upload-to-d1.bat  verify-d1.bat  publish-paid.bat  clean-up.bat
+├─ build-database.bat  upload-to-d1.bat  verify-d1.bat  clean-up.bat
+│  delete-paid-overlay.bat  (ONE-SHOT — delete it after it has run)
 │                   Mercy's double-click actions — each runs tools\<script>.py
 ├─ tools\           the Python: fetch_* · parse_* · build_dataset · build_sqlite ·
-│                   build_database · upload_to_d1 · verify_d1 · inventory · publish_paid
-├─ paid\            THE MINISTRY DATASET: <section>.json × 52 + index.json (tracked in git;
-│                   refresh-data.yml regenerates + commits monthly and publishes to KV;
-│                   publish-paid.bat does the same from here). .full.json never here.
+│                   build_database · upload_to_d1 · verify_d1 · inventory
+├─ paid\            the parsed ministry documents: <section>.json × 52 + index.json
+│                   (tracked in git; refresh-data.yml regenerates + commits monthly —
+│                   kept for the reasons in "THE PAID OVERLAY IS GONE", no page reads
+│                   them). .full.json parsed beside them = the full-records artifact.
 ├─ collection\      the collector's records, committed by refresh-data.yml: inventory.txt
 │                   (read back as the never-shrink guard) · manifest.json · failed.json ·
 │                   unreachable.json. No page reads them.
+├─ shared\          cf_kv.py — THE Cloudflare KV client (credentials, namespace by title,
+│                   bulk put/delete, read-back verify, relay checks). Every publisher imports it.
+│                   (publish_photos.py today; publish_paid.py did until 2026-09-08.)
+├─ photos\          THE MK PORTRAITS JOB (its own NOTES.md; connect THIS folder only):
+│                   get-photos.bat → fetch_photos.py (collect from the Knesset via the relay) ·
+│                   publish-photos.bat → publish_photos.py (KV: pub:mkphotos + photo:mk/*) ·
+│                   test_photos.py · mk\ (the images, gitignored; index.json + misses.json tracked)
 ├─ audit\           THE WHOLE AUDIT KIT (since 2026-09-06, its own NOTES.md): audit.bat ·
-│                   audit_server.py · compare.html · paidcheck.html · cmp_audit.mjs · cmp.mjs ·
-│                   check_paid.mjs · fixtures-paid.json — a chat about checking the output
+│                   audit_server.py · compare.html · cmp_audit.mjs · cmp.mjs ·
+│                   fixtures-paid.json — a chat about checking the output
 │                   connects THIS folder only. FIELDS.xlsx (the schema constitution: every
 │                   field × every source + Mercy's rulings) lives here too — Mercy moved it
 │                   2026-09-06; no script reads it, build_dataset.py implements it.
@@ -155,24 +193,22 @@ pipeline\
 ## WHAT THIS ZONE HANDS TO THE OTHERS (the interface — keep the other side in sync)
 
 - **To the site, through Cloudflare (since 2026-09-06 — the site keeps NO
-  data, Mercy's rule):** the ministry-report paid overlay is ITS OWN
-  DATASET in KV, written by `tools/publish_paid.py` (monthly from
-  refresh-data.yml with the repo secrets `CF_API_TOKEN` + `CF_ACCOUNT_ID`;
-  by hand with `publish-paid.bat`, same d1-config.json token + "Workers KV
-  Storage: Edit"). Keys `pub:paid/index` = `{t, data:{sections:[…]}}` and
-  `pub:paid/<section>` = `{t, data:{sources:[url…], reports:{slug:"2025Q1"},
-  orders:{"<order_id>:<10-digit code>":[paid, volume]}}}` — the old
-  `paid\<section>.json` verbatim inside the relay's envelope. The worker
-  serves them as `/data/paid/index` + `/data/paid/<section>`
-  (`servePublished`, worker v7). The budget page reads exactly that
-  (`site\budget_page\budget.data.js attachReportedPaid()`); `.full.json` is
-  an Actions artifact + `inputs\full-records.zip`, never published. Why a
-  separate dataset and not D1 (Mercy, 2026-09-06): the page needs a whole
-  section in one document; D1 would meter thousands of rows per visit and
-  only changes when the db is rebuilt by hand. The publisher reads every key
-  back and compares (never trust status words), then asks the relay.
-  `collection\` (inventory + failure lists) is committed to git under
-  `pipeline\`, nothing under `site\` any more.
+  data, Mercy's rule):** since 2026-09-08 that means the D1 CONTRACTS
+  DATABASE (below) served by the worker's `/contracts` family — the paid
+  overlay (KV `pub:paid/*`) is deleted; see "THE PAID OVERLAY IS GONE" at
+  the top. `collection\` (inventory + failure lists) is committed to git
+  under `pipeline\`, nothing under `site\` any more.
+- **To the MK page, through Cloudflare (2026-09-06):** `photos/publish_photos.py`
+  writes KV `pub:mkphotos` = `{t, data:{"<MkId>": "<MkId>-<hash8>.jpg"}}` and
+  `photo:mk/<MkId>-<hash8>.jpg` = the bytes; the worker serves
+  `/data/mkphotos` (servePublished) and `/photos/mk/<file>` (servePhoto,
+  `Cache-Control: immutable, 1 year` — the name carries a content hash, so
+  a refreshed portrait is a NEW name). The page (`site\mk_page\mk.data.js`)
+  reads the manifest and builds `<PROXY>/photos/mk/<file>`; no manifest →
+  initials avatars, it never guesses a URL. Collect: `get-photos.bat`
+  (again after each election, `--refresh` for updated portraits, `--all`
+  for past members); publish: `publish-photos.bat` (uploads only new or
+  changed, deletes stale, reads back, asks the relay). NOT temporary.
 - **To the worker (D1):** tables `strings`, `allocations`, `reports`,
   `contracts` + view `contracts_v` + 10 indexes, uploaded by
   `upload-to-d1.bat`. The worker's future `/contract?id=` and
@@ -460,7 +496,7 @@ commits; installers at the repo root create them):
 
 | workflow | when | what | output |
 |---|---|---|---|
-| refresh data | 1st monthly + manual | ministry reports: fetch (+wayback), parse, tests | commits site/data/paid + collection lists; `full-records` artifact |
+| collect ministry reports (file: refresh-data.yml) | 1st monthly + manual | ministry reports: fetch (+wayback), parse, tests | commits pipeline/paid + collection lists; `full-records` artifact |
 | collect portal registers | 12th monthly + manual | mr.gov.il export zips → JSON (parser-version self-healing) | `portal-registers` artifact |
 | collect budgetkey | 25th monthly + manual | contract_spending per section → build/raw | `budgetkey-raw` artifact, cache `budgetkey-` |
 

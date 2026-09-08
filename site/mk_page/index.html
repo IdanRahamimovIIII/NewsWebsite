@@ -13,8 +13,8 @@
 <header class="topbar"></header>
 <div class="wrap">
 
-  <!-- search: any Knesset member, past or present -->
-  <div class="card">
+  <!-- search: any Knesset member, past or present (hidden while a portfolio is open) -->
+  <div class="card" id="searchCard">
     <h2 data-i18n="pageTitle"></h2>
     <p class="hint" data-i18n="pageHint"></p>
     <div class="searchrow">
@@ -24,37 +24,27 @@
       </label>
       <button onclick="mkSearch()" data-i18n="searchBtn"></button>
     </div>
-    <div id="pick" style="display:none"></div>
   </div>
 
   <!-- the portfolio itself (hidden until someone is chosen) -->
   <div id="profile" style="display:none">
     <div class="card">
       <div id="phead"></div>
-      <div id="ptiles" class="tiles"></div>
-    </div>
-
-    <div class="card" id="bioCard" style="display:none">
-      <h2 data-i18n="secBio"></h2>
-      <p class="hint" data-i18n="bioHint"></p>
-      <div id="bio"></div>
+      <div id="ptiles" class="tiles"></div>   <!-- the bills sentence + the background table -->
     </div>
 
     <div class="card">
       <h2 data-i18n="secPositions"></h2>
-      <p class="hint" data-i18n="posHint"></p>
       <div id="positions"><div class="loading" data-i18n="loading"></div></div>
     </div>
 
     <div class="card">
       <h2 data-i18n="secBills"></h2>
-      <p class="hint" data-i18n="billsHint"></p>
       <div id="bills"><div class="loading" data-i18n="loading"></div></div>
     </div>
 
     <div class="card">
       <h2 data-i18n="secVotes"></h2>
-      <p class="hint" data-i18n="votesHint"></p>
       <div id="mkknessets"></div>
       <div id="mkvotes"><div class="loading" data-i18n="loading"></div></div>
     </div>
@@ -77,12 +67,12 @@
 </div>
 
 <!-- Load order matters. Each file has one job:
-       ../config.js     your relay address (shared, one level up)
+       ../shared/config.js     your relay address (shared, one level up)
        mk.strings.js    every word this page says (Hebrew + English)
        ../shared/common.js  shared header, language switch, relay helpers
        mk.data.js       talks to the Knesset APIs (people, positions, bills, votes)
        mk.view.js       draws the portfolio (and starts the page at the bottom) -->
-<script src="../config.js"></script>
+<script src="../shared/config.js"></script>
 <script src="mk.strings.js"></script>
 <script src="../shared/common.js"></script>
 <script src="mk.data.js"></script>

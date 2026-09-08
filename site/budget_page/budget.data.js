@@ -1,8 +1,15 @@
 "use strict";
 /* =====================================================================
    Our Money — the budget page: talking to the data.
-   Source: BudgetKey open API (הסדנא לידע ציבורי)
+   Sources:
+     the budget TREE and the flows — BudgetKey open API (הסדנא לידע ציבורי)
            https://next.obudget.org/api/query?query=<SQL>   (CORS-open, no relay)
+     the CONTRACTS — our own database, served by the relay from Cloudflare D1
+           GET <PROXY>/contracts?code=<budget line>&year=<y>&n=25
+       (since 2026-09-08: one deduplicated record per contract, ministry
+        files + BudgetKey + the mr.gov.il registers merged field by field
+        by the pipeline — see pipeline\CLAUDE.md. BudgetKey's own contract
+        rows drop the paid column on newer reports; ours do not.)
 
    THE ONE THING TO KNOW ABOUT raw_budget (verified live 2026-08-22):
    the `code` column holds TWO SEPARATE TREES plus the revenue root.
@@ -91,7 +98,6 @@ const state = {
   flows: null,        // [{y, tax:[plan,actual], fees, other, debt, int, prin}]
   flowByYear: {},
   debt: null,         // {year: total government debt in ₪} — OECD, may be absent
-  paidData: undefined, // sections with a ministry-report overlay; null = not deployed
 };
 
 function resetTrees() {
@@ -225,174 +231,125 @@ async function loadChildren(mode, code) {
 
 
 /* ---------- contracts under a budget line ----------
-   WE USE contract_spending, NOT contracts_data. Both describe the same
-   procurement reports, but only contract_spending carries (all verified live
-   2026-08-22):
-     • payments[] — one entry per published quarterly report, each with the
-       year, the quarter, the cumulative executed as of that report, and a URL
-       to the .xlsx the ministry published. This is the ONLY real per-year
-       money in the dataset. contracts_data's volume_per_year /
-       executed_per_year are the lifetime total divided by the number of years
-       — an average dressed as a measurement. Do not go back to them.
-     • exemption_reason — the actual regulation a no-tender contract rests on
-       ("תקנה 3(1) - התקשרות ששווייה אינה עולה על 50,000 ש״ח").
-     • budget_code ALREADY in the budget's own 10-digit form ('0008510313'),
-       so a prefix match is the whole join — no dotted translation needed.
-   What it does NOT carry: a contract start date (start_date is 100% NULL,
-   end_date only 32%). So the years we print are the years the contract was
-   REPORTED in, min_year–max_year, and the column says so. */
+   Since 2026-09-08 the contracts come from OUR OWN DATABASE — the pipeline's
+   merge of the ministries' quarterly files, BudgetKey and the mr.gov.il
+   registers, one deduplicated record per order — served by the relay from
+   Cloudflare D1: GET <PROXY>/contracts?code=<line>&year=<y>&n=25.
+   Each row carries the merged fields (supplier, ministry, method, exemption,
+   volume, paid, first_year–last_year, sources) plus reports[] — one entry
+   per PUBLISHED quarterly report with the cumulative paid to that date, the
+   only real per-year money. Per-year figures are still derived HERE, by
+   differencing the cumulative reports under the same refusal rules as
+   always. What no source carries: a contract start date. The years we print
+   are the years the contract was REPORTED in, and the column says so.
+   (The worker filters to contracts in force in the chosen year and excludes
+   ones with no known years — not knowing when a contract ran is a reason to
+   leave it out, never a reason to assume it ran now.) */
 const isAdminCode = (code) => {
   const s = String(code || "");
   return s.length >= 4 && s.slice(0, 2) === "00" && /^\d+$/.test(s) && s !== "0000";
 };
 
-/* Contracts ARE filtered to the selected year — a contract reported 2022–2023
-   has no business appearing under 2025, however carefully the caption is
-   worded. A contract with NO known years is EXCLUDED: not knowing when it ran
-   is a reason to leave it out, never a reason to assume it ran now.
-   (7,782 of 1,036,112 rows have no max_year.) */
+/* Contracts ARE filtered to the selected year (the worker does it) — a
+   contract reported 2022–2023 has no business appearing under 2025, however
+   carefully the caption is worded. Ordered by the whole-contract volume —
+   the same number the first money column prints, so "the top 25" means the
+   top 25 of what the reader sees. */
 const CONTRACTS_LIMIT = 25;
 async function loadContracts(code, year) {
   if (!isAdminCode(code)) return null;
-  const y = +year;
-  const inYear = y ? `AND min_year IS NOT NULL AND max_year IS NOT NULL
-       AND min_year <= ${y} AND max_year >= ${y}` : "";
-  /* Ordered by the whole-contract volume — the same number the first money
-     column prints, so "the top 25" means the top 25 of what the reader sees. */
-  const rows = await bk(`SELECT supplier_name, entity_name, entity_kind, purpose,
-      publisher_name, purchase_method, exemption_reason, volume, executed,
-      payments, min_year, max_year, order_id, budget_code
-    FROM contract_spending
-    WHERE budget_code LIKE '${sqlq(String(code))}%' ${inYear}
-    ORDER BY volume DESC NULLS LAST`, CONTRACTS_LIMIT + 1);
-  // one extra row is fetched only to learn whether there are more
-  const out = rows.slice(0, CONTRACTS_LIMIT);
-  await attachReportedPaid(out, code);
-  return { rows: out, more: rows.length > CONTRACTS_LIMIT, year: y };
-}
-
-/* ---------- the ministry's own figure, read from its own report ----------
-   BudgetKey ingests the quarterly .xlsx files but does not map the payment
-   column: for משרד החינוך's 2025 Q1 report it stores the order value to the
-   agora and the amount paid as 0.00, with no parse error flagged. Four
-   contracts checked by hand, 2026-08-22 — ₪7.8bn of payments reading as zero.
-
-   So where we have the ministry's file, we prefer what the ministry published.
-   The pipeline parses the reports into one document per budget section:
-     { sources: [url…], orders: { "<order_id>:<10-digit code>": [paid, volume] } }
-   Since 2026-09-06 those documents live on Cloudflare, not in this folder
-   (Mercy: everything the pages use comes from a public API or from
-   Cloudflare). The page reads them through the relay, same envelope as every
-   other snapshot ({t, stale?, data}):
-     GET <PROXY>/data/paid/index      → data = { sections: ["0020", …] }
-     GET <PROXY>/data/paid/<section>  → data = { sources, orders }
-   Nothing here overwrites a figure BudgetKey does have — this only fills in
-   what would otherwise be a dash, and the row says where the number came from.
-   A missing section is not an error; most sections have none yet. */
-/* The index lists the sections a document exists for. Without it the page
-   cannot tell "no report for this ministry yet" (normal — most sections)
-   from "the relay never got the paid data" (a bug that otherwise shows up as
-   dashes everywhere and no error anywhere). state.paidData records which. */
-const reportedCache = {};
-let manifestPromise = null;
-function paidDoc(name) {
-  // one relay snapshot, unwrapped. null on 404/501/network — never throws.
-  if (!PROXY) return Promise.resolve(null);
-  return fetch(PROXY + "/data/paid/" + name)
-    .then(r => r.ok ? r.json() : null)
-    .then(j => (j && !j.error && j.data !== undefined) ? j.data : null)
-    .catch(() => null);
-}
-function loadPaidManifest() {
-  if (!manifestPromise) {
-    manifestPromise = paidDoc("index").then(m => {
-      state.paidData = m && Array.isArray(m.sections) ? m.sections : null;
-      if (!state.paidData)
-        debug("paid overlay: the relay has no /data/paid/index — was the paid data published to Cloudflare?");
-      return state.paidData;
-    });
+  const y = +year || 0;
+  if (!PROXY) throw new Error("CORS_OR_NET::no-relay");
+  const base = PROXY + "/contracts?code=" + encodeURIComponent(String(code));
+  const j = await fetchJson(base + (y ? "&year=" + y : "") + "&n=" + CONTRACTS_LIMIT);
+  if (!j || j.error || !Array.isArray(j.rows))
+    throw new Error("DATASET::" + ((j && j.error) || "bad /contracts response"));
+  const out = { rows: j.rows, more: !!j.more, year: y };
+  /* An empty YEAR list can mean two different things, and the reader should
+     know which (Mercy, 2026-09-08): "nothing in force this year" versus
+     "this line appears in the public reporting not at all". One extra
+     request tells them apart — the worker caches it, so it is nearly free. */
+  if (!out.rows.length) {
+    if (!y) out.noneAtAll = true;
+    else {
+      const any = await fetchJson(base + "&n=1").catch(() => null);
+      out.noneAtAll = !!(any && Array.isArray(any.rows) && !any.rows.length);
+    }
   }
-  return manifestPromise;
+  return out;
 }
 
-function loadReported(section) {
-  if (!(section in reportedCache)) {
-    reportedCache[section] = paidDoc(section)
-      .then(doc => { if (!doc) debug("paid overlay " + section + ": not on the relay"); return doc; });
-  }
-  return reportedCache[section];
-}
-
-async function attachReportedPaid(rows, code) {
-  const section = String(code).slice(0, 4);
-  const have = await loadPaidManifest();
-  if (!have || have.indexOf(section) < 0) return;   // nothing published for it
-  let doc = null;
-  try { doc = await loadReported(section); } catch (e) { doc = null; }
-  if (!doc || !doc.orders) return;
-  for (const r of rows) {
-    if (+r.executed > 0) continue;          // BudgetKey has it — leave it alone
-    const hit = doc.orders[String(r.order_id) + ":" + String(r.budget_code)];
-    if (hit && hit[0] > 0) { r.reportedPaid = hit[0]; r.reportedSrc = doc.sources; }
-  }
-}
+/* Sections whose emptiness we have VERIFIED at the source and can explain:
+   the defence budget. Checked live 2026-09-08 — BudgetKey's contract table
+   has zero rows under '0015' or '0016', and the report collection found no
+   defence files either ("0015 → nothing", pipeline\CLAUDE.md). Defence
+   procurement runs under its own exemption regulations and a partly
+   classified budget; the page says that instead of a shrug. */
+const DEFENCE_SECTIONS = { "0015": 1, "0016": 1 };
+const emptyContractsKey = (code, c) =>
+  !(c && c.noneAtAll) ? "noContracts"
+  : DEFENCE_SECTIONS[String(code).slice(0, 4)] ? "noContractsDefence"
+  : "noContractsAtAll";
 
 /* ---------- what was actually paid in one year ----------
-   Every payments[] entry is one published report carrying the CUMULATIVE
-   amount executed on the contract so far — checked against six contracts, the
+   Every reports[] entry is one published report carrying the CUMULATIVE
+   amount paid on the contract so far — checked against six contracts, the
    figure only ever climbs within a run of reports. So the money that moved
    during year Y is (cumulative at the end of Y) − (cumulative at the end of
-   Y−1). Two things in the real data will wreck that if ignored, both seen live:
-
-   1. The SAME report is published twice (foi.gov.il and gov.il) — dedupe by
-      year+period or every quarter counts twice.
-   2. From 2024 on, a great many reports carry executed = 0 beside a volume
-      that is still there. A contract reading 144,719,601 in 2024 Q2 does not
-      read 0 in Q3 — that is the field going unreported, not a refund. We
-      refuse to answer rather than print a collapse that did not happen.
-
-   Coverage, counted live: of the contracts last reported in 2015 90% carry a
-   non-zero executed; 2023 66%; 2024 35%; 2025 14%. The blanks in the recent
-   years are the government's reporting, and the caption says so. */
+   Y−1). The real data will wreck that if a trap is ignored, seen live:
+   a great many reports from 2024 on carry paid = 0 beside a volume that is
+   still there. A contract reading 144,719,601 in 2024 Q2 does not read 0 in
+   Q3 — that is the field going unreported, not a refund. We refuse to answer
+   rather than print a collapse that did not happen.
+   (The build already dedupes a report published at two addresses — url is
+   not part of a report's identity — but the zero trap survives the merge,
+   because the zeros are in the reports as published.) */
 const reportOrder = (p) => (+p.year || 0) * 10 + (p.period == null ? 9 : +p.period || 0);
 
-function reportsUpTo(payments, y) {
-  if (!Array.isArray(payments)) return [];
-  return payments
+function reportsUpTo(reports, y) {
+  if (!Array.isArray(reports)) return [];
+  return reports
     .filter(p => p && +p.year && +p.year <= y)
     .sort((a, b) => reportOrder(a) - reportOrder(b));
 }
 
-const anyPaid = (payments) => reportsUpTo(payments, 9999).some(p => +p.executed > 0);
+const anyPaid = (reports) => reportsUpTo(reports, 9999).some(p => +p.paid_cumulative > 0);
 
 /* cumulative paid as reported at the end of year y — null when unknowable.
    A ZERO IS NOT A FACT HERE. Checked live: משרד החינוך's contract 4502539235
-   with מילגם reads volume 409,961,432.74 and executed 0.0 in BudgetKey's raw
+   with מילגם reads volume 409,961,432.74 and paid 0.0 in BudgetKey's raw
    ingest, with no parse error flagged — while the ministry's own published
    file carries a real paid figure. So a contract whose reports are ALL zero
    tells us nothing at all, and we say nothing. A zero BEFORE the first
    positive figure is different: that one is credible as "signed, nothing paid
    yet", and it is kept. */
-function cumulativeTo(payments, y) {
-  if (!anyPaid(payments)) return null;
-  const rs = reportsUpTo(payments, y);
+function cumulativeTo(reports, y) {
+  if (!anyPaid(reports)) return null;
+  const rs = reportsUpTo(reports, y);
   if (!rs.length) return null;
-  const last = +rs[rs.length - 1].executed || 0;
+  const last = +rs[rs.length - 1].paid_cumulative || 0;
   if (last > 0) return last;
   // a zero that follows a positive figure is a gap in the reporting, not a fact
-  return rs.some(p => +p.executed > 0) ? null : 0;
+  return rs.some(p => +p.paid_cumulative > 0) ? null : 0;
 }
 
-/* the whole-contract total: BudgetKey's figure, else the ministry's own
-   report, else nothing — never a zero dressed up as a fact */
-const totalPaid = (r) => !r ? null
-  : (+r.executed > 0) ? +r.executed
-  : (+r.reportedPaid > 0) ? +r.reportedPaid
-  : null;
-const isReported = (r) => !!(r && !(+r.executed > 0) && +r.reportedPaid > 0);
+/* which sources fed this contract (the db's `sources` is a JSON list the
+   worker already parsed: "file" = the ministry's own published .xlsx,
+   "cs"/"qr"/"cd" = BudgetKey, "tn"/"ex" = the mr.gov.il registers) */
+const hasSource = (r, s) => !!(r && Array.isArray(r.sources) && r.sources.indexOf(s) >= 0);
 
-const hasReportIn = (payments, y) =>
-  Array.isArray(payments) && payments.some(p => p && +p.year === +y);
+/* the whole-contract total: the merged figure from our database. The build
+   holds zeros back, so paid = 0 means EVERY source that answered wrote 0 —
+   a fact when the ministry's own file is among them (ministries write 0 when
+   they mean 0), and unknowable when only BudgetKey answered, since its
+   ingest drops the paid column. Never a zero dressed up as a fact. */
+const totalPaid = (r) => (!r || r.paid == null) ? null
+  : (+r.paid > 0) ? +r.paid
+  : hasSource(r, "file") ? 0
+  : null;
+
+const hasReportIn = (reports, y) =>
+  Array.isArray(reports) && reports.some(p => p && +p.year === +y);
 
 /* A YEAR WITH NO REPORT IS NOT A YEAR WITH NO SPENDING.
    Reporting runs stop and restart: מ. מ. ירוחם is reported in 2017, then not
@@ -404,7 +361,7 @@ const hasReportIn = (payments, y) =>
 function paidInYear(r, y) {
   y = +y;
   if (!y || !r) return null;
-  const p = r.payments;
+  const p = r.reports;
   if (!hasReportIn(p, y)) return null;
   const now = cumulativeTo(p, y);
   if (now == null) return null;
@@ -418,16 +375,18 @@ function paidInYear(r, y) {
 
 /* the newest report we have for a contract, so a row can link to the source */
 function lastReport(r) {
-  const rs = reportsUpTo(r && r.payments, 9999);
+  const rs = reportsUpTo(r && r.reports, 9999);
   return rs.length ? rs[rs.length - 1] : null;
 }
-
-/* the first array element the source gives, as plain text */
-const firstOf = (v) => Array.isArray(v) ? (v.length ? String(v[0]) : "") : String(v || "");
 
 /* a budget line can hold contracts only in the administrative tree */
 const canHoldContracts = (mode, code) => mode === "admin" && isAdminCode(code);
 
+/* Free-text search STAYS on BudgetKey live — deliberately. Our D1 database
+   has no text index (SQLite cannot index an infix LIKE), so a search there
+   would scan ~1M rows and D1 bills every row read. An FTS table is the day
+   this moves; until then BudgetKey answers, and its rows carry the same
+   columns this table shows. */
 async function searchContracts(q) {
   return bk(`SELECT supplier_name, purpose, publisher_name, min_year, max_year, volume, executed
      FROM contract_spending

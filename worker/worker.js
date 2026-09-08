@@ -1,6 +1,22 @@
 /**
- * Our Money — data relay + snapshot store + vote index (Cloudflare Worker) — v7
+ * Our Money — data relay + snapshot store + vote index + contracts DB (Cloudflare Worker) — v8
  * ----------------------------------------------------------------
+ * WHAT'S NEW IN v8: the CONTRACTS DATABASE is served from here.
+ *   The pipeline built one deduplicated record per government contract
+ *   (986,942 of them — ministry files + BudgetKey + the mr.gov.il registers,
+ *   merged field by field) and uploaded it to Cloudflare D1 with
+ *   pipeline\upload-to-d1.bat. Three read-only endpoints serve it:
+ *     /contracts?code=<budget line>[&year=YYYY][&n=25]  — who was paid from a line
+ *     /contract?id=<order_id>                           — one contract, in full
+ *     /supplier?hp=<ח"פ>[&n=50]                          — one supplier's contracts
+ *   Every query hits an index (D1 bills rows READ — a full scan of ~1M rows
+ *   costs ~1M reads); the Cache API sits in front so repeats never reach D1;
+ *   every list has a LIMIT. Add &fresh=1 to bypass the cache after re-upload.
+ *   The budget page reads /contracts; BudgetKey stays for the budget tree.
+ *   ONE-TIME: bind the D1 database — setup step D below — and Deploy.
+ *   Also in v8: the /data/budget snapshot no longer mixes the two code trees
+ *   (it stores the administrative sections only, '00xx' without '0000').
+ *
  * WHAT'S NEW IN v7: our own INDEX of every Knesset plenum vote, 2003 → today.
  *   The Knesset API can only answer "which votes happened between two dates",
  *   so searching the whole history through it means ~165 requests from the
@@ -30,13 +46,19 @@
  *      cron expression:  0 *\/6 * * *      (every 6 hours) → Save
  *      (write it without the backslash — it's escaped here only because
  *       this text sits inside a code comment)
+ *   D. (v8) Your worker → Settings → Bindings → Add → D1 database →
+ *      Variable name: CONTRACTS → select the database upload-to-d1.bat
+ *      filled (the one in pipeline\d1-config.json) → Save → Deploy
  *
  * Endpoints:
+ *   GET  /contracts?code=…[&year=…][&n=…]      — contracts under a budget line (D1)
+ *   GET  /contract?id=…                        — one contract in full (D1)
+ *   GET  /supplier?hp=…[&n=…]                  — a supplier's contracts by ח"פ (D1)
  *   GET  /build/votes[?reset=1&key=rebuild]    — one step of the index harvest
  *   GET  /search/votes?q=…[&qs=a|b][&from=&to=][&y0=&y1=][&limit=]
  *   GET  /data/votesmeta                       — index manifest (years, rows)
- *   GET  /data/paid/index, /data/paid/<section> — the ministry-report paid
- *        overlay, PUBLISHED into KV by the pipeline (pub:paid/*), served as-is
+ *   GET  /data/mkphotos                        — MK portrait manifest (pub:mkphotos)
+ *   GET  /photos/mk/<MkId>-<hash8>.jpg         — the portrait bytes (photo:mk/*), immutable
  *   GET  /data/<budget|votes|bills|verdicts>   — snapshot (auto-refreshes;
  *        serves the last good copy if the government source is down)
  *   GET/POST /?url=<encoded address>           — raw relay
@@ -185,9 +207,13 @@ const DATASETS = {
       const yearsJ = await upstreamJson(BK("SELECT DISTINCT year FROM raw_budget ORDER BY year DESC", 60));
       const years = (yearsJ.rows || []).map(r => r.year).filter(y => y >= 2000);
       const year = years[0];
+      /* v8: administrative sections ONLY. `length(code) = 4` alone returns BOTH
+         trees ('00xx' AND 'Cxxx') plus the revenue root '0000' — the mix that
+         once drew every ministry twice. The page still filters defensively
+         (cleanAdmin), but the snapshot no longer stores the mix. */
       const secsJ = await upstreamJson(BK(
         `SELECT code, title, net_allocated, net_revised, net_executed FROM raw_budget ` +
-        `WHERE year = ${year} AND length(code) = 4 ` +
+        `WHERE year = ${year} AND code LIKE '00%' AND length(code) = 4 AND code <> '0000' ` +
         `ORDER BY COALESCE(net_revised, net_allocated) DESC NULLS LAST`, 200));
       let total = null;
       try {
@@ -249,10 +275,10 @@ async function refreshDataset(name, env) {
 
 /* PUBLISHED datasets (2026-09-06): documents the PIPELINE writes into KV
    under "pub:<name>" — already in the snapshot envelope {t, data} — that
-   the worker only hands out. First one: the ministry-report paid overlay,
-   pub:paid/index + pub:paid/<section> (pipeline/tools/publish_paid.py,
-   monthly from refresh-data.yml). Nothing here rebuilds them: if a key is
-   missing the answer is 404 "not published", never an upstream fetch.
+   the worker only hands out (today: the MK photo manifest, pub:mkphotos;
+   the paid overlay used this 2026-09-06 → 09-08, until the budget page
+   switched to D1). Nothing here rebuilds them: if a key is missing the
+   answer is 404 "not published", never an upstream fetch.
    Any /data/<name> that is not a built-in DATASET lands here. */
 async function servePublished(name, env) {
   if (!/^[A-Za-z0-9_.\-\/]{1,64}$/.test(name))
@@ -267,6 +293,22 @@ async function servePublished(name, env) {
       { status: 404, headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "public, max-age=60" } });
   return new Response(body,
     { headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" } });
+}
+
+/* MK PORTRAITS (2026-09-06): the pipeline's publish_photos.py stores each
+   image as photo:mk/<MkId>-<hash8>.<ext> (binary) and the manifest as
+   pub:mkphotos (served above as /data/mkphotos). The name carries a content
+   hash, so the bytes behind a name NEVER change — hence immutable, one-year
+   caching; a refreshed portrait gets a new name via the manifest. */
+const PHOTO_TYPES = { jpg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp" };
+async function servePhoto(file, env) {
+  const m = /^(\d{1,7})-([0-9a-f]{8})\.(jpg|png|gif|webp)$/.exec(file);
+  if (!m) return new Response("bad photo name", { status: 400, headers: CORS });
+  if (!env.DATA) return new Response("KV binding DATA is missing", { status: 501, headers: CORS });
+  const bytes = await env.DATA.get("photo:mk/" + file, { type: "arrayBuffer", cacheTtl: 86400 });
+  if (bytes == null) return new Response("no such photo", { status: 404, headers: { ...CORS, "Cache-Control": "public, max-age=300" } });
+  return new Response(bytes, { headers: { ...CORS, "Content-Type": PHOTO_TYPES[m[3]],
+    "Cache-Control": "public, max-age=31536000, immutable" } });
 }
 
 async function serveDataset(name, env) {
@@ -291,6 +333,149 @@ async function serveDataset(name, env) {
   }
   return new Response(JSON.stringify({ t: entry.t, stale: (Date.now() - entry.t) >= ds.ttlHours * 3600e3, ...{ data: entry.data } }),
     { headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "public, max-age=300" } });
+}
+
+/* =====================================================================
+   THE CONTRACTS DATABASE (D1, v8) — read-only endpoints over contracts_v
+   ---------------------------------------------------------------------
+   Tables (built by pipeline\tools\build_sqlite.py --public, uploaded by
+   upload-to-d1.bat): contracts (one deduplicated row per order_id, fields
+   merged per-source, 13 Hebrew text columns dictionary-encoded), strings,
+   allocations (order ↔ budget_code, live vs historical), reports (the
+   as-published quarterly reports, paid_cumulative per report). The VIEW
+   contracts_v undoes the dictionary encoding, so queries here read plain
+   text and pay nothing for it.
+
+   THE RULES (agreed with Mercy 2026-08-25 — D1 bills rows READ):
+   - every query hits an index; there is NO free-text search here, and none
+     should be added without an FTS table (an ILIKE over ~1M rows bills ~1M
+     reads per call). The page's text search stays on BudgetKey live.
+   - the Cache API sits in front: repeats never reach D1. The database only
+     changes when Mercy re-uploads it, so 6h of cache costs nothing;
+     &fresh=1 bypasses the cache when checking a fresh upload.
+   - LIMIT on every list.
+   ===================================================================== */
+const D1_CACHE_SECONDS = 21600;   // 6h — the db changes only on re-upload
+
+/* the columns the budget page needs, selected BY NAME so a schema change
+   fails loudly here rather than as an undefined in the page */
+const CONTRACT_COLS =
+  "order_id, section, supplier, entity_id, entity_kind, company_id, ministry, " +
+  "unit, budget_code, budget_title, purpose, method, exemption, volume, paid, " +
+  "paid_in_period, currency, first_year, last_year, publication, sources";
+
+const J = { ...CORS, "Content-Type": "application/json" };
+const jres = (obj, status, cache) => new Response(JSON.stringify(obj), {
+  status: status || 200,
+  headers: cache ? { ...J, "Cache-Control": "public, max-age=" + D1_CACHE_SECONDS } : J,
+});
+const jerr = (status, msg) => jres({ error: msg }, status);
+
+const parseJs = (s) => { try { return s == null ? null : JSON.parse(s); } catch (e) { return null; } };
+
+/* codes are digits, so [code, code+'A') covers every extension of the prefix
+   ('A' > '9') and stays an INDEX RANGE on ix_allocations_code — never write
+   this as LIKE, which D1 may not rewrite into a range */
+async function d1Contracts(url, env) {
+  const p = url.searchParams;
+  const code = String(p.get("code") || "");
+  if (!/^\d{2,10}$/.test(code)) return jerr(400, "bad code — 2 to 10 digits");
+  const year = /^\d{4}$/.test(p.get("year") || "") ? +p.get("year") : null;
+  const limit = Math.min(Math.max(+(p.get("n") || 25) | 0, 1), 100);
+
+  /* A contract belongs under a line if one of its LIVE allocations sits there.
+     Historical allocations (a code the ministry's own newest file no longer
+     lists) stay out — showing a contract under a line it left double-lists it. */
+  const args = [code, code + "A"];
+  let yearWhere = "";
+  if (year) {
+    /* same rule as the page always had: a contract with NO known years is
+       excluded — not knowing when it ran is a reason to leave it out */
+    yearWhere = "AND c.first_year IS NOT NULL AND c.last_year IS NOT NULL " +
+                "AND c.first_year <= ?3 AND c.last_year >= ?3 ";
+    args.push(year);
+  }
+  const q =
+    `SELECT ${CONTRACT_COLS} FROM contracts_v c ` +
+    `WHERE c.order_id IN (SELECT DISTINCT order_id FROM allocations ` +
+    `WHERE budget_code >= ?1 AND budget_code < ?2 AND historical = 0) ` +
+    yearWhere +
+    `ORDER BY c.volume DESC LIMIT ${limit + 1}`;   // one extra: "are there more?"
+  const rows = (await env.CONTRACTS.prepare(q).bind(...args).all()).results || [];
+  const more = rows.length > limit;
+  if (more) rows.length = limit;
+
+  /* the payment reports for exactly these contracts — the only real per-year
+     money; the page derives "paid during year Y" from the cumulative figures */
+  if (rows.length) {
+    const ids = rows.map(r => r.order_id);
+    const rq = `SELECT order_id, year, period, volume, paid_cumulative, url ` +
+      `FROM reports WHERE order_id IN (${ids.map(() => "?").join(",")})`;
+    const reps = (await env.CONTRACTS.prepare(rq).bind(...ids).all()).results || [];
+    const by = {};
+    for (const r of reps) (by[r.order_id] = by[r.order_id] || []).push(r);
+    for (const r of rows) { r.reports = by[r.order_id] || []; r.sources = parseJs(r.sources); }
+  }
+  return jres({ code, year, rows, more }, 200, true);
+}
+
+async function d1Contract(url, env) {
+  const id = String(url.searchParams.get("id") || "");
+  if (!/^[\w.\-]{1,40}$/.test(id)) return jerr(400, "bad id");
+  const row = ((await env.CONTRACTS.prepare(
+    "SELECT * FROM contracts_v WHERE order_id = ?1").bind(id).all()).results || [])[0];
+  if (!row) return jerr(404, "no such contract: " + id);
+  row.sources = parseJs(row.sources);
+  row.notes = parseJs(row.notes);
+  const [allocs, reps] = await Promise.all([
+    env.CONTRACTS.prepare("SELECT budget_code, volume, paid, source, historical " +
+      "FROM allocations WHERE order_id = ?1").bind(id).all(),
+    env.CONTRACTS.prepare("SELECT year, period, volume, paid_cumulative, url " +
+      "FROM reports WHERE order_id = ?1").bind(id).all(),
+  ]);
+  row.allocations = allocs.results || [];
+  row.reports = reps.results || [];
+  return jres(row, 200, true);
+}
+
+async function d1Supplier(url, env) {
+  const hp = String(url.searchParams.get("hp") || "").replace(/\D/g, "");
+  if (!hp) return jerr(400, "bad hp");
+  const limit = Math.min(Math.max(+(url.searchParams.get("n") || 50) | 0, 1), 200);
+  /* the count comes too — a partial list without a count is worse than a
+     count (Mercy's rule: the name someone looks for is exactly the one cut) */
+  const [rows, cnt] = await Promise.all([
+    env.CONTRACTS.prepare(`SELECT ${CONTRACT_COLS} FROM contracts_v c ` +
+      `WHERE c.company_id = ?1 ORDER BY c.volume DESC LIMIT ${limit}`).bind(hp).all(),
+    env.CONTRACTS.prepare("SELECT COUNT(*) AS n FROM contracts WHERE company_id = ?1")
+      .bind(hp).all(),
+  ]);
+  const out = rows.results || [];
+  for (const r of out) r.sources = parseJs(r.sources);
+  return jres({ hp, total: ((cnt.results || [])[0] || {}).n || 0, rows: out }, 200, true);
+}
+
+/* Cache API in front of D1: the SAME URL is served from the edge for
+   D1_CACHE_SECONDS without touching the database. &fresh=N bypasses the
+   lookup (but still refreshes the stored copy) — same convention as
+   Claude's WebFetch cache-busting. */
+async function d1Cached(request, ctx, env, build) {
+  if (!env.CONTRACTS)
+    return jerr(501, "D1 binding CONTRACTS is missing — see setup step D in worker.js");
+  const u = new URL(request.url);
+  const bust = u.searchParams.get("fresh") != null;
+  u.searchParams.delete("fresh");
+  const key = u.toString();
+  const cache = caches.default;
+  if (!bust) {
+    const hit = await cache.match(key);
+    if (hit) return hit;
+  }
+  let res;
+  try { res = await build(); }
+  catch (e) { return jerr(502, "D1: " + String(e.message).slice(0, 200)); }
+  if (res.status === 200 && ctx) ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
 }
 
 /* who proposed a bill + its official documents — fetched once, kept forever */
@@ -587,7 +772,7 @@ async function searchIndex(url, env) {
 
 /* ---------- the worker ---------- */
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
 
     const reqUrl = new URL(request.url);
@@ -653,6 +838,14 @@ export default {
       }
     }
 
+    /* ---- the contracts database (D1, v8) ---- */
+    if (reqUrl.pathname === "/contracts")
+      return d1Cached(request, ctx, env, () => d1Contracts(reqUrl, env));
+    if (reqUrl.pathname === "/contract")
+      return d1Cached(request, ctx, env, () => d1Contract(reqUrl, env));
+    if (reqUrl.pathname === "/supplier")
+      return d1Cached(request, ctx, env, () => d1Supplier(reqUrl, env));
+
     /* per-bill info: built on first request, stored forever (immutable) */
     if (reqUrl.pathname.startsWith("/data/billinfo/"))
       return serveBillInfo(+reqUrl.pathname.slice(15), env);
@@ -660,6 +853,8 @@ export default {
     /* snapshots */
     if (reqUrl.pathname.startsWith("/data/"))
       return serveDataset(reqUrl.pathname.slice(6), env);
+    if (reqUrl.pathname.startsWith("/photos/mk/"))
+      return servePhoto(reqUrl.pathname.slice(11), env);
 
     /* relay modes */
     let target = null;

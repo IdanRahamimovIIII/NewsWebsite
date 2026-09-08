@@ -3,9 +3,10 @@
 Notes from Claude to Claude (and Mercy) for chats about the pages. This is
 the FRONT-END zone of NewsWebsite; the data pipeline (`pipeline\`) and the
 relay (`worker\`) have their own CLAUDE.md. For work on ONE page, connect
-that page's `<name>_page\` folder alone — everything the page needs is in
-it (see "HOW THIS FOLDER IS ORGANISED"). Connect all of `site\` only for
-cross-page work: the shared header/nav, the design tokens, the layout.
+that page's `<name>_page\` folder plus `shared\` — together they are
+everything the page needs, its Playwright test included (see "HOW THIS
+FOLDER IS ORGANISED"). Connect all of `site\` only for cross-page work:
+the shared header/nav, the design tokens, the layout.
 
 ## THE RULE THAT GOVERNS THIS FILE
 
@@ -72,22 +73,27 @@ four files: root, site\, pipeline\, worker\.)
 **Rule 1 — one folder per page, and the folder is the whole page.** Every
 page is `<name>_page\index.html` plus its own css/strings/data/view files,
 its NOTES.md and its Playwright test. To update a page, a chat gets THAT
-folder and nothing else. The `_page` suffix marks a folder as a page.
+folder plus `shared\` and nothing else (shared\ carries config.js since
+2026-09-08, so the pair is also enough to RUN the page's test). The
+`_page` suffix marks a folder as a page.
 **Rule 2 — the site holds no data.** Everything a page shows comes from a
 public API or from Cloudflare through the relay. No JSON, no photos, no
-pipeline output under `site\`. (What used to be here is parked in
-`_move-to-pipeline\` until Mercy moves it; the relay routes the pages now
-expect are specified in `HANDOFF-cloudflare-data.md`.)
+pipeline output under `site\`. (The 2026-09-06 move is complete: the
+pipeline holds the data, the relay serves it; `_move-to-pipeline\` is an
+empty leftover Mercy chose to keep, and `HANDOFF-cloudflare-data.md` was
+deleted 2026-09-08 with its checklist done.)
 
 ```
 site\
 ├─ CLAUDE.md          this file: shared front-end knowledge + the interfaces
 ├─ SOURCES.md         the upstream APIs (Knesset, BudgetKey, court, gov.il…)
-├─ HANDOFF-cloudflare-data.md   for the pipeline/worker chat — delete when done
-├─ config.js          window.PROXY_URL (the relay) — read by every page
 ├─ index.html  votes.html  mk.html  court.html   FORWARDERS to the *_page folders
 │                     (keep old links alive; nothing to edit in them)
-├─ shared\            style.css, common.js — used by every page (cross-page work only)
+├─ shared\            style.css, common.js, config.js (window.PROXY_URL, the relay
+│                     address) — used by every page. Connect it BESIDE a page folder:
+│                     "<name>_page + shared" is the complete set for any page chat,
+│                     running its Playwright test included (since 2026-09-08;
+│                     config.js moved in from the site root that day)
 ├─ budget_page\       index.html + budget.css/.strings.js/.data.js/.view.js + NOTES.md + test_budget.mjs
 ├─ votes_page\        index.html + votes.css/.strings.js/.data.js/.search.js/.bills.js/.view.js
 │                     + NOTES.md + selftest.html/.js (the page's live self-test)
@@ -95,10 +101,8 @@ site\
 ├─ court_page\        index.html (still one file: css/strings/script inline) + NOTES.md
 ├─ tools\             qa.html (relay/dataset health), build.html (vote-index harvest driver)
 ├─ tests\             test_links.mjs — the layout guard (cross-page)
-├─ cleanup-old-layout.bat   one-shot: moves data\ + photos\ into _move-to-pipeline\ and
-│                     deletes the pre-2026-09-06 copies. Delete it after it has run.
-└─ _move-to-pipeline\ data\, photos\, get-photos.bat, fetch_photos.py — NOT the site's;
-                      Mercy moves this folder into pipeline\ (README inside)
+└─ _move-to-pipeline\ EMPTY — the 2026-09-06 parking lot, already moved into
+                      pipeline\; Mercy keeps the empty folder
 ```
 
 Page URLs are `…/budget_page/`, `…/votes_page/`, `…/mk_page/`,
@@ -108,46 +112,50 @@ Cross-page links are `../<name>_page/` (`?name=` survives the forwarders).
 **Read the page's NOTES.md before touching that page.** This file holds what
 is shared; each page's decisions, bugs and Mercy's rulings live next to its
 code. Each NOTES.md opens with the same block, "THIS FOLDER IS THE WHOLE
-PAGE": what the page gets from `../shared/common.js` and `../config.js`, so a
+PAGE": what the page gets from `../shared/common.js` and `../shared/config.js`, so a
 one-folder chat knows the interface without seeing the files. **If
 common.js's public surface changes (a helper added, renamed, removed), update
 that block in all four NOTES.md files in the same chat** — the same
 repeat-it-everywhere rule as the canonical block above.
 
-The audit pages (`compare.html`, `paidcheck.html`) live in `pipeline\audit\`
-(since 2026-09-06), served by `audit.bat`, which mounted this folder at
-`/site/` for the shared CSS/JS and `data\paid` — `data\paid` is no longer
-here, so `audit.bat` must point at the pipeline's own copy (pipeline chat).
+The audit page (`compare.html`) lives in `pipeline\audit\` (since
+2026-09-06), served by `audit.bat`, which mounts this folder at `/site/`
+for the shared CSS/JS (`/site/shared/…`). `paidcheck.html` was deleted with
+the paid overlay (2026-09-08).
 
 Tests: `node site/tests/test_links.mjs` after ANY layout change (loads every
 page and tool, fails on a 404 or a dead nav link, and checks each forwarder
 points at a page that exists); `budget_page/test_budget.mjs` /
 `mk_page/test_mk.mjs` are the Playwright page tests against mocked upstreams
 (they sit in their page's folder; they serve `site\` — found from their own
-path — so they need `../shared/` and `../config.js` present to run).
+path — so they need only `../shared/` present to run).
 Mercy has no node — Claude runs them in the cloud workspace
 (`/opt/pw-browsers/chromium`).
 
 ## WHAT THE PAGES DEPEND ON OUTSIDE THIS FOLDER (the interface — keep the other side in sync)
 
 - **The relay (`worker\worker.js`, deployed by Mercy on Cloudflare).**
-  Address in `config.js` (`window.PROXY_URL`). Routes the pages use:
+  Address in `shared/config.js` (`window.PROXY_URL`). Routes the pages use:
   `/b64/<base64url-of-upstream-url>` GET passthrough · `/postb64/<b64>` POST
   with body · `/preset/<name>?params` (verdicts · votes · reports) ·
   `/data/{budget|votes|bills|verdicts|persons|billinfo/<id>}` KV snapshots,
   envelope `{t, stale?, data}` (501 if KV unbound → pages fall back to live)
   · `/data/votesmeta` · `/search/votes?qs=a|b&from=&to=&y0=&y1=&limit=`
   (TSV lines) · `/build/votes` (build.html only) · `/qa/report` (selftest
-  POSTs, Claude GETs). Allowlist of upstream hosts lives in the worker —
+  POSTs, Claude GETs) · **`/contracts?code=…[&year=…][&n=…]` +
+  `/contract?id=…` + `/supplier?hp=…` (worker v8, 2026-09-08) — the
+  pipeline's merged contracts database on Cloudflare D1; the budget page
+  reads `/contracts` for the who-was-paid table (its `/data/paid/*` overlay
+  reads are gone — `budget_page\NOTES.md`, "THE CONTRACTS NOW COME FROM
+  D1")**. Allowlist of upstream hosts lives in the worker —
   a new data host means a worker change AND a re-deploy by Mercy.
-  Coming: `/contract?id=` and `/supplier?hp=` over D1 `contracts_v`.
 - **The pipeline's data, served by the relay (since 2026-09-06 — nothing is
-  read from `site\` any more).** `/data/paid/index` + `/data/paid/<section>`
-  (the ministry-report overlay, `{sources, reports, orders:{"order:code":
-  [paid,volume]}}`) and `/data/mkphotos` + `/photos/mk/<file>` (the MK
-  portraits). Exact contract, sizes and the checklist: `HANDOFF-cloudflare-data.md`.
-  Until the worker serves them, the budget page shows dashes for the overlay
-  and the MK page shows initials — by design, not a bug.
+  read from `site\` any more).** The contracts database (the `/contracts`
+  family above, since 2026-09-08) and `/data/mkphotos` + `/photos/mk/<file>`
+  (the MK portraits; until the worker serves them the MK page shows
+  initials — by design, not a bug). The old `/data/paid/*` overlay keys are
+  no longer read by any page and are queued for deletion
+  (`pipeline\CLAUDE.md`, section "TEMPORARY").
 - **Upstream APIs** — see `SOURCES.md` in this folder.
 
 ## The vision (updated 2026-08-21, after extensive work with Mercy)
@@ -212,7 +220,7 @@ inline PAGE/PAGE_STR script → common.js → page script):
   viaRelay(url, body?) (POST if body; 204→null), preset(name, params),
   fetchJson (direct, for CORS-open APIs), friendly(e), debug(msg).
 - Adding a page: make `<name>_page\` with `index.html` (copy a shell; paths
-  are `../config.js`, `../shared/…`), set PAGE/PAGE_STR/onLangChange, write
+  are all `../shared/…`), set PAGE/PAGE_STR/onLangChange, write
   its NOTES.md (start from another page's opening block), add a tab entry in
   common.js buildChrome() (`"<name>_page/"`) and the page to
   `tests/test_links.mjs` PAGES.
@@ -242,7 +250,7 @@ inline PAGE/PAGE_STR script → common.js → page script):
 
 - `budget_page\` — budget/spending page (phase 1, WORKS live)
 - `votes_page\` — Knesset votes & bills (phase 2, partially works — see below)
-- `config.js` — holds `window.PROXY_URL` (Mercy's Cloudflare Worker relay)
+- `shared/config.js` — holds `window.PROXY_URL` (Mercy's Cloudflare Worker relay)
 - `worker.js` — relay source; deployed by Mercy on Cloudflare (free plan).
   Allowlist inside it: knesset.gov.il, www.knesset.gov.il, next.obudget.org.
   If a new data host is needed, update the allowlist AND Mercy must re-paste
@@ -259,7 +267,7 @@ inline PAGE/PAGE_STR script → common.js → page script):
 ## PATH RULES AND THE LAYOUT GUARD (2026-08-22, rewritten 2026-09-06)
 
 - Path rules: every page and every tool sits one level below `site\`, so all
-  of them use `../config.js` and `../shared/…`, and their own files by bare
+  of them use `../shared/config.js` and `../shared/…`, and their own files by bare
   name (`budget.css`, `votes.data.js`…). `buildChrome()` therefore defaults
   `BASE` to `"../"`; only a page nested deeper would set `window.BASE`
   before common.js loads. The old `window.BASE = "../"` lines in tools are gone.

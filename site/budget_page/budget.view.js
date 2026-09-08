@@ -186,12 +186,14 @@ function contractPop(btn, code, i, focus) {
   /* The source names the regulation for BOTH routes — "תקנה 1ב - מכרז פומבי
      רגיל" as much as "תקנה 3(1) - התקשרות ששווייה אינה עולה על 50,000 ש״ח".
      Print it verbatim; it is the most precise thing we have about the deal. */
-  const exemption = firstOf(r.exemption_reason);
   const body = `<div class="poppurpose">${esc(r.purpose || "—")}</div>`
-    + line(t("colOffice"), r.publisher_name)
-    + line(t("colMethod"), firstOf(r.purchase_method))
-    + line(t("cExemption"), exemption)
-    + (isReported(r) ? line(t("cPaidSource"), t("cPaidSourceV")) : "")
+    + line(t("colOffice"), r.ministry)
+    + line(t("colMethod"), r.method)
+    + line(t("cExemption"), r.exemption)
+    /* which sources fed this record — a reader is entitled to know (rule R3;
+       per-field provenance stays in Mercy's local audit db, the public copy
+       carries the source list) */
+    + line(t("cSources"), sourcesText(r))
     /* Years, volume and both paid figures are columns in the table — and on a
        phone they are still there, as labelled lines in the card. Repeating
        them here would just be the same numbers twice. This view carries only
@@ -201,8 +203,7 @@ function contractPop(btn, code, i, focus) {
   const title = focus === "tender" ? t("tenderInfoT") : supplierOf(r);
   showPop("c:" + code + ":" + i, btn, title,
     focus === "tender" ? `<div class="popbody">${esc(t("tenderInfoB"))}</div>`
-      + line(t("cExemption"), exemption)
-    + (isReported(r) ? line(t("cPaidSource"), t("cPaidSourceV")) : "") : body,
+      + line(t("cExemption"), r.exemption) : body,
     focus === "tender" ? t("tenderInfoSrc") : "");
 }
 function positionPop(btn) {
@@ -567,27 +568,41 @@ async function togglePaid(code) {
 const ENTITY = { company: "entityCompany", association: "entityAssoc", municipality: "entityMuni" };
 const NO_TENDER = /פטור|ישיר/;          // the data's own Hebrew wording
 
-/* the years the contract was REPORTED in, not its legal period — the source
-   has no start date at all. Junk years exist at both edges; never print them. */
+/* the years the contract was REPORTED in, not its legal period — no source
+   has a reliable start date. Junk years exist at both edges; never print them. */
 function contractYears(r) {
   const ok = y => y && y > 1990 && y < 2100;
-  const a = ok(+r.min_year) ? +r.min_year : null;
-  const b = ok(+r.max_year) ? +r.max_year : null;
+  const a = ok(+r.first_year) ? +r.first_year : null;
+  const b = ok(+r.last_year) ? +r.last_year : null;
   if (a && b) return a === b ? String(a) : a + "–" + b;
   return String(a || b || "");
 }
-const supplierOf = (r) => cleanName(r.entity_name || r.supplier_name);
+const supplierOf = (r) => cleanName(r.supplier);
+
+/* the db's source tags, as words (verified against the live db 2026-09-08:
+   the build writes "bk", "file", "tn", "ex") */
+const SRC_NAMES = { file: "srcFile", bk: "srcBk",
+                    tn: "srcTenders", ex: "srcExemptions" };
+function sourcesText(r) {
+  if (!Array.isArray(r.sources)) return "";
+  const seen = new Set(), names = [];
+  for (const s of r.sources) {
+    const k = SRC_NAMES[s];
+    if (k && !seen.has(k)) { seen.add(k); names.push(t(k)); }
+  }
+  return names.join(" · ");
+}
 
 function contractsHtml(n) {
   const c = n.contracts;
   const year = (c && c.year) || state.year;
   if (!c || !c.rows.length)
-    return `<div class="note">${esc(fill(t("noContracts"), { y: year }))}</div>`;
+    return `<div class="note">${esc(fill(t(emptyContractsKey(n.code, c)), { y: year }))}</div>`;
   const nf = v => v == null ? "—" : fmtCompact(v);
   let unreported = 0;
   const rows = c.rows.map((r, i) => {
     const kind = ENTITY[String(r.entity_kind)];
-    const method = firstOf(r.purchase_method);
+    const method = String(r.method || "");
     const paid = paidInYear(r, year);
     if (paid == null) unreported++;
     return `<tr>
@@ -598,8 +613,7 @@ function contractsHtml(n) {
         : ""}</td>
       <td class="num" data-l="${esc(t("colReportedYears"))}"><span dir="ltr">${esc(contractYears(r))}</span></td>
       <td class="num" data-l="${esc(t("colVolume"))}">${nf(r.volume != null ? +r.volume : null)}</td>
-      <td class="num" data-l="${esc(t("colPaidTotal"))}">${nf(totalPaid(r))}${
-        isReported(r) ? `<span class="fromreport" title="${esc(t("fromReportT"))}">*</span>` : ""}</td>
+      <td class="num" data-l="${esc(t("colPaidTotal"))}">${nf(totalPaid(r))}</td>
       <td class="num" data-l="${esc(fill(t("colPaidInYear"), { y: year }))}">${paid == null ? "—" : nf(paid)}</td>
       <td><button class="purposebtn" type="button" aria-haspopup="dialog" aria-expanded="false"
         onclick="contractPop(this,'${esc(n.code)}',${i})">${esc(t("purposeBtn"))}</button></td>

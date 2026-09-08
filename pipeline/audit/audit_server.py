@@ -5,7 +5,7 @@ for checking the built dataset against the sources, by hand, forever.
 
 WHY LOCAL (Mercy, 2026-08-25): "the audit is just for myself, we don't need
 it on the website or in Cloudflare; compare.html is only expected to work
-locally." So this serves pipeline/audit/ (compare.html, paidcheck.html) at
+locally." So this serves pipeline/audit/ (compare.html) at
 the root and mounts the website under /site/ (the pages need its shared
 CSS, config.js and common.js), PLUS a few read-only /audit endpoints
 answered from the FULL database — the one with provenance per field and
@@ -15,7 +15,7 @@ derived from it and carries no provenance — it cannot feed an audit).
 Nothing here is deployed anywhere; closing the window ends it.
 
 THIS FOLDER IS THE WHOLE AUDIT (Mercy, 2026-09-06): audit.bat, this server,
-compare.html, paidcheck.html and the three test drivers live together here,
+compare.html and the test drivers live together here,
 so a chat about checking the output needs pipeline/audit/ and nothing else.
 
 Standard library only (http.server + sqlite3) — Mercy's machine has no
@@ -27,7 +27,7 @@ the ministry-report documents (2026-09-06 — the site keeps no data):
   /paid/<section>.full.json                 from pipeline/build/full/ (every column,
                                             extracted from inputs/full-records.zip by
                                             build-database.bat — never published)
-  compare.html's "הקובץ שהמשרד פרסם" column reads the .full.json; paidcheck.html
+  compare.html's "הקובץ שהמשרד פרסם" column reads the .full.json; the lean docs
   reads the RELAY instead (its question is what the public site gets).
 
 endpoints (all JSON, all read-only):

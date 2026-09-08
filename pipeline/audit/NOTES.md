@@ -13,15 +13,13 @@ here and what each file is for:
 | `audit.bat` | Mercy's double-click: starts `audit_server.py` on :8081 and opens compare.html |
 | `audit_server.py` | stdlib http.server + sqlite3. Serves this folder at `/`, mounts the website at `/site/`, answers read-only `/audit/*` from the FULL database |
 | `compare.html` | THE TOOL: one contract, every source side by side, field by field (BUILD stamp in the footer) |
-| `paidcheck.html` | did the ministry-report overlay reach the site (per section ✔/✘) |
 | `cmp_audit.mjs` | test, audit mode: builds a tiny full db with the real `build_sqlite.py`, runs the real server, asserts the green column, the register columns, the file-only card. **All green 2026-09-06.** |
 | `cmp.mjs` | test, fallback mode (no audit server): the client-side merge, the random buttons, the three-row trap, the dead-source render |
-| `fixtures-paid.json` | the paid documents the three tests use (real records, lean + full shape) |
-| `check_paid.mjs` | drives paidcheck.html against a mocked relay, asserts its verdict, saves paidcheck.png |
+| `fixtures-paid.json` | the paid documents the tests use (real records, lean + full shape) |
 
 Outside this folder the audit touches, read-only: `..\build\contracts-full.db`
 (the database it audits), `..\tools\build_sqlite.py` (cmp_audit builds its
-fixture db with it), and the site zone `..\..\site\` (config.js, shared\).
+fixture db with it), and the site zone `..\..\site\shared\` (style, common.js, config.js).
 Tests: `node audit\cmp_audit.mjs` / `node audit\cmp.mjs` from `pipeline\`
 (playwright + python3; Claude runs them in its container, Mercy has no node).
 
@@ -77,29 +75,27 @@ for one output — the audit lost nothing, only its file moved.)
 - The BUILD stamp exists because Mercy was once looking at a cached copy
   while a new one was being described. Bump it on every change.
 
-## THE PAID DOCUMENTS — WHERE THE AUDIT READS THEM (settled 2026-09-06)
+## THE PAID DOCUMENTS — WHERE THE AUDIT READS THEM (2026-09-06; overlay deleted 2026-09-08)
 
-The site keeps no data, so `/site/data/paid/…` is gone for good. Two pages,
-two questions, two sources:
+The site keeps no data, and since the paid OVERLAY was deleted (2026-09-08 —
+the budget page reads the D1 contracts database now) the relay serves no
+paid documents either: LOCAL files are the audit's only source, which is
+fine because the audit is local by design.
 
 - **compare.html — "הקובץ שהמשרד פרסם"** shows EVERY column of the ministry's
   row, so it needs the `.full.json` (never published: ~240 MB). audit_server
   serves it at `/paid/<section>.full.json` from `..\build\full\` — which
   `build-database.bat` fills by extracting `inputs\full-records.zip`. Lean
-  docs (`/paid/<section>.json`, `/paid/index.json`) come from `..\paid\`,
-  and when a lean doc is missing locally the page asks the relay
-  (`<PROXY>/data/paid/<section>`, envelope unwrapped) — the random-from-our-
-  files button works either way. Cell text when the full file is absent:
-  `אין קובץ לסעיף NNNN` (+ a note naming build\full and the build).
-- **paidcheck.html** asks ONLY the relay — its question is "what does the
-  budget page get", so a local copy would be marking our own homework. It
-  distinguishes 404 `Unknown dataset` (old worker, not deployed) from 404
-  `not published` (new worker, KV empty → run `publish-paid.bat`).
+  docs (`/paid/<section>.json`, `/paid/index.json`) come from `..\paid\`.
+  The relay fallback that used to sit behind them went with the overlay.
+  Cell text when the full file is absent: `אין קובץ לסעיף NNNN` (+ a note
+  naming build\full and the build). paidcheck.html and check_paid.mjs —
+  the overlay's own checkers — were deleted with it.
 - The tests are hermetic: `fixtures-paid.json` holds the real מילגם record
   (4502539235, verified live 2026-08-22) and the three-row-trap order
   4501119831, in lean and full shape. `cmp.mjs` serves them at `/paid/`
   from the fixture ONLY (never this machine's real files — so "section 0024
-  is not downloaded" means the same everywhere); `check_paid.mjs` mocks the
-  relay with them; `cmp_audit.mjs` hands them to the real server via
-  `--paid`/`--full`. All three green 2026-09-06 (cmp.mjs: every file-column
-  assert back to true; the count of empty cells in that column is 13).
+  is not downloaded" means the same everywhere); `cmp_audit.mjs` hands them
+  to the real server via `--paid`/`--full`. Both green 2026-09-06 (cmp.mjs:
+  every file-column assert true; the count of empty cells in that column
+  is 13).
