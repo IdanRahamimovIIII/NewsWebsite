@@ -188,6 +188,33 @@ ok("a parse_all-compatible manifest is written beside them",
    fm["https://g/edu.xlsx"]["file"] == "edu_1_2025.xlsx" and
    fm["https://g/edu.xlsx"]["year"] == 2025, fm)
 
+
+print("6. restore-reports refills an evicted cache without clobbering:")
+class _StubRel:
+    def ensure(self): return self
+    def download(self, name, out):
+        src = os.path.join(tmp, "bundles2", name)
+        if not os.path.exists(src): return False
+        shutil.copy(src, out); return True
+P2.ARC.Release = lambda: _StubRel()
+P2.MANIFEST = man_p
+cache = os.path.join(tmp, "cache"); os.makedirs(cache)
+with open(os.path.join(cache, "edu_1_2025.xlsx"), "wb") as fh:
+    fh.write(b"FRESH-FROM-THIS-RUN")        # the cache's own newer copy
+with open(os.path.join(cache, "manifest.json"), "w", encoding="utf-8") as fh:
+    json.dump({"https://g/edu.xlsx": {"file": "edu_1_2025.xlsx",
+                                      "size": 19, "via": "cache"}}, fh)
+n = P2.restore_reports(cache, log=quiet)
+ok("only the MISSING file is restored", n == 1 and
+   os.path.exists(os.path.join(cache, "health_3_2024.xls")))
+ok("an existing cache file is never clobbered",
+   open(os.path.join(cache, "edu_1_2025.xlsx"), "rb").read() == b"FRESH-FROM-THIS-RUN")
+cm = json.load(open(os.path.join(cache, "manifest.json"), encoding="utf-8"))
+ok("manifest merged, cache entries win + archive provenance added",
+   cm["https://g/edu.xlsx"]["via"] == "cache" and
+   cm["https://g/h.xls"]["file"] == "health_3_2024.xls" and
+   cm["https://g/h.xls"]["size"] is not None, cm)
+
 shutil.rmtree(tmp, ignore_errors=True)
 print("\n%d passed, %d failed" % (npass, nfail))
 sys.exit(1 if nfail else 0)

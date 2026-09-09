@@ -56,7 +56,8 @@ MANIFEST = os.path.join(HERE, "archive", "manifest.json")
 # =====================================================================
 # fetch-inputs — the archive → a build's input directories
 # =====================================================================
-def materialize_reports(manifest_path, dest, rel=None, bundle_dir=None, log=print):
+def materialize_reports(manifest_path, dest, rel=None, bundle_dir=None,
+                        only_missing=False, log=print):
     """Extract the NEWEST revision of every archived report into dest/, and
        write a fetcher-style manifest.json beside them so parse_all keeps
        its oldest-first (year, period) ordering. Old revisions stay in the
@@ -83,13 +84,16 @@ def materialize_reports(manifest_path, dest, rel=None, bundle_dir=None, log=prin
                          "release — the archive is inconsistent." % bundle)
         with zipfile.ZipFile(local) as z:
             for key, name in items:
-                with z.open(key) as src, \
-                        open(os.path.join(dest, name), "wb") as out:
+                target = os.path.join(dest, name)
+                if only_missing and os.path.exists(target):
+                    continue
+                with z.open(key) as src, open(target, "wb") as out:
                     shutil.copyfileobj(src, out)
     fetch_man = {}
     for name, (key, rec) in newest.items():
         fetch_man[rec.get("url") or ("archive://" + key)] = {
-            "file": name, "year": rec.get("year"), "period": rec.get("period"),
+            "file": name, "size": rec.get("size"),
+            "year": rec.get("year"), "period": rec.get("period"),
             "publisher": rec.get("publisher"), "via": rec.get("via")}
     with open(os.path.join(dest, "manifest.json"), "w", encoding="utf-8") as fh:
         json.dump(fetch_man, fh, ensure_ascii=False)
@@ -129,6 +133,16 @@ def fetch_inputs(dest, log=print):
             shutil.move(p, flat)
     log("budgetkey: %s → %d section files"
         % (bk, len(glob.glob(os.path.join(raw, "*.json")))))
+
+    # the LEGACY parsed rows (Mercy's hand-uploaded full-records.zip):
+    # every report's rows as parsed while everything was still reachable.
+    # The build seeds its parse output from these, so a build is COMPLETE
+    # even while the report archive is still catching up on the fetch
+    # backlog — without it, a partial archive would mean a database with
+    # LESS ministry-file data than what is already live in D1.
+    if "full-records.zip" in assets:
+        rel.download("full-records.zip", os.path.join(dest, "full-records.zip"))
+        log("legacy full-records.zip: fetched (parse seed)")
 
     # registers: newest dated portal snapshot, else the legacy conversions
     reg = os.path.join(dest, "registers")
@@ -170,6 +184,48 @@ def _find_register(reg_dir, kind):
             shutil.copyfileobj(i, o)
         return out
     return p
+
+
+def restore_reports(dest, log=print):
+    """Refill pipeline/reports from the archive (newest revision of every
+       file the cache no longer holds) and MERGE the provenance into the
+       fetcher's manifest — existing (cache) entries win. Run before the
+       fetch: an evicted cache stops meaning re-downloads, blocked hosts,
+       and the never-shrink guard tripping on a publisher that simply
+       failed to re-fetch in time (seen live 2026-09-09: 78 → 77)."""
+    man = ARC.load_manifest(MANIFEST)
+    if not man["files"]:
+        log("archive empty — nothing to restore (first runs).")
+        return 0
+    os.makedirs(dest, exist_ok=True)
+    existing = {}
+    man_path = os.path.join(dest, "manifest.json")
+    if os.path.exists(man_path):
+        with open(man_path, encoding="utf-8") as fh:
+            existing = json.load(fh)
+    before = len([n for n in os.listdir(dest)
+                  if n.lower().endswith((".xlsx", ".xls"))])
+    tmpdir = tempfile.mkdtemp(prefix="restore-")
+    materialize_reports(MANIFEST, tmpdir, rel=ARC.Release().ensure(),
+                        only_missing=False, log=log)
+    restored = 0
+    for name in os.listdir(tmpdir):
+        if name == "manifest.json":
+            continue
+        target = os.path.join(dest, name)
+        if not os.path.exists(target):
+            shutil.move(os.path.join(tmpdir, name), target)
+            restored += 1
+    with open(os.path.join(tmpdir, "manifest.json"), encoding="utf-8") as fh:
+        arch_man = json.load(fh)
+    merged = dict(arch_man)
+    merged.update(existing)              # the cache's own entries win
+    with open(man_path, "w", encoding="utf-8") as fh:
+        json.dump(merged, fh, ensure_ascii=False)
+    shutil.rmtree(tmpdir, ignore_errors=True)
+    log("restored %d report file(s) from the archive (cache already held %d)"
+        % (restored, before))
+    return restored
 
 
 # =====================================================================
@@ -278,6 +334,23 @@ def build(inputs, work, baseline=None, log=print):
        ctr_* tables. `baseline` = the previous public db (string-id seed)."""
     parsed = os.path.join(work, "parsed")
     os.makedirs(parsed, exist_ok=True)
+    legacy = os.path.join(inputs, "full-records.zip")
+    if os.path.exists(legacy):
+        n = 0
+        with zipfile.ZipFile(legacy) as z:
+            for zi in z.namelist():
+                if zi.endswith(".full.json"):
+                    with z.open(zi) as src, open(os.path.join(
+                            parsed, os.path.basename(zi)), "wb") as out:
+                        shutil.copyfileobj(src, out)
+                    n += 1
+        log("seeded the parse with %d legacy .full.json documents (reports "
+            "parsed below MERGE INTO them — a report the archive has not "
+            "recovered yet keeps its legacy figures; one it HAS recovered "
+            "gets re-parsed over them in vintage order). KNOWN interim "
+            "wrinkle until the fetch backlog drains: if the archive holds "
+            "only an OLDER quarter of a ministry than the legacy seed, that "
+            "ministry temporarily shows the older cumulative figures." % n)
     reports = os.path.join(inputs, "reports")
     log("parsing the reports, oldest first…")
     files = PA.ordered(reports, os.path.join(reports, "manifest.json"), log=log)
@@ -514,6 +587,7 @@ def main():
     p.add_argument("--work", required=True)
     p = sp.add_parser("rotate-baseline"); p.add_argument("--db", required=True)
     p = sp.add_parser("get-baseline"); p.add_argument("--dest", required=True)
+    p = sp.add_parser("restore-reports"); p.add_argument("--dest", required=True)
     a = ap.parse_args()
 
     if a.cmd == "fetch-inputs":
@@ -528,6 +602,8 @@ def main():
     elif a.cmd == "get-baseline":
         p2 = get_baseline(a.dest)
         print(p2 or "-")
+    elif a.cmd == "restore-reports":
+        restore_reports(a.dest)
 
 
 if __name__ == "__main__":

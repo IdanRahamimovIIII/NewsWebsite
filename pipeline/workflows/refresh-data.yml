@@ -27,6 +27,9 @@ on:
       wayback:
         description: "try the Wayback Machine for blocked and dead urls (yes/no)"
         default: "yes"
+      allow-shrink:
+        description: "commit even if the collection shrank (yes/no) - only after checking WHY"
+        default: "no"
 
 permissions:
   contents: write
@@ -62,6 +65,18 @@ jobs:
             mv reports pipeline/reports
             echo "adopted the old-layout cache into pipeline/reports"
           fi
+
+      # PIPELINE v2 (2026-09-09): refill the evicted cache FROM THE ARCHIVE
+      # before fetching. The archive is permanent, so an eviction now costs
+      # nothing - no re-downloads, no blocked hosts, and the never-shrink
+      # guard cannot trip on a publisher that merely failed to re-fetch in
+      # time (seen live: 78 -> 77 publishers, red run).
+      - name: restore the reports from the raw archive
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p pipeline/reports
+          python3 pipeline/contractors/pipeline2.py restore-reports --dest pipeline/reports
 
       # WHY BUDGETKEY IS STILL ASKED WHERE THE REPORTS ARE (2026-08-23):
       # we tried to drop it. The plan was one seed url per ministry plus the
@@ -151,7 +166,8 @@ jobs:
             --reports pipeline/reports \
             --parsed pipeline/paid \
             --budgetkey pipeline/build/raw \
-            --out pipeline/collection/inventory.txt
+            --out pipeline/collection/inventory.txt \
+            ${{ inputs.allow-shrink == 'yes' && '--allow-shrink' || '' }}
 
       # the failure lists are DATA, not logs. failed.json (per url: what went
       # wrong) and unreachable.json (the foi.gov.il hole) exist only in the
