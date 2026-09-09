@@ -215,6 +215,24 @@ ok("manifest merged, cache entries win + archive provenance added",
    cm["https://g/h.xls"]["file"] == "health_3_2024.xls" and
    cm["https://g/h.xls"]["size"] is not None, cm)
 
+print("7. check-credentials (the 40-minutes-to-a-401 lesson):")
+_cfg, _api = U.config, U.api
+U.config = lambda: {"account_id": "a", "database_id": "d", "api_token": "t"}
+U.api = lambda cfg, path, body, **kw: {"success": True}
+ok("good credentials pass, read-only",
+   P2.check_credentials(log=quiet) is True)
+U.api = lambda cfg, path, body, **kw: {
+    "success": False, "errors": [{"code": 10000,
+                                  "message": "Authentication error"}]}
+try:
+    P2.check_credentials(log=quiet)
+    ok("bad credentials die loudly, naming the secrets to fix", False)
+except SystemExit as e:
+    ok("bad credentials die loudly, naming the secrets to fix",
+       "REFUSED" in str(e) and "CF_API_TOKEN" in str(e)
+       and "Authentication error" in str(e), str(e))
+U.config, U.api = _cfg, _api
+
 shutil.rmtree(tmp, ignore_errors=True)
 print("\n%d passed, %d failed" % (npass, nfail))
 sys.exit(1 if nfail else 0)

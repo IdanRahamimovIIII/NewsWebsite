@@ -454,6 +454,26 @@ working until its replacement is proven)
 - Item 5 of the old plan is superseded by phase 2.
 
 ### STATUS
+- 2026-09-09 (later): the retried phase-2 run got through fetch + merge +
+  build (987,090 contracts — the month's growth over 986,942 — all ctr_*
+  built, 26 parts / 1,350 MB dumped) and died at the FIRST D1 call: HTTP
+  401, the CF_* repo secrets don't match d1-config.json. Two fixes, both
+  code now: `check-credentials` in pipeline2.py — a read-only SELECT 1
+  proving all three values in seconds — runs as build-and-update.yml's
+  FIRST step, so a bad secret can never again cost the 40-minute build;
+  `check-credentials.bat` proves the LOCAL d1-config.json values (needed
+  because verify-d1.bat requires out\contracts-public.db, which is not on
+  Mercy's disk — v2 builds it on the runner). Also fixed while adding its
+  tests: materialize_reports now fills a missing manifest `size` from the
+  extracted file (an entry without one would make the fetcher re-download
+  the whole restored archive); test_pipeline2.py 19 asserts green.
+  Mercy's loop now: check-credentials.bat locally → paste the three values
+  into the repo secrets → re-run build-and-update (fails in ~1 min if the
+  paste is still wrong). Follow-up the .bat's first local run caught:
+  pipeline2's top-level `import parse_all` pulled in openpyxl, which her
+  machine rightly does not have — parse_all (the ONE third-party import)
+  now loads inside build(), so every other subcommand runs on bare Python
+  (the zero-install rule).
 - 2026-09-09: refresh-data ran GREEN — the archive feeds itself (verified in
   the committed manifest: 1,766 files, 590 MB, 76 publishers, 2015–2026, all
   16 bundles; legacy assets + CF_* secrets in place). Phase 2's FIRST run

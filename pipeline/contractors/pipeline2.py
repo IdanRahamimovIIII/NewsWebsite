@@ -31,6 +31,14 @@ failed step can be re-run alone):
   rotate-baseline --db PUBLIC gzip + rotate db-current.sqlite.gz /
                               db-current-previous.sqlite.gz on the Release
                               (the two-database window Mercy asked for).
+  check-credentials           prove the three Cloudflare values against D1
+                              in seconds (read-only SELECT 1). The workflow
+                              runs it FIRST, so a bad repo secret costs a
+                              minute, not the 40-minute build (learned
+                              2026-09-09: a 401 surfaced only at upload
+                              time, after fetch + merge + dump). Locally it
+                              reads pipeline\d1-config.json — that is what
+                              check-credentials.bat is for.
 
 STRING IDS MUST BE STABLE across builds: the public db dictionary-encodes
 13 Hebrew columns as integers into `strings`. If a rebuild renumbered them,
@@ -47,8 +55,12 @@ import archive as ARC                     # noqa: E402
 import build_dataset as BD                # noqa: E402
 import build_sqlite as BS                 # noqa: E402
 import build_contractors as BC            # noqa: E402
-import parse_all as PA                    # noqa: E402
 import upload_to_d1 as U                  # noqa: E402
+# parse_all (→ parse_report → openpyxl/xlrd) is imported inside build():
+# it is the ONLY third-party dependency, and every other subcommand —
+# check-credentials above all — must run on a machine with bare Python
+# (Mercy's zero-install rule; learned 2026-09-09 when check-credentials.bat
+# died on ModuleNotFoundError: openpyxl before it could check anything).
 
 MANIFEST = os.path.join(HERE, "archive", "manifest.json")
 
@@ -91,8 +103,13 @@ def materialize_reports(manifest_path, dest, rel=None, bundle_dir=None,
                     shutil.copyfileobj(src, out)
     fetch_man = {}
     for name, (key, rec) in newest.items():
+        size = rec.get("size")
+        if size is None:              # an entry without one would make the
+            p = os.path.join(dest, name)   # fetcher's changed-size check
+            if os.path.exists(p):          # re-download the whole archive
+                size = os.path.getsize(p)
         fetch_man[rec.get("url") or ("archive://" + key)] = {
-            "file": name, "size": rec.get("size"),
+            "file": name, "size": size,
             "year": rec.get("year"), "period": rec.get("period"),
             "publisher": rec.get("publisher"), "via": rec.get("via")}
     with open(os.path.join(dest, "manifest.json"), "w", encoding="utf-8") as fh:
@@ -353,6 +370,7 @@ def build(inputs, work, baseline=None, log=print):
             "ministry temporarily shows the older cumulative figures." % n)
     reports = os.path.join(inputs, "reports")
     log("parsing the reports, oldest first…")
+    import parse_all as PA         # the one third-party import (openpyxl) —
     files = PA.ordered(reports, os.path.join(reports, "manifest.json"), log=log)
     if not files:
         sys.exit("no reports to parse — fetch-inputs first.")
@@ -551,6 +569,24 @@ def update_d1(public_db, baseline, work, log=print):
     apply_sql_parts(out, meta, log=log)
 
 
+def check_credentials(log=print):
+    """Prove account id + database id + token against D1, read-only, in
+       seconds. A wrong value answers here, not 40 minutes into a build."""
+    cfg = U.config()
+    j = U.api(cfg, "query", {"sql": "SELECT 1"}, timeout=60, attempts=3,
+              soft=True)
+    if j and j.get("success"):
+        log("credentials OK — account, database and token all answer.")
+        return True
+    msgs = "; ".join(str(e.get("message", "?"))
+                     for e in (j or {}).get("errors", [])) or "no answer"
+    sys.exit("D1 REFUSED the credentials (%s).\n"
+             "Fix the three repo secrets — CF_ACCOUNT_ID / CF_DATABASE_ID / "
+             "CF_API_TOKEN — to exactly the values in pipeline\\d1-config.json "
+             "(the token needs Account - D1 - Edit). Prove the local values "
+             "first with contractors\\check-credentials.bat." % msgs)
+
+
 def rotate_baseline(public_db, log=print):
     gz = public_db + ".gz"
     with open(public_db, "rb") as i, gzip.open(gz, "wb", compresslevel=6) as o:
@@ -588,6 +624,7 @@ def main():
     p = sp.add_parser("rotate-baseline"); p.add_argument("--db", required=True)
     p = sp.add_parser("get-baseline"); p.add_argument("--dest", required=True)
     p = sp.add_parser("restore-reports"); p.add_argument("--dest", required=True)
+    sp.add_parser("check-credentials")
     a = ap.parse_args()
 
     if a.cmd == "fetch-inputs":
@@ -604,6 +641,8 @@ def main():
         print(p2 or "-")
     elif a.cmd == "restore-reports":
         restore_reports(a.dest)
+    elif a.cmd == "check-credentials":
+        check_credentials()
 
 
 if __name__ == "__main__":

@@ -42,6 +42,15 @@ jobs:
           python-version: "3.12"
       - run: pip install openpyxl xlrd
 
+      # a bad secret must cost seconds, not the build (learned 2026-09-09:
+      # a 401 surfaced only at upload time, 40 minutes in). Read-only.
+      - name: prove the Cloudflare credentials before anything else
+        env:
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_DATABASE_ID: ${{ secrets.CF_DATABASE_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: python3 pipeline/contractors/pipeline2.py check-credentials
+
       - name: pull the build inputs from the raw archive
         env:
           GITHUB_TOKEN: ${{ github.token }}
