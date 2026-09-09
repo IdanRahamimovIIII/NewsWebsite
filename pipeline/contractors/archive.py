@@ -31,12 +31,39 @@ with fewer files or fewer total revisions than the committed one — a
 shrinking archive means OUR machinery broke, and a red run beats quietly
 losing history (same philosophy as inventory.py's never-shrink guard).
 """
-import argparse, datetime, hashlib, json, os, sys, tempfile, zipfile
+import argparse, datetime, hashlib, http.client, json, os, sys, tempfile, time, zipfile
 import urllib.error, urllib.parse, urllib.request
 
 TAG = "raw-archive"
 API = "https://api.github.com"
 BUNDLES = 16                      # reports-0.zip … reports-f.zip
+
+# GitHub's release API hiccups (the first phase-2 run died on a bare HTTP 500
+# downloading a bundle, 2026-09-09). Transient trouble — 5xx, 429, timeouts,
+# dropped connections — is retried with growing waits; ~8 minutes of patience
+# total, then a loud death. A clean 404 is an ANSWER and is never retried.
+RETRIABLE = {429, 500, 502, 503, 504}
+RETRY_WAITS = (10, 30, 60, 120, 240)
+_sleep = time.sleep               # the tests replace this
+
+
+def _with_retries(what, attempt):
+    """Run attempt() until it returns; retry transient network/GitHub trouble
+       (RETRY_WAITS times), let everything else propagate to the caller."""
+    for i, wait in enumerate(RETRY_WAITS + (None,)):
+        try:
+            return attempt()
+        except urllib.error.HTTPError as e:
+            if e.code not in RETRIABLE or wait is None:
+                raise
+            trouble = "HTTP %d" % e.code
+        except (http.client.HTTPException, OSError) as e:
+            if wait is None:
+                raise
+            trouble = "%s: %s" % (type(e).__name__, e)
+        print("  %s: %s — retrying in %ds (%d/%d)"
+              % (what, trouble, wait, i + 1, len(RETRY_WAITS)), flush=True)
+        _sleep(wait)
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEF_MANIFEST = os.path.join(HERE, "archive", "manifest.json")
 
@@ -50,22 +77,32 @@ def _need_env():
     return tok, repo
 
 
-def _api(url, method="GET", data=None, ctype="application/json", raw=False):
+def _api(url, method="GET", data=None, ctype="application/json", raw=False,
+         soft422=False):
     tok, _ = _need_env()
-    req = urllib.request.Request(url, method=method, data=data, headers={
-        "Authorization": "Bearer " + tok,
-        "Accept": "application/vnd.github+json",
-        **({"Content-Type": ctype} if data is not None else {}),
-    })
-    try:
+
+    def attempt():
+        req = urllib.request.Request(url, method=method, data=data, headers={
+            "Authorization": "Bearer " + tok,
+            "Accept": "application/vnd.github+json",
+            **({"Content-Type": ctype} if data is not None else {}),
+        })
         with urllib.request.urlopen(req, timeout=600) as r:
             body = r.read()
             return body if raw else (json.loads(body) if body else {})
+
+    try:
+        return _with_retries("%s %s" % (method, url[-70:]), attempt)
     except urllib.error.HTTPError as e:
         if e.code == 404:
             return None
-        sys.exit("GitHub answered HTTP %s on %s:\n%s"
-                 % (e.code, url, e.read().decode("utf-8", "replace")[:600]))
+        body = e.read().decode("utf-8", "replace")[:600]
+        if soft422 and e.code == 422:
+            return {"__422__": body}      # upload(): a retried POST double-landed
+        sys.exit("GitHub answered HTTP %s on %s:\n%s" % (e.code, url, body))
+    except (http.client.HTTPException, OSError) as e:
+        sys.exit("GitHub unreachable after %d tries on %s %s: %s"
+                 % (len(RETRY_WAITS) + 1, method, url, e))
 
 
 class Release:
@@ -91,14 +128,29 @@ class Release:
         return {a["name"]: a for a in (self.rel or {}).get("assets", [])}
 
     def upload(self, path, name):
-        old = self.assets().get(name)
-        if old:                                   # replace = delete + upload
-            _api("%s/repos/%s/releases/assets/%d" % (API, self.repo, old["id"]),
-                 "DELETE")
-        up = self.rel["upload_url"].split("{")[0] + "?name=" + urllib.parse.quote(name)
-        with open(path, "rb") as fh:
-            a = _api(up, "POST", fh.read(), "application/octet-stream")
-        self.rel = _api("%s/repos/%s/releases/tags/%s" % (API, self.repo, TAG))
+        # two passes: if a retried POST double-lands (GitHub took the bytes but
+        # answered 5xx, so the retry hits 422 name-already-exists), the asset
+        # it left may be PARTIAL — delete it and send once more, clean.
+        a = None
+        for _ in (1, 2):
+            old = self.assets().get(name)
+            if old:                               # replace = delete + upload
+                _api("%s/repos/%s/releases/assets/%d"
+                     % (API, self.repo, old["id"]), "DELETE")
+            up = (self.rel["upload_url"].split("{")[0]
+                  + "?name=" + urllib.parse.quote(name))
+            with open(path, "rb") as fh:
+                a = _api(up, "POST", fh.read(), "application/octet-stream",
+                         soft422=True)
+            self.rel = _api("%s/repos/%s/releases/tags/%s"
+                            % (API, self.repo, TAG))
+            if not (isinstance(a, dict) and "__422__" in a):
+                break
+            print("  %s landed twice (a retried upload) — replacing it cleanly"
+                  % name, flush=True)
+        else:
+            sys.exit("uploading %s kept answering 422 — inspect the release."
+                     % name)
         print("  uploaded %s (%.1f MB)" % (name, os.path.getsize(path) / 1e6))
         return a
 
@@ -108,15 +160,31 @@ class Release:
             return False
         # asset downloads need Accept: application/octet-stream
         tok, _ = _need_env()
-        req = urllib.request.Request(a["url"], headers={
-            "Authorization": "Bearer " + tok,
-            "Accept": "application/octet-stream"})
-        with urllib.request.urlopen(req, timeout=1800) as r, open(out, "wb") as fh:
-            while True:
-                chunk = r.read(1 << 20)
-                if not chunk:
-                    break
-                fh.write(chunk)
+
+        def attempt():
+            req = urllib.request.Request(a["url"], headers={
+                "Authorization": "Bearer " + tok,
+                "Accept": "application/octet-stream"})
+            # "wb" on every attempt: a half-written file from a dropped
+            # connection must never survive as a truncated bundle
+            with urllib.request.urlopen(req, timeout=1800) as r, \
+                    open(out, "wb") as fh:
+                while True:
+                    chunk = r.read(1 << 20)
+                    if not chunk:
+                        break
+                    fh.write(chunk)
+
+        try:
+            _with_retries("download " + name, attempt)
+        except urllib.error.HTTPError as e:
+            if e.code == 404:     # vanished mid-run — an answer, same as absent
+                return False
+            sys.exit("downloading %s from the release failed for good: HTTP %d"
+                     % (name, e.code))
+        except (http.client.HTTPException, OSError) as e:
+            sys.exit("downloading %s failed after %d tries: %s"
+                     % (name, len(RETRY_WAITS) + 1, e))
         return True
 
     def rotate(self, path, name):

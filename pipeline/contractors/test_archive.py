@@ -14,7 +14,7 @@ The rules pinned here ARE the design (NOTES.md, PIPELINE v2):
 
 Run:  python3 contractors/test_archive.py   (from pipeline\)
 """
-import json, os, shutil, sys, tempfile, zipfile
+import io, json, os, shutil, sys, tempfile, urllib.error, zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -96,6 +96,43 @@ man2 = os.path.join(tmp, "arch2", "manifest.json")
 A.ingest_reports(empty, man2, None, dry_run=True, bundle_dir=bundles)
 ok("manifest file created even with zero files",
    os.path.exists(man2) and A.counts(A.load_manifest(man2)) == 0)
+
+print("transient GitHub trouble is retried (the phase-2 HTTP-500 lesson):")
+waits = []
+A._sleep = waits.append                 # no real sleeping in a test
+
+def http_error(code):
+    return urllib.error.HTTPError("u", code, "boom", {}, io.BytesIO(b""))
+
+calls = {"n": 0}
+def flaky():
+    calls["n"] += 1
+    if calls["n"] < 3:
+        raise http_error(500)
+    return "ok"
+ok("a 500 is retried until it passes",
+   A._with_retries("t", flaky) == "ok" and calls["n"] == 3, calls)
+ok("…with the growing waits", waits == list(A.RETRY_WAITS[:2]), waits)
+
+waits.clear()
+def dropped():
+    raise ConnectionResetError("dropped mid-download")
+try:
+    A._with_retries("t", dropped)
+    ok("a dropped connection that never heals dies after the last wait", False)
+except OSError:
+    ok("a dropped connection that never heals dies after the last wait",
+       waits == list(A.RETRY_WAITS), waits)
+
+waits.clear()
+def gone():
+    raise http_error(404)
+try:
+    A._with_retries("t", gone)
+    ok("a clean 404 is an ANSWER — never retried", False)
+except urllib.error.HTTPError as e:
+    ok("a clean 404 is an ANSWER — never retried",
+       e.code == 404 and waits == [], waits)
 
 shutil.rmtree(tmp, ignore_errors=True)
 print("\n%d passed, %d failed" % (npass, nfail))

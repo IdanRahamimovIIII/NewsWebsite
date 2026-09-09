@@ -454,6 +454,21 @@ working until its replacement is proven)
 - Item 5 of the old plan is superseded by phase 2.
 
 ### STATUS
+- 2026-09-09: refresh-data ran GREEN — the archive feeds itself (verified in
+  the committed manifest: 1,766 files, 590 MB, 76 publishers, 2015–2026, all
+  16 bundles; legacy assets + CF_* secrets in place). Phase 2's FIRST run
+  then died on a bare HTTP 500 downloading a bundle (fetch-inputs):
+  GitHub's release API hiccups, and archive.py had NO retry — the fetcher's
+  patience lesson, never applied to the archive client. Skipping the fetch
+  was considered and rejected: D1 holds the OUTPUT; the merge needs the raw
+  inputs, and the delta already avoids re-sending what D1 has. Now code:
+  `_with_retries` in archive.py — 5xx/429/timeouts/dropped connections
+  retried with growing waits (10s→240s, ~8 min patience, loud death after);
+  a clean 404 is an ANSWER, never retried; a download reopens its file per
+  attempt (no truncated bundles); a double-landed upload (422 after a
+  retried POST) is deleted and re-sent clean. Wraps every API call, so the
+  collectors' uploads inherit it. test_archive.py 15 asserts green.
+  Next: re-run build-and-update.yml.
 - 2026-09-08 (later): PHASE 2 BUILT (awaiting its first green run):
   pipeline2.py — fetch-inputs (archive → build inputs, newest revision per
   report) · streaming merge (byte-identical to build_dataset.build, spilled
