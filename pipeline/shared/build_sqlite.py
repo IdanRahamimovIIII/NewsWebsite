@@ -100,6 +100,21 @@ CREATE INDEX ix_reports_order         ON reports(order_id);
 """
 
 
+def _vacuum_close(db, path):
+    """Compact and close — WITHOUT the in-place VACUUM's disk bill. In-place
+       VACUUM holds the original + a full temp copy + the journal at once
+       (~3x the db); it died with 'database or disk is full' on the CI
+       runner's ~14 GB disk (build-and-update's first run, 2026-09-09).
+       VACUUM INTO writes just the compacted copy (~2x peak), which is then
+       swapped over the original. Same result, one db less on disk."""
+    tmp = path + ".vacuum"
+    if os.path.exists(tmp):
+        os.unlink(tmp)
+    db.execute("VACUUM INTO ?", (tmp,))
+    db.close()
+    os.replace(tmp, path)
+
+
 def fingerprint(contract):
     """Stable across runs: the whole record, keys sorted, floats as json
        writes them. If ANYTHING about the contract changes, this changes."""
@@ -163,8 +178,7 @@ def build(contracts_dir, out_path, log=print):
     db.executescript(INDEXES)
     db.execute("ANALYZE")
     db.commit()
-    db.execute("VACUUM")
-    db.close()
+    _vacuum_close(db, out_path)
     size = os.path.getsize(out_path) / 1e6
     log("contracts.db: %d contracts · %d allocations · %d report rows · %.1f MB"
         % (n_c, n_a, n_r, size))
@@ -270,8 +284,7 @@ def public_copy(full_db, out_path, log=print, strings_from=None):
     """)
     db.commit()
     db.execute("DETACH DATABASE full")
-    db.execute("VACUUM")
-    db.close()
+    _vacuum_close(db, out_path)
     size = os.path.getsize(out_path) / 1e6
     log("public copy (no audit, %d columns dictionary-encoded): %.1f MB"
         % (len(DICT_COLS), size))

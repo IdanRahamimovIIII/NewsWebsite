@@ -17,7 +17,7 @@ Each DATASET folder carries its own NOTES.md with the deep story:
                             tables + search, with inputs\ and out\ inside
 - `photos\NOTES.md`       — the MK portraits dataset
 - `audit\NOTES.md`        — checking the built dataset (compare.html)
-- `workflows\README.md`   — the four GitHub automations and their schedule
+- `workflows\README.md`   — the six GitHub automations and their schedule
 
 The sibling zones have their own CLAUDE.md: `site\` (the pages) and
 `worker\` (the Cloudflare relay). The git history of THIS file holds the

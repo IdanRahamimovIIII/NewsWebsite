@@ -11,7 +11,11 @@ test_pipeline2.py — phase 2's rules on fixtures, no network:
      part's counts are the new db's counts (what U.verify will demand);
   4. drifted string ids are refused loudly (never a silent wrong delta);
   5. materialize_reports extracts the NEWEST revision of each file and
-     writes a parse_all-compatible manifest.
+     writes a parse_all-compatible manifest;
+  6–7. restore-reports / check-credentials (their own lessons);
+  8. the DISK-FRUGAL build steps (the runner's disk-full VACUUM,
+     2026-09-09): _vacuum_close compacts losslessly via VACUUM INTO and
+     leaves no temp file; _scrub deletes exactly what it is given.
 
 Run:  python3 contractors/test_pipeline2.py   (from pipeline\)
 """
@@ -232,6 +236,34 @@ except SystemExit as e:
        "REFUSED" in str(e) and "CF_API_TOKEN" in str(e)
        and "Authentication error" in str(e), str(e))
 U.config, U.api = _cfg, _api
+
+print("8. disk-frugal build steps (the runner's disk-full VACUUM lesson):")
+# _vacuum_close: lossless compaction, no temp file left behind — note the
+# whole file already exercises it implicitly (BS.build/public_copy above)
+vdb_path = j("vac.db")
+vdb = sqlite3.connect(vdb_path)
+vdb.execute("CREATE TABLE t (a TEXT)")
+vdb.executemany("INSERT INTO t VALUES (?)", [("row%d" % i,) for i in range(500)])
+vdb.execute("DELETE FROM t WHERE a > 'row2'")   # leave free pages to reclaim
+vdb.commit()
+kept = sorted(v for (v,) in vdb.execute("SELECT a FROM t"))
+BS._vacuum_close(vdb, vdb_path)
+after = sqlite3.connect(vdb_path)
+ok("VACUUM INTO swap keeps the data losslessly",
+   sorted(v for (v,) in after.execute("SELECT a FROM t")) == kept)
+after.close()
+ok("no .vacuum temp file left behind", not os.path.exists(vdb_path + ".vacuum"))
+sc_dir = j("scrub-me"); os.makedirs(os.path.join(sc_dir, "deep"))
+with open(os.path.join(sc_dir, "deep", "x.json"), "w") as fh:
+    fh.write("x" * 100)
+sc_file = j("scrub-me.zip")
+with open(sc_file, "w") as fh:
+    fh.write("z" * 100)
+P2._scrub(quiet, sc_dir, sc_file, j("never-existed"), None)
+ok("scrub removes the dirs and files it is given, tolerating missing ones",
+   not os.path.exists(sc_dir) and not os.path.exists(sc_file))
+ok("scrub touches nothing else (neighbours survive)",
+   os.path.exists(j("v2.db")) and os.path.exists(j("applied.db")))
 
 shutil.rmtree(tmp, ignore_errors=True)
 print("\n%d passed, %d failed" % (npass, nfail))

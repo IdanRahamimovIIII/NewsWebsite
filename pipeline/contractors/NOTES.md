@@ -22,7 +22,10 @@ What is NOT here: the worker endpoints that SERVE this dataset — `worker\`.)
 | `upload_contractors.py` + `upload-to-d1-contractors.bat` | send ONLY the ctr_* tables + index to D1 — minutes, not the 1.3 GB (memory: `..\build\d1\ctr\`) |
 | `verify_d1.py` + `verify-d1.bat` | content check of D1 vs the local db (whole strings table + deep random samples) |
 | `clean-up.bat` | really DELETES the rebuildables (~10 GB), lists first; never touches `inputs\`/`out\` |
-| `test_contractors.py` · `test_upload_dump.py` | the page-table definitions (25 asserts) · the dump→reload round-trip incl. FTS5 (9) |
+| `archive.py` | PIPELINE v2: the permanent raw archive client (release assets, grow-only manifest, transient-trouble retries) |
+| `pipeline2.py` | PIPELINE v2 phase 2: the automated monthly chain run by build-and-update.yml (fetch-inputs · build · update-d1 · rotate-baseline · restore-reports · check-credentials). Bare-Python except build() |
+| `check-credentials.bat` | proves `..\d1-config.json` against D1 in seconds — read-only, no local db needed (unlike verify-d1.bat) |
+| `test_contractors.py` · `test_upload_dump.py` · `test_archive.py` · `test_pipeline2.py` | the page-table definitions (25 asserts) · the dump→reload round-trip incl. FTS5 (9) · the archive's rules + retries (15) · phase 2's rules (23) |
 | `inputs\` | the source zips + register exports (gitignored; its README says what each file is — full-records.zip is THE ONLY COPY, never delete) |
 | `out\contracts-public.db` | THE OUTPUT — the D1 upload, ctr_* tables included (gitignored) |
 
@@ -34,6 +37,11 @@ refresh-data.yml, so its PATH must not move). `..\audit\` checks the built
 data; `..\build\` is the rebuildable work area; config `..\d1-config.json`.
 
 ## CURRENT STATE (built 2026-08-25; uploaded 2026-08-26; verified 2026-09-05)
+
+(2026-09-09: phase 2's first run is REPLACING this upload — see STATUS in
+PIPELINE v2 below. Its build measured 987,090 contracts. Once that run is
+green, the numbers here describe last month and this section should be
+rewritten from the run's log.)
 
 - **986,942 contracts**: file-only 43,013 · BudgetKey-only 473,616 · BOTH
   470,313 (91.6% of file contracts matched a bk order; bk side 943,929
@@ -277,18 +285,20 @@ separated until we have everything. no picking what we keep and what
 dont."** The monthly job COLLECTS; it does not combine (the merge step is
 the reserved commented slot in refresh-data.yml — open item 5).
 
-### COLLECTION STATE (inventory 2026-08-24)
+### COLLECTION STATE (archive manifest 2026-09-09)
 
-1,734 report files, 552 MB, 77 publishers, 535,179 parsed rows. Remaining
-holes: ~444 wayback-untried urls + ~170 real failures (most retryable;
-browser last-mile queued). failed.json / unreachable.json / manifest.json
-are committed into `..\collection\` every run — the failure lists are DATA,
-not logs. Repeated budget-limited runs CONVERGE: manifest+cache skip
-everything already held. Known weakness: with a monthly schedule the
-7-day-idle Actions cache eviction means every run re-downloads what the
-cache lost; `..\paid\` staying tracked in git is the safety net (parse_all
-merges into last month's documents, so an unreachable report keeps its
-figures).
+1,766 report files, 590 MB, 76 publishers, 2015–2026, in the permanent raw
+archive (all 16 bundles). Remaining holes: ~444 wayback-untried urls +
+~170 real failures (most retryable; browser last-mile queued).
+failed.json / unreachable.json / manifest.json are committed into
+`..\collection\` every run — the failure lists are DATA, not logs.
+Repeated budget-limited runs CONVERGE: manifest+cache skip everything
+already held. The old cache-eviction weakness is RETIRED (2026-09-09):
+restore-reports refills an evicted Actions cache from the archive before
+fetching, so eviction costs nothing — no re-downloads, no blocked hosts,
+and the never-shrink guard can't trip on a publisher that merely failed to
+re-fetch in time (seen live: 78 → 77 publishers, red run). `..\paid\`
+staying tracked in git remains the parse-side safety net until phase 3.
 
 ### LESSONS THAT ARE NOW CODE (each cost a real bug)
 
@@ -453,75 +463,78 @@ working until its replacement is proven)
   ordinary local copies.
 - Item 5 of the old plan is superseded by phase 2.
 
-### STATUS
-- 2026-09-09 (later): the retried phase-2 run got through fetch + merge +
-  build (987,090 contracts — the month's growth over 986,942 — all ctr_*
-  built, 26 parts / 1,350 MB dumped) and died at the FIRST D1 call: HTTP
-  401, the CF_* repo secrets don't match d1-config.json. Two fixes, both
-  code now: `check-credentials` in pipeline2.py — a read-only SELECT 1
-  proving all three values in seconds — runs as build-and-update.yml's
-  FIRST step, so a bad secret can never again cost the 40-minute build;
-  `check-credentials.bat` proves the LOCAL d1-config.json values (needed
-  because verify-d1.bat requires out\contracts-public.db, which is not on
-  Mercy's disk — v2 builds it on the runner). Also fixed while adding its
-  tests: materialize_reports now fills a missing manifest `size` from the
-  extracted file (an entry without one would make the fetcher re-download
-  the whole restored archive); test_pipeline2.py 19 asserts green.
-  Mercy's loop now: check-credentials.bat locally → paste the three values
-  into the repo secrets → re-run build-and-update (fails in ~1 min if the
-  paste is still wrong). Follow-up the .bat's first local run caught:
-  pipeline2's top-level `import parse_all` pulled in openpyxl, which her
-  machine rightly does not have — parse_all (the ONE third-party import)
-  now loads inside build(), so every other subcommand runs on bare Python
-  (the zero-install rule).
-- 2026-09-09: refresh-data ran GREEN — the archive feeds itself (verified in
-  the committed manifest: 1,766 files, 590 MB, 76 publishers, 2015–2026, all
-  16 bundles; legacy assets + CF_* secrets in place). Phase 2's FIRST run
-  then died on a bare HTTP 500 downloading a bundle (fetch-inputs):
-  GitHub's release API hiccups, and archive.py had NO retry — the fetcher's
-  patience lesson, never applied to the archive client. Skipping the fetch
-  was considered and rejected: D1 holds the OUTPUT; the merge needs the raw
-  inputs, and the delta already avoids re-sending what D1 has. Now code:
-  `_with_retries` in archive.py — 5xx/429/timeouts/dropped connections
-  retried with growing waits (10s→240s, ~8 min patience, loud death after);
-  a clean 404 is an ANSWER, never retried; a download reopens its file per
-  attempt (no truncated bundles); a double-landed upload (422 after a
-  retried POST) is deleted and re-sent clean. Wraps every API call, so the
-  collectors' uploads inherit it. test_archive.py 15 asserts green.
-  Next: re-run build-and-update.yml.
-- 2026-09-08 (later): PHASE 2 BUILT (awaiting its first green run):
-  pipeline2.py — fetch-inputs (archive → build inputs, newest revision per
-  report) · streaming merge (byte-identical to build_dataset.build, spilled
-  to sqlite — bounded memory) · public db with STABLE string ids
-  (build_sqlite public_copy strings_from=baseline; drifted ids refused) ·
-  delta diff/emit/apply with the >5% shrink guard (ALLOW_SHRINK=1
-  overrides) · baseline rotation. Workflow: build-and-update.yml —
-  MANUAL-ONLY until first green; its schedule (3rd monthly) is commented in
-  the file. Mercy must add the three CF_* repo secrets first. The first run
-  has no baseline → FULL upload (which also puts the ctr_* tables live —
-  the manual upload .bats become the recovery path). Tests:
-  test_pipeline2.py, 14 asserts green. Phase 3 (retiring paid\ + manual
-  loop) waits for phase 2's green.
-- 2026-09-08: plan written. PHASE 1 BUILT (bootstrap ran green — the cache
-  was empty, so the first collect run does the real harvest): archive.py
-  (+ test_archive.py, 10 asserts green) · archive steps in refresh-data /
-  portal / budgetkey · bootstrap-archive.yml. Mercy's checklist: install
-  workflows → push → run "bootstrap the raw archive" NOW (the cache evicts!)
-  → hand-upload the legacy inputs\ files onto the release page → after the
-  1st's refresh-data run is green, the archive feeds itself. Phase 2 next.
+### STATUS (2026-09-09)
+
+- **PHASE 1 LIVE AND SELF-FEEDING.** Bootstrap + the first archiving
+  refresh-data run are green; verified in the committed manifest: 1,766
+  report files, 590 MB, 76 publishers, 2015–2026, spread over all 16
+  bundles. The legacy assets are on the release; the CF_* repo secrets are
+  set and PROVEN (check-credentials). Nothing can be lost anymore.
+- **PHASE 2 BUILT; ITS FIRST FULL RUN IS IN FLIGHT** (started 2026-09-09).
+  The build side is already proven on the runner: fetch-inputs → streaming
+  merge → both dbs → dump all ran clean — **987,090 contracts** (the
+  month's growth over 986,942), all ctr_* tables, 26 parts / 1,350 MB.
+  What the in-flight run still has to prove is the upload itself.
+  **WHEN IT GOES GREEN:** uncomment the schedule (3rd monthly) in
+  build-and-update.yml in the same commit that records the green; the run
+  also puts the ctr_* tables + ctr_fts live in D1 (the manual upload .bats
+  become the recovery path), and PHASE 3 (retiring paid\ + the manual
+  loop) unblocks. **IF IT WENT RED:** read the failed step's log — the
+  build is deterministic, so re-running after a fix is always safe.
+- The first run failed four times; each failure is now code + a test
+  (test_archive.py 15 asserts, test_pipeline2.py 23 asserts, all green):
+  1. **A bare HTTP 500 downloading a bundle killed fetch-inputs** —
+     GitHub's release API hiccups and archive.py had no retry (the
+     fetcher's patience lesson, unapplied). Now `_with_retries` in
+     archive.py: 5xx/429/timeouts/drops retried with growing waits
+     (10s→240s, ~8 min patience, loud death after); a clean 404 is an
+     ANSWER, never retried; a download reopens its file per attempt (no
+     truncated bundles); a double-landed upload (422 after a retried POST)
+     is replaced cleanly. Wraps EVERY archive API call, so the collectors
+     inherit it. (Skipping the fetch "since D1 has the data" was
+     considered and rejected: D1 holds the OUTPUT; the merge needs the raw
+     inputs — the delta already avoids re-sending what D1 has.)
+  2. **Wrong CF_* secrets surfaced as a 401 only at upload time, 40
+     minutes in** — now `check-credentials` (read-only SELECT 1 proving
+     account + database + token in seconds) is build-and-update.yml's
+     FIRST step, and `check-credentials.bat` proves the local
+     d1-config.json values (verify-d1.bat can't serve that job: it needs
+     out\contracts-public.db, which v2 builds on the runner, not on
+     Mercy's disk).
+  3. **check-credentials.bat then died locally on ModuleNotFoundError:
+     openpyxl** — pipeline2's top-level import chain pulled in the
+     spreadsheet parser. parse_all (the ONE third-party import) now loads
+     inside build(); every other subcommand runs on bare Python (the
+     zero-install rule). Found while testing: materialize_reports fills a
+     missing manifest `size` from the extracted file — an entry without
+     one would make the fetcher re-download the whole restored archive.
+  4. **The public db's VACUUM died on `database or disk is full`** — the
+     runner's ~14 GB held EVERY stage at once (downloaded inputs + parsed
+     JSONs + section files + full db + public db) just as in-place VACUUM
+     asked for a full temp copy + journal on top (~3x that db). Three
+     fixes, layered: `build --scrub` (passed ONLY by the workflow —
+     a local build keeps its intermediates) deletes each stage's files
+     the moment the chain is past them; `build_sqlite._vacuum_close`
+     compacts via `VACUUM INTO` + swap (~2x peak instead of ~3x, both
+     dbs); and the workflow's new first step drops ~25 GB of preinstalled
+     toolchains (dotnet / android / ghc / CodeQL) the job never uses.
+- **FLAG still open for phase 3:** Mercy has not ruled on keeping only
+  budgetkey-latest/previous — confirm before retiring anything.
 
 ## WHAT COMES NEXT
 
+- **Close out phase 2** (this dataset, `contractors\` + `workflows\`):
+  confirm the in-flight first run went green → uncomment the schedule →
+  phase 3 (retire paid\ + its workflow steps + the manual monthly loop;
+  get Mercy's budgetkey-retention ruling first). The green run is also the
+  live proof of FTS5 on D1 — a real MATCH through the API.
 - **The front-end swap** — a budget_page session (connect
   `site\budget_page\` + `site\shared\`): move `contractors.data.js` from
   BudgetKey SQL to the `/contractors/*` endpoints and move the Playwright
   mocks (test_contractors.mjs, 77 asserts) from SQL to worker routes. Read
   `site\budget_page\NOTES.md` first — the current queries are the exact
   spec. Until then the live page reads BudgetKey and nothing breaks.
-- **Item 5** (shared\CLAUDE.md): wire the merge into refresh-data.yml; the
-  monthly delta needs LAST month's full db or inputs\ zips at update time.
-- D1 + FTS5: standard SQLite and D1 runs it, but the first live upload is
-  the proof — upload-to-d1-contractors.bat refuses to say DONE without a
-  real MATCH answering.
+- (Old "item 5" — wiring the merge into refresh-data.yml — is SUPERSEDED
+  by phase 2: build-and-update.yml is that wiring, done properly.)
 - `contracts_data` stays uncollected (no order_id). Look at its shape
   before writing anything.

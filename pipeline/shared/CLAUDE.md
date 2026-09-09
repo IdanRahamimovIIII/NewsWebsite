@@ -75,10 +75,10 @@ files (scripts, .bats, notes, inputs, outputs), like `photos\`. Connect
 
 | the dataset / problem | connect | what lives there |
 |---|---|---|
-| THE CONTRACTORS DATASET — collection of the raw sources (ministry reports, BudgetKey, the registers), the merge → build → D1 upload/verify, AND the page's precomputed tables + search | `contractors\` (+ `workflows\` when schedules/steps change) | fetch_* · parse_* · inventory.py · build_dataset.py · build_database.py · build_contractors.py · upload_contractors.py · verify_d1.py · six .bats · two tests · `inputs\` · `out\contracts-public.db` · NOTES.md |
+| THE CONTRACTORS DATASET — collection of the raw sources (ministry reports, BudgetKey, the registers), the raw ARCHIVE + automated monthly build (pipeline v2), the merge → build → D1 upload/verify, AND the page's precomputed tables + search | `contractors\` (+ `workflows\` when schedules/steps change) | fetch_* · parse_* · inventory.py · archive.py · pipeline2.py · build_dataset.py · build_database.py · build_contractors.py · upload_contractors.py · verify_d1.py · seven .bats · four tests · `inputs\` · `archive\manifest.json` · `out\contracts-public.db` · NOTES.md |
 | THE MK PORTRAITS dataset | `photos\` | its own .bats, scripts, images, NOTES.md |
 | CHECKING the built dataset (compare.html) | `audit\` | the whole audit kit + FIELDS.xlsx, NOTES.md |
-| the GitHub automations | `workflows\` + `setup\` | the four .yml (THE SOURCE) + installer |
+| the GitHub automations | `workflows\` + `setup\` | the six .yml (THE SOURCE) + installer |
 | the Cloudflare Worker's endpoints (SERVES the datasets) | the `worker\` zone (sibling of pipeline\) | worker.js + its CLAUDE.md |
 | the website's pages | the `site\` zone | per-page folders + site\CLAUDE.md |
 
@@ -130,25 +130,28 @@ and GREEN — then `remove-tools-folder.bat` (one-shot) deletes it.
   probes BudgetKey live (URL ceiling ~248 chars; no DISTINCT over big
   tables; non-DISTINCT + LIMIT is instant).
 
-## WHERE THE PIPELINE STANDS (2026-09-08)
+## WHERE THE PIPELINE STANDS (2026-09-09)
 
-DONE: collection runs monthly on its own (three workflows — `tools\NOTES.md`);
-the three-source merged database is built and uploaded to D1 (986,942
+DONE: collection runs monthly on its own (three collector workflows) and
+every raw file lands in THE PERMANENT RAW ARCHIVE (pipeline v2 phase 1 —
+live and self-feeding: 1,766 report files, 590 MB, 76 publishers); the
+three-source merged database is built and uploaded to D1 (986,942
 contracts); the worker serves it (v8) and the budget page reads it; the
 contractors page's aggregates are precomputed and served (v9). All of it:
 `contractors\NOTES.md`. The page itself still reads BudgetKey until its
 swap session.
 
-OPEN, in order:
-5. Wire the merge into refresh-data.yml (the reserved commented slot),
-   restore the `budgetkey-` cache there, and apply the deferred
-   `git pull --rebase` hardening to its commit step. CI-memory caveat: the
-   in-memory merge of full BudgetKey (~1.5 GB JSON) may not fit a 7 GB
-   runner — measure, or make the merge per-section, before wiring. The
-   monthly delta needs LAST month's full db or inputs\ zips at update time.
+IN FLIGHT (2026-09-09): pipeline v2 PHASE 2 — build-and-update.yml, the
+fully automatic archive→merge→build→D1 chain — is built, tested, and its
+first full run (987,090 contracts) is running. On its green: uncomment its
+schedule (same commit), then phase 3 retires paid\ + the manual monthly
+loop. Old "item 5" is SUPERSEDED by this. Details + the first run's three
+coded lessons: `contractors\NOTES.md`, PIPELINE v2 STATUS.
+
 Also queued: the contractors front-end swap (a budget_page session — see
 `contractors\NOTES.md`, WHAT COMES NEXT); browser last-mile for reports gone
 from the whole internet; merge-time diff of the data.gov.il snapshot vs the
 portal export (parse DD.MM.YYYY dates properly); report the BudgetKey
 paid-column bug to הסדנא לידע ציבורי; worker v10 (bill ids in the vote
-index — `worker\CLAUDE.md`).
+index — `worker\CLAUDE.md`); the deferred `git pull --rebase` hardening of
+refresh-data's commit step.

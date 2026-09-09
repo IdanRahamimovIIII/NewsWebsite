@@ -1,6 +1,6 @@
 # pipeline\workflows\ — the SOURCE of the GitHub automations
 
-These four files ARE the workflows. GitHub only runs workflows it finds at
+These six files ARE the workflows. GitHub only runs workflows it finds at
 `.github\workflows\` in the repository root, so a byte-identical copy lives
 there — but that copy is generated, never edited by hand (the device bridge
 cannot write under `.github\` anyway).
@@ -11,6 +11,8 @@ cannot write under `.github\` anyway).
 | `collect-portal-registers.yml` | 12th 04:43 UTC + manual | mr.gov.il tender/exemption export zips → JSON | no (artifact) |
 | `collect-budgetkey.yml` | 25th 03:37 UTC + manual | BudgetKey `contract_spending` per section → `pipeline/build/raw` | no (artifact) |
 | `collect-publications.yml` | manual only (the data.gov.il register is frozen at 2021-01-31) | Origin B's history from data.gov.il, ~180k records | no (artifact) |
+| `bootstrap-archive.yml` | manual one-shot, re-runnable | harvests whatever the reports cache holds into the raw archive (v2 phase 1) | yes — the archive manifest |
+| `build-and-update.yml` | manual until its first green run (schedule for the 3rd monthly is ready, commented) | v2 phase 2: prove the CF_* credentials FIRST (seconds, read-only) → archive → parse → streaming merge → databases → delta to D1 (or the full first upload) → rotate the baseline | no (release assets) |
 
 **To change a workflow:** edit the file here → double-click
 `pipeline\setup\install-workflows.bat` (copies changed files into
@@ -37,17 +39,20 @@ Until 2026-09-06 these lived as PowerShell here-strings inside three
 `install-*.ps1` scripts; the plain files replaced them so Claude can read the
 automations from the pipeline zone without opening `.github\`.
 
-## PIPELINE v2 phase 1 (2026-09-08) — the raw archive
+## PIPELINE v2 (design + status: `../contractors/NOTES.md`, PIPELINE v2)
 
-All three collectors now feed THE PERMANENT RAW ARCHIVE (the `raw-archive`
-GitHub Release; design in `../contractors/NOTES.md`, PIPELINE v2): refresh-data
-archives every fetched report file forever (content-addressed, revisions kept,
-manifest committed to `contractors/archive/`), portal-registers uploads a dated
-snapshot, budgetkey rotates latest/previous. **`bootstrap-archive.yml`** is the
-manual one-shot that harvests whatever the reports cache still holds — run it
-FIRST, before the cache evicts; re-running is harmless.
+**Phase 1 (2026-09-08, LIVE):** all three collectors feed THE PERMANENT RAW
+ARCHIVE (the `raw-archive` GitHub Release): refresh-data REFILLS an evicted
+reports cache from the archive before fetching (eviction now costs nothing),
+then archives every fetched file forever (content-addressed, revisions kept,
+manifest committed to `contractors/archive/`); portal-registers uploads a
+dated snapshot; budgetkey rotates latest/previous. `bootstrap-archive.yml`
+was the one-shot harvest; re-running it is harmless.
 
-**Phase 2 — `build-and-update.yml`** (manual-only until its first green run;
-schedule ready, commented): archive → parse → streaming merge → databases →
-DELTA to D1 (or the full first upload) → baseline rotation. Needs the three
-`CF_*` repo secrets. Details: `../contractors/NOTES.md`, PIPELINE v2.
+**Phase 2 — `build-and-update.yml`** (first full run in flight 2026-09-09):
+its FIRST step proves the three `CF_*` repo secrets against D1 in seconds
+(read-only — a bad secret must never again cost the 40-minute build; the
+same check runs locally via `contractors\check-credentials.bat`). Then:
+archive → parse → streaming merge → databases → DELTA to D1 (or the full
+first upload) → baseline rotation. On its first green: uncomment its
+schedule in the same commit.

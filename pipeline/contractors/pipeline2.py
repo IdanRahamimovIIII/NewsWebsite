@@ -15,13 +15,16 @@ failed step can be re-run alone):
                               keeps its oldest-first ordering), the
                               BudgetKey snapshot, the newest register
                               conversions (legacy assets as fallback).
-  build --inputs DIR --work DIR
+  build --inputs DIR --work DIR [--scrub]
                               parse the reports → STREAMING merge (bounded
                               memory — the in-RAM merge of full BudgetKey
                               may not fit a CI runner) → full db → public
                               db with STABLE string ids (seeded from the
                               baseline, so a delta stays a delta) → the
-                              ctr_* page tables.
+                              ctr_* page tables. --scrub (workflow-only)
+                              deletes each stage's files once the chain is
+                              past them — the runner's disk cannot hold
+                              every stage at once (learned 2026-09-09).
   update-d1 --db PUBLIC --baseline OLD|-  compute the DELTA (new / changed /
                               gone order_ids + appended strings), apply
                               only that to D1 through the verified REST
@@ -346,9 +349,33 @@ def stream_build(files_dir, bk_path, out_dir, ex_path=None, tn_path=None,
     return total
 
 
-def build(inputs, work, baseline=None, log=print):
+def _scrub(log, *paths):
+    """Free a FINISHED stage's disk now (dirs or files; missing is fine).
+       Only with build --scrub, which only the workflow passes: the runner
+       offers ~14 GB and the first full run died on 'database or disk is
+       full' in the public db's VACUUM (2026-09-09) because every stage's
+       files — inputs, parsed, section JSONs, both dbs — were still there
+       at once. A local build keeps everything for inspection."""
+    freed = 0
+    for p in paths:
+        if not p or not os.path.exists(p):
+            continue
+        if os.path.isdir(p):
+            freed += sum(os.path.getsize(os.path.join(r, f))
+                         for r, _, fs in os.walk(p) for f in fs)
+            shutil.rmtree(p, ignore_errors=True)
+        else:
+            freed += os.path.getsize(p)
+            os.unlink(p)
+    if freed:
+        log("scrubbed %.1f GB of finished-stage files" % (freed / 1e9))
+
+
+def build(inputs, work, baseline=None, scrub=False, log=print):
     """parse → streaming merge → full db → public db (stable strings) →
-       ctr_* tables. `baseline` = the previous public db (string-id seed)."""
+       ctr_* tables. `baseline` = the previous public db (string-id seed).
+       `scrub` deletes each stage's inputs once the chain is past them —
+       the CI runner's disk cannot hold every stage at once (see _scrub)."""
     parsed = os.path.join(work, "parsed")
     os.makedirs(parsed, exist_ok=True)
     legacy = os.path.join(inputs, "full-records.zip")
@@ -386,17 +413,25 @@ def build(inputs, work, baseline=None, log=print):
             failed += 1
             log("  parse failed: %s: %s: %s" % (name, type(e).__name__, e))
     log("parsed %d, failed %d" % (len(files) - failed, failed))
+    if scrub:                     # the reports + the legacy seed are parsed
+        _scrub(log, reports, legacy)
 
     ex = _find_register(os.path.join(inputs, "registers"), "exemptions")
     tn = _find_register(os.path.join(inputs, "registers"), "tenders")
     contracts = os.path.join(work, "contracts")
     stream_build(parsed, os.path.join(inputs, "raw"), contracts, ex, tn, log=log)
+    if scrub:                     # merged — the parse output, the BudgetKey
+        _scrub(log, parsed, os.path.join(inputs, "raw"),   # JSONs and the
+               *glob.glob(os.path.join(inputs, "*.zip")),  # downloaded
+               *glob.glob(os.path.join(inputs, "*.tar.gz")))  # archives go
 
     full_db = os.path.join(work, "contracts-full.db")
     public_db = os.path.join(work, "contracts-public.db")
     log("building the databases…")
     BS.build(contracts, full_db, log=lambda *a: None)
     BS.embed_registers(full_db, ex, tn, log=log)
+    if scrub:                     # in the full db now — free the section
+        _scrub(log, contracts, os.path.join(inputs, "registers"))  # JSONs
     BS.public_copy(full_db, public_db, log=log, strings_from=baseline)
     BC.build(public_db, log=log)
     return public_db
@@ -617,6 +652,10 @@ def main():
     p.add_argument("--work", required=True)
     p.add_argument("--baseline", help="previous public db (string-id seed); "
                                       "omit or '-' on the first run")
+    p.add_argument("--scrub", action="store_true",
+                   help="delete each stage's files once the chain is past "
+                        "them (the CI runner's small disk); a local build "
+                        "should NOT pass this")
     p = sp.add_parser("update-d1")
     p.add_argument("--db", required=True)
     p.add_argument("--baseline", required=True, help="'-' = full upload")
@@ -631,7 +670,7 @@ def main():
         fetch_inputs(a.dest)
     elif a.cmd == "build":
         base = None if (not a.baseline or a.baseline == "-") else a.baseline
-        build(a.inputs, a.work, baseline=base)
+        build(a.inputs, a.work, baseline=base, scrub=a.scrub)
     elif a.cmd == "update-d1":
         update_d1(a.db, a.baseline, a.work)
     elif a.cmd == "rotate-baseline":
