@@ -18,7 +18,7 @@ version sent ONE 1.2 GB file and trusted the poll answer "Not currently
 importing anything." as completion — but that answer is the same for
 "finished" and for "failed and rolled back", and the import HAD failed:
 the tables did not exist. A single giant file is also all-or-nothing.
-So now: the dump is split at ~120 MB boundaries, each part is imported
+So now: the dump is split at ~60 MB boundaries, each part is imported
 and then CHECKED — the API is asked to COUNT the rows and the count must
 match what the dump manifest says that part should have reached. A part
 that verifies is recorded in a state file; re-running skips it. Trust
@@ -42,8 +42,12 @@ DB = _DB_OLD if (os.path.exists(_DB_OLD) and not os.path.exists(_DB_NEW)) else _
 OUT = os.path.join(ROOT, "build", "d1")
 
 MAX_STMT = 60_000        # bytes per INSERT — D1 rejects overlong statements
-PART_MAX = 120_000_000   # bytes per upload part — small enough to see where
-                         # a failure lives, big enough not to drown in parts
+PART_MAX = 60_000_000    # bytes per upload part — was 120 MB until the first
+                         # AUTOMATED full upload (2026-09-09): part-001 died
+                         # in D1's storage layer ("storage operation exceeded
+                         # timeout which caused object to be reset"). Halved:
+                         # ~50 parts instead of 26, each comfortably inside
+                         # D1's timeouts and cheap to retry when D1 wobbles
 FTS_PART_MAX = 30_000_000  # FTS5 inserts cost far more CPU per byte than
                            # plain rows (the index is built as they land) —
                            # smaller parts keep each import under D1's CPU
@@ -264,6 +268,23 @@ def put_file(url, path, log=print):
 BUSY = "long-running import"
 
 
+class PartFailed(Exception):
+    """ONE attempt at importing a part failed on D1's side (the poll
+       answered an error). import_part() decides whether to retry."""
+
+
+# D1-side wobbles a retry can cure, each seen live or reported by
+# Cloudflare as transient. NOT here: SQL errors, auth errors, "statement
+# too long" — retrying those would just fail slowly, three times.
+TRANSIENT = ("exceeded timeout", "object to be reset", "internal error",
+             "network connection lost", "storage caused object")
+
+
+def _transient(msg):
+    m = str(msg).lower()
+    return any(t in m for t in TRANSIENT)
+
+
 def init_when_free(cfg, etag, log=print, max_wait=4 * 3600):
     """Ask for an upload slot; if D1 says another import is still running
        (learned 2026-08-26: a previous run's part, killed mid-poll on our
@@ -271,7 +292,7 @@ def init_when_free(cfg, etag, log=print, max_wait=4 * 3600):
        for it instead of giving up. Returns the init answer's result."""
     waited = 0
     while True:
-        j = api(cfg, "import", {"action": "init", "etag": etag})
+        j = api(cfg, "import", {"action": "init", "etag": etag}, attempts=4)
         res = j.get("result") or {}
         if not j.get("success"):
             sys.exit("init refused: %s" % json.dumps(j)[:800])
@@ -331,7 +352,34 @@ def already_applied(cfg, part, log=print):
     return True
 
 
-def import_part(cfg, outdir, part, meta, log=print):
+def import_part(cfg, outdir, part, meta, log=print, attempts=3):
+    """Import one part, retrying a D1-SIDE failure (2026-09-09, the first
+       automated full upload: part-001 died on 'D1 DB storage operation
+       exceeded timeout which caused object to be reset' — Cloudflare's
+       storage layer, not our SQL — and one wobble killed a 40-minute
+       run). A failed import ROLLS BACK (the v1 lesson), so re-importing
+       the same part is safe, and already_applied() still counts first in
+       case it landed after all. A network drop mid-upload/poll gets the
+       same retry; a NON-transient error (bad SQL, auth) dies at once."""
+    for i in range(attempts):
+        try:
+            return _import_once(cfg, outdir, part, meta, log)
+        except PartFailed as e:
+            if not _transient(e) or i + 1 >= attempts:
+                sys.exit(str(e))
+            log("    D1 failed the import transiently — waiting 90s, then "
+                "retrying the part (attempt %d of %d):\n    %s"
+                % (i + 2, attempts, e))
+        except (TimeoutError, urllib.error.URLError) as e:
+            if i + 1 >= attempts:
+                sys.exit("network trouble importing %s, three times over: %s"
+                         % (part["file"], e))
+            log("    network trouble (%s) — waiting 90s, then retrying the "
+                "part (attempt %d of %d)" % (e, i + 2, attempts))
+        time.sleep(90)
+
+
+def _import_once(cfg, outdir, part, meta, log=print):
     path = os.path.join(outdir, part["file"])
     etag = part["md5"]
     res = init_when_free(cfg, etag, log)
@@ -360,7 +408,7 @@ def import_part(cfg, outdir, part, meta, log=print):
     if remote and remote != etag:
         sys.exit("upload checksum mismatch — run again.")
     j = api(cfg, "import", {"action": "ingest", "etag": etag,
-                            "filename": res["filename"]})
+                            "filename": res["filename"]}, attempts=4)
     bookmark = (j.get("result") or {}).get("at_bookmark")
     last = None
     while True:
@@ -387,9 +435,10 @@ def import_part(cfg, outdir, part, meta, log=print):
         if err and BUSY in str(err):
             continue                     # still running — keep polling
         if err or status == "error":
-            sys.exit("D1 reported an import error on %s:\n%s\n(the full "
-                     "answer is in build\\d1\\last-poll.json)"
-                     % (part["file"], err or json.dumps(res)[:600]))
+            raise PartFailed(
+                "D1 reported an import error on %s:\n%s\n(the full answer "
+                "is in %s)" % (part["file"], err or json.dumps(res)[:600],
+                               os.path.join(outdir, "last-poll.json")))
         if status == "complete":
             return                       # says complete — VERIFY anyway
 

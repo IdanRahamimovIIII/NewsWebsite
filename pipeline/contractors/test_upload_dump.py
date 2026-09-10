@@ -4,7 +4,8 @@ test_upload_dump.py — the dump → reload round-trip, now that the public db
 carries an FTS5 table. Proves (a) the FULL dump ships the virtual table and
 skips its shadow tables, (b) the targeted only='ctr_' dump ships nothing
 but the contractors tables, and (c) a reloaded copy answers MATCH — i.e.
-the SQL we send D1 rebuilds a WORKING search index, not just row counts.
+the SQL we send D1 rebuilds a WORKING search index, not just row counts,
+and (d) the transient-failure triage retries D1-side wobbles only.
 
 Run:  python3 contractors/test_upload_dump.py   (from pipeline\)
 """
@@ -98,6 +99,14 @@ ok("reload: search + profile there",
 sizes = sum(os.path.getsize(os.path.join(ctr_out, p["file"])) for p in meta2["parts"])
 ok("targeted dump is small (no contract rows)", sizes < 100_000, sizes)
 db3.close()
+
+print("transient-failure triage (the 2026-09-09 storage-timeout lesson):")
+ok("D1's storage-timeout death is RETRIED",
+   U._transient("D1 DB storage operation exceeded timeout which caused "
+                "object to be reset."))
+ok("our own bad SQL / auth is NOT retried",
+   not U._transient("near \"FROM\": syntax error at offset 12") and
+   not U._transient("Authentication error [code: 10000]"))
 
 import shutil; shutil.rmtree(tmp, ignore_errors=True)
 print("\n%d passed, %d failed" % (npass, nfail))

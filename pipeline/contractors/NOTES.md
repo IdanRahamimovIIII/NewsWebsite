@@ -25,7 +25,7 @@ What is NOT here: the worker endpoints that SERVE this dataset — `worker\`.)
 | `archive.py` | PIPELINE v2: the permanent raw archive client (release assets, grow-only manifest, transient-trouble retries) |
 | `pipeline2.py` | PIPELINE v2 phase 2: the automated monthly chain run by build-and-update.yml (fetch-inputs · build · update-d1 · rotate-baseline · restore-reports · check-credentials). Bare-Python except build() |
 | `check-credentials.bat` | proves `..\d1-config.json` against D1 in seconds — read-only, no local db needed (unlike verify-d1.bat) |
-| `test_contractors.py` · `test_upload_dump.py` · `test_archive.py` · `test_pipeline2.py` | the page-table definitions (25 asserts) · the dump→reload round-trip incl. FTS5 (9) · the archive's rules + retries (15) · phase 2's rules (23) |
+| `test_contractors.py` · `test_upload_dump.py` · `test_archive.py` · `test_pipeline2.py` | the page-table definitions (25 asserts) · the dump→reload round-trip incl. FTS5 (11) · the archive's rules + retries (15) · phase 2's rules (23) |
 | `inputs\` | the source zips + register exports (gitignored; its README says what each file is — full-records.zip is THE ONLY COPY, never delete) |
 | `out\contracts-public.db` | THE OUTPUT — the D1 upload, ctr_* tables included (gitignored) |
 
@@ -77,7 +77,7 @@ relevant"), and set "the audit is just for myself". So ONE build makes two:
   D1 facts (2026-08-25): free = 500 MB/db, 5M row reads/day; paid $5/mo =
   10 GB/db, 25B reads/mo, 50M writes/mo.
 
-## THE D1 UPLOADER — the lessons, all now code (2026-08-26, three live failures)
+## THE D1 UPLOADER — the lessons, all now code (2026-08-26 + 2026-09-09)
 
 REST import flow (init md5-etag → PUT → ingest → poll), stdlib only — her
 machine has no Node. RULE THAT GOVERNS IT: **never trust an import's status
@@ -85,7 +85,7 @@ words; trust row counts.**
 
 - v1 sent one 1.2 GB file; the poll's "Not currently importing anything."
   is IDENTICAL for "finished" and "failed and rolled back" — it HAD failed
-  (0 tables). Now: ~120 MB parts split at statement boundaries, each part
+  (0 tables). Now: ~60 MB parts split at statement boundaries, each part
   COUNT-verified against the dump manifest before moving on; verified parts
   recorded in `build\d1\state.json`, skipped on re-run; every poll answer
   saved to `build\d1\last-poll.json`.
@@ -104,6 +104,15 @@ words; trust row counts.**
   the virtual one would collide); FTS parts capped at 30 MB (index-building
   costs far more CPU per byte — the index lesson again). `dump(only="ctr_")`
   is the targeted dump `upload_contractors.py` uses.
+- **v5 (2026-09-09, the first automated full upload):** part-001 at 120 MB
+  died in D1's STORAGE layer — "D1 DB storage operation exceeded timeout
+  which caused object to be reset" — Cloudflare's side, not our SQL, and
+  one wobble killed a 40-minute CI run. Now: parts halved to ~60 MB, and
+  `import_part` retries a TRANSIENT-looking failure (the `_transient`
+  list: storage timeouts, internal errors, network drops mid-upload/poll)
+  up to 3 attempts, 90s apart — a failed import rolls back (v1), so a
+  re-import is safe, and `already_applied` still counts first. Bad SQL /
+  auth errors die at once as before.
 - Re-running upload-to-d1.bat is safe (verified parts skip); a CHANGED
   contracts-public.db (any byte) triggers a fresh dump + FULL re-upload —
   for just the ctr_* tables use upload-to-d1-contractors.bat instead. Its
@@ -481,8 +490,9 @@ working until its replacement is proven)
   become the recovery path), and PHASE 3 (retiring paid\ + the manual
   loop) unblocks. **IF IT WENT RED:** read the failed step's log — the
   build is deterministic, so re-running after a fix is always safe.
-- The first run failed four times; each failure is now code + a test
-  (test_archive.py 15 asserts, test_pipeline2.py 23 asserts, all green):
+- The first run failed five times; each failure is now code + a test
+  (test_archive.py 15, test_pipeline2.py 23, test_upload_dump.py 11
+  asserts, all green):
   1. **A bare HTTP 500 downloading a bundle killed fetch-inputs** —
      GitHub's release API hiccups and archive.py had no retry (the
      fetcher's patience lesson, unapplied). Now `_with_retries` in
@@ -518,6 +528,10 @@ working until its replacement is proven)
      compacts via `VACUUM INTO` + swap (~2x peak instead of ~3x, both
      dbs); and the workflow's new first step drops ~25 GB of preinstalled
      toolchains (dotnet / android / ghc / CodeQL) the job never uses.
+  5. **The full upload's part-001 (120 MB) died in D1's storage layer**
+     ("storage operation exceeded timeout which caused object to be
+     reset") — the uploader's v5 lesson: ~60 MB parts + transient-failure
+     retries in `import_part`. Details in THE D1 UPLOADER above.
 - **FLAG still open for phase 3:** Mercy has not ruled on keeping only
   budgetkey-latest/previous — confirm before retiring anything.
 
