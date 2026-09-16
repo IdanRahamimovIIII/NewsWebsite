@@ -1,101 +1,46 @@
-# NOTES.md — the audit kit (pipeline\audit\)
+# NOTES — audit kit (pipeline\audit\)
 
-Everything settled about CHECKING the built dataset. Same keep-it-current
-rule as CLAUDE.md: when a chat proves a line here wrong, fix it in that chat.
-
-## THIS FOLDER IS THE WHOLE AUDIT (Mercy, 2026-09-06)
-
-To work on the audit, a chat needs THIS folder and nothing else. What is
-here and what each file is for:
+This folder is the whole audit.
 
 | file | role |
 |---|---|
-| `audit.bat` | Mercy's double-click: starts `audit_server.py` on :8081 and opens compare.html |
-| `audit_server.py` | stdlib http.server + sqlite3. Serves this folder at `/`, mounts the website at `/site/`, answers read-only `/audit/*` from the FULL database |
-| `compare.html` | THE TOOL: one contract, every source side by side, field by field (BUILD stamp in the footer) |
-| `cmp_audit.mjs` | test, audit mode: builds a tiny full db with the real `build_sqlite.py`, runs the real server, asserts the green column, the register columns, the file-only card. **All green 2026-09-06.** |
-| `cmp.mjs` | test, fallback mode (no audit server): the client-side merge, the random buttons, the three-row trap, the dead-source render |
-| `fixtures-paid.json` | the paid documents the tests use (real records, lean + full shape) |
+| `audit.bat` | starts `audit_server.py` on :8081, opens compare.html |
+| `audit_server.py` | stdlib http.server + sqlite3: serves this folder at `/`, the site at `/site/`, read-only `/audit/*` from the FULL db, `/paid/*` |
+| `compare.html` | one contract, every source side by side (BUILD stamp in footer — bump on every change) |
+| `cmp_audit.mjs` | test with the real server + a tiny full db from real `build_sqlite.py` |
+| `cmp.mjs` | test without server: client-side merge, random buttons, three-row trap, dead source |
+| `fixtures-paid.json` | real records: מילגם 4502539235 + trap order 4501119831, lean + full |
+| `FIELDS.xlsx` | the schema (v2) |
 
-Outside this folder the audit touches, read-only: `..\build\contracts-full.db`
-(the database it audits), `..\shared\build_sqlite.py` (cmp_audit builds its
-fixture db with it), and the site zone `..\..\site\shared\` (style, common.js, config.js).
+Reads (read-only): `..\build\contracts-full.db` (only it has provenance +
+register rows; clean-up.bat deletes it, audit.bat says "run the build"),
+`..\shared\build_sqlite.py`, `site\shared\` (style, common.js, config.js).
 Tests: `node audit\cmp_audit.mjs` / `node audit\cmp.mjs` from `pipeline\`
-(playwright + python3; Claude runs them in its container, Mercy has no node).
+(playwright + python3, Claude's cloud).
 
-## WHICH DATABASE, AND WHY (2026-09-06)
+## compare.html rules
+- Probes `/audit/status` (same origin, then :8081). `AUDIT === ""` = same
+  origin → checks must be `!== null`. With server: green column = record AS
+  STORED, search hits the built db first (file-only contracts findable),
+  random draws from our dataset. Without: client-side merge, registers off.
+- Never await more than one source before drawing: card from the row in
+  hand, each source fills its line (`בודק…`), every lookup has a timeout that
+  prints IN the row, raw report list is lazy.
+- Unindexed `ILIKE` on BudgetKey: fine with LIMIT, fatal with ORDER BY or
+  count() (1,036,112 rows → timeout reads as "nothing found"). Say "the first found".
+- BudgetKey caches by query TEXT: `TABLESAMPLE SYSTEM (1) REPEATABLE (<fresh seed>)`.
+- `tender_key` routes to TWO registers; only 23.9% carry one → an empty
+  register column is usually true. jsonb → `jsonb_array_length`.
+- Seven cell words: `ריק` · `אין שדה כזה` · `לא נמצא` · `0 ₪` · `אין קישור` ·
+  `לא נמצא במרשם` · `אין קובץ לסעיף NNNN`. Show the source UNINTERPRETED
+  (no "לא דווח" here, or it can't check the budget page).
+- Warn when one order returns several BudgetKey rows (never sum) and when the
+  ministry file has the order under a different תקנה.
+- http.server decodes the request line latin-1 → `arg()` round-trips to utf-8.
 
-`build-database.bat` produces ONE output, `out\contracts-public.db` — the
-D1 upload — and along the way writes `build\contracts-full.db`, the full
-database the public copy is derived from. **The audit reads the FULL one**:
-only it carries provenance per field (which source won) and the embedded
-mr.gov.il register rows; the public copy has neither, on purpose (D1 must
-not carry the audit). The full db is a build intermediate: `clean-up.bat`
-deletes it, the next build recreates it, and `audit.bat` says "run the
-build" when it is gone. (Until 2026-09-06 it was `out\contracts.db`, an
-output in its own right; Mercy deleted both databases that day and asked
-for one output — the audit lost nothing, only its file moved.)
-
-## HOW compare.html WORKS — the rules it taught (2026-08-22 → 25)
-
-- Probes `/audit/status` (same origin, then :8081). `AUDIT === ""` means
-  same-origin — every check must be `!== null`, because `""` is falsy.
-  With the server: the green column is the record AS STORED (values +
-  provenance labels straight from the db), search goes through the built
-  db first — file-only contracts are findable — and the random button
-  draws from OUR dataset. Without it: byte-for-byte the old client-side
-  merge, registers off, a hint explains.
-- **Never await more than one source before drawing something.** The card
-  is drawn from the row in hand; each source fills its own line as it
-  answers (`בודק…` until then); every lookup has a timeout that prints its
-  failure IN the row; the raw report list is lazy. A page that knows enough
-  to say "8 found" knows enough to show 8 cards (verified: dead source,
-  card in ~200 ms — `cmp.mjs` holds that case open).
-- **An unindexed `ILIKE` on BudgetKey is fine with `LIMIT` and fatal with
-  `ORDER BY` or `count()`** — both force the whole 1,036,112-row table and
-  a timeout surfaces as "nothing found". Say "the first found", never imply
-  a ranking that was not computed.
-- **BudgetKey caches by query TEXT.** `TABLESAMPLE SYSTEM (1)` needs
-  `REPEATABLE (<fresh seed>)` or every click returns the same row; the
-  test echoes the seed as the order id and fails if four clicks repeat.
-- `tender_key` routes to TWO registers (`["569574","exemptions","none"]`);
-  only 23.9% of contracts carry one, so an empty register column is
-  usually the true answer. jsonb → `jsonb_array_length`.
-- The cell vocabulary is seven-way and explained on the page: `ריק` ·
-  `אין שדה כזה` · `לא נמצא` · `0 ₪` · `אין קישור` · `לא נמצא במרשם` ·
-  `אין קובץ לסעיף NNNN`. Collapsing "we have not got it" into "not found"
-  makes a half-built dataset look broken. **This page shows what the
-  source says, uninterpreted** — the budget page turns an all-zero series
-  into "לא דווח"; this one must not, or it could never check the budget page.
-- Status line warns when one order returns several BudgetKey rows (never
-  sum them — 3× trap), and when the ministry file has the order under a
-  different תקנה it says so instead of matching silently.
-- http.server decodes the request line latin-1 — Hebrew query args need
-  the latin-1→utf-8 round-trip (`arg()` in audit_server.py).
-- The BUILD stamp exists because Mercy was once looking at a cached copy
-  while a new one was being described. Bump it on every change.
-
-## THE PAID DOCUMENTS — WHERE THE AUDIT READS THEM (2026-09-06; overlay deleted 2026-09-08)
-
-The site keeps no data, and since the paid OVERLAY was deleted (2026-09-08 —
-the budget page reads the D1 contracts database now) the relay serves no
-paid documents either: LOCAL files are the audit's only source, which is
-fine because the audit is local by design.
-
-- **compare.html — "הקובץ שהמשרד פרסם"** shows EVERY column of the ministry's
-  row, so it needs the `.full.json` (never published: ~240 MB). audit_server
-  serves it at `/paid/<section>.full.json` from `..\build\full\` — which
-  `build-database.bat` fills by extracting `inputs\full-records.zip`. Lean
-  docs (`/paid/<section>.json`, `/paid/index.json`) come from `..\paid\`.
-  The relay fallback that used to sit behind them went with the overlay.
-  Cell text when the full file is absent: `אין קובץ לסעיף NNNN` (+ a note
-  naming build\full and the build). paidcheck.html and check_paid.mjs —
-  the overlay's own checkers — were deleted with it.
-- The tests are hermetic: `fixtures-paid.json` holds the real מילגם record
-  (4502539235, verified live 2026-08-22) and the three-row-trap order
-  4501119831, in lean and full shape. `cmp.mjs` serves them at `/paid/`
-  from the fixture ONLY (never this machine's real files — so "section 0024
-  is not downloaded" means the same everywhere); `cmp_audit.mjs` hands them
-  to the real server via `--paid`/`--full`. Both green 2026-09-06 (cmp.mjs:
-  every file-column assert true; the count of empty cells in that column
-  is 13).
+## Paid documents
+Local only (the relay has no paid overlay). The
+"הקובץ שהמשרד פרסם" row needs `/paid/<sec>.full.json` from `..\build\full\`
+(filled by build-database.bat from `inputs\full-records.zip`); lean docs
+from `..\paid\`. Tests serve only the fixture (cmp.mjs) or pass it via
+`--paid`/`--full` (cmp_audit.mjs).

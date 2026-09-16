@@ -5,7 +5,8 @@ carries an FTS5 table. Proves (a) the FULL dump ships the virtual table and
 skips its shadow tables, (b) the targeted only='ctr_' dump ships nothing
 but the contractors tables, and (c) a reloaded copy answers MATCH — i.e.
 the SQL we send D1 rebuilds a WORKING search index, not just row counts,
-and (d) the transient-failure triage retries D1-side wobbles only.
+(d) the transient-failure triage retries D1-side wobbles only, and (e)
+import_verified re-imports a part whose counts say it rolled back.
 
 Run:  python3 contractors/test_upload_dump.py   (from pipeline\)
 """
@@ -107,6 +108,30 @@ ok("D1's storage-timeout death is RETRIED",
 ok("our own bad SQL / auth is NOT retried",
    not U._transient("near \"FROM\": syntax error at offset 12") and
    not U._transient("Authentication error [code: 10000]"))
+
+print("a rolled-back import is re-imported (the 2026-09-10 lesson):")
+# D1 reset mid-import, the poll answered "Not currently importing" (looks
+# done), and the verify saw last month's live tables. import_verified must
+# re-import instead of dying — the failed import rolled back, so it's safe.
+_ip, _vf, _sl = U.import_part, U.verify, U.time.sleep
+calls = {"import": 0, "verify": 0}
+U.time.sleep = lambda s: None
+U.import_part = lambda *a, **k: calls.__setitem__("import", calls["import"] + 1)
+U.verify = lambda *a, **k: (calls.__setitem__("verify", calls["verify"] + 1)
+                            or calls["verify"] >= 2)   # rolls back once
+fakepart = {"file": "part-001.sql", "md5": "x", "counts": {}}
+U.import_verified({}, tmp, fakepart, {}, log=quiet)
+ok("one rollback → a second import, then verified done",
+   calls == {"import": 2, "verify": 2}, calls)
+U.verify = lambda *a, **k: False                       # never applies
+calls["import"] = 0
+try:
+    U.import_verified({}, tmp, fakepart, {}, log=quiet, attempts=3)
+    ok("persistent rollback dies loudly after 3 imports", False)
+except SystemExit as e:
+    ok("persistent rollback dies loudly after 3 imports",
+       calls["import"] == 3 and "rolling this part back" in str(e), str(e))
+U.import_part, U.verify, U.time.sleep = _ip, _vf, _sl
 
 import shutil; shutil.rmtree(tmp, ignore_errors=True)
 print("\n%d passed, %d failed" % (npass, nfail))
