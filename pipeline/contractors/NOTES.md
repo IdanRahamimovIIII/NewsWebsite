@@ -26,11 +26,20 @@ precomputed tables. Serving = `worker\`.
 | `inputs\` | source zips + register exports (gitignored; README inside; legacy copies on the release). `publications-register.zip` + the 07082026 portal exports can't be downloaded again |
 | `out\contracts-public.db` | THE OUTPUT (gitignored) |
 
-## State — last verified upload; rewrite from phase 2's green log
-- 986,942 contracts: file-only 43,013 · BudgetKey-only 473,616 · both 470,313.
-  Phase-2 build (2026-09-09): 987,090.
-- D1: strings 6,219 · allocations 1,058,220 · reports 2,924,853 · contracts
-  986,942 · 10 indexes · contracts_v (ctr_* land with phase 2).
+## State — phase 2 GREEN (2026-09-16): first automated full upload verified
+- build-and-update.yml ran end to end: full upload (no baseline yet), every
+  part count-verified, baseline rotated → db-current.sqlite.gz on the Release.
+  From here every run is a DELTA. Schedule enabled (3rd monthly) same commit.
+- Cause of the failed attempts before it: 60 MB parts (D1 storage resets
+  ~49 MB in); the 30 MB fix sat UNCOMMITTED while CI ran the old code —
+  after a fix, git status before re-running.
+- 2026-09 build: contracts 987,090 · strings 6,202 · allocations 1,058,371 ·
+  reports 2,924,853 · ctr_years 12 · ctr_top 600 · ctr_ex 297 · ctr_sup
+  69,424 · ctr_fts 986,025. (Counts from the 2026-09-10 build's dump; CONFIRM
+  against the green run's own dump block, then delete this parenthetical.)
+- Previous manual upload, for delta context: contracts 986,942 (file-only
+  43,013 · BudgetKey-only 473,616 · both 470,313) · strings 6,219 ·
+  allocations 1,058,220 · reports 2,924,853.
 - contracts-full 2,332 MB · public 1,345 MB → D1 paid (10 GB/db; free 500 MB,
   5M reads/day). Levers: move `reports` out, normalize more.
 - Only 7% of contracts carry a publication number; 62% of those join a register.
@@ -188,7 +197,7 @@ manual step · a fixed source updates dataset + history, old revision kept.
   `legacy-*.zip`. FLAG: Mercy hasn't ruled on keeping only 2 budgetkey
   copies — ask before phase 3 retires anything.
 - Phase 1 LIVE: collectors feed the archive; CF_* secrets proven.
-- Phase 2 `build-and-update.yml`, first full run in flight. Job BUILD
+- Phase 2 `build-and-update.yml` GREEN 2026-09-16, scheduled. Job BUILD
   (check-credentials FIRST → fetch-inputs → parse → streaming merge → dbs →
   public db as 7-day artifact) → job UPLOAD (delta by fingerprints, or full →
   rotate baseline LAST). Upload failure → "Re-run failed jobs" (same db →
@@ -204,6 +213,9 @@ manual step · a fixed source updates dataset + history, old revision kept.
   guard moves to the archive manifest.
 
 ## Open
-- Phase 2 green → uncomment schedule (3rd monthly) same commit → rewrite
-  State → phase 3 (ask Mercy about the 2 budgetkey copies first).
+- Phase 2 GREEN + schedule enabled + State rewritten (2026-09-16). Next:
+  phase 3 — retire paid\ + its steps + the manual monthly loop; the
+  never-shrink guard moves to the archive manifest. BEFORE retiring
+  anything: Mercy still hasn't ruled on keeping only 2 budgetkey copies.
+- Confirm the State counts against the green run's dump block (note above).
 - Front-end swap is a site chat (`site\budget_page\` + `site\shared\`).

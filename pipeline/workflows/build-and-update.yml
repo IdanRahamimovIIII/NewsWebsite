@@ -22,18 +22,18 @@
 #   CF_ACCOUNT_ID / CF_DATABASE_ID / CF_API_TOKEN - the same three values
 #   as pipeline\d1-config.json. Without them the update step fails loudly.
 #
-# MANUAL-ONLY until its first green run (the standing rule); the schedule
-# below is ready - uncomment it in the same commit that records the green
-# run, so it fires on the 3rd (after the 1st's collect run).
+# SCHEDULED since the first green run (2026-09-16: full upload, every part
+# count-verified, baseline rotated). The standing rule - manual-only until
+# green - is satisfied; workflow_dispatch stays for re-runs and tests.
 name: build and update the dataset
 
 on:
-  workflow_dispatch:
-  # schedule:
-  #   - cron: "23 2 3 * *"    # the 3rd monthly, 02:23 UTC - after the 1st's
-  #                           # collect run; registers (12th) and budgetkey
-  #                           # (25th) feed the NEXT month's build
-  #                           # (schedule = both jobs, build then upload)
+  workflow_dispatch:          # on demand, from the Actions tab
+  schedule:
+    - cron: "23 2 3 * *"      # the 3rd monthly, 02:23 UTC - after the 1st's
+                              # collect run; registers (12th) and budgetkey
+                              # (25th) feed the NEXT month's build
+                              # (schedule = both jobs, build then upload)
 
 permissions:
   contents: write             # release assets (inputs + baseline rotation)
