@@ -1,0 +1,52 @@
+# Refreshes the unemployment snapshot (BTL bulletin chapter 15) once a month:
+# fetches the 5 Excel tables, parses them (parse_btl.py - every trap in
+# pipeline/btl/NOTES.md), publishes KV pub:btl-unemployment (served as
+# /data/btl-unemployment by the relay).
+#
+# The parser carries hand-verified anchor values and sanity gates; a BTL
+# layout change or a bad download fails the run loudly - nothing partial or
+# garbled is ever published. Commits NOTHING to git. Credentials: repo
+# secrets CF_API_TOKEN + CF_ACCOUNT_ID (same as update-avgwage).
+name: update btl unemployment
+
+on:
+  schedule:
+    - cron: "53 4 3 * *"      # the 3rd monthly; BTL updates ~monthly with ~2m lag
+  workflow_dispatch:          # and on demand (the first run is manual - Mercy)
+
+permissions:
+  contents: read              # commits nothing
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: install the .xls reader
+        run: pip install xlrd
+
+      - name: fetch the 5 raw Excel tables
+        run: python3 pipeline/btl/fetch_btl.py
+
+      - name: parse + publish
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: python3 pipeline/btl/parse_btl.py --publish
+
+      - name: keep the raw files + parsed json as an artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: btl-unemployment-raw
+          path: |
+            pipeline/btl/raw/latest/O15*.XLS
+            pipeline/btl/raw/latest/O15*.xls
+            pipeline/btl/raw/latest/btl-unemployment.json
+          retention-days: 90
+          if-no-files-found: warn
