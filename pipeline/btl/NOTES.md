@@ -56,13 +56,18 @@ Rolling files: same URL, history + newest month appended. ~2-month lag
   2020-22 by legislation), and הסכום הבסיסי (replaced it for benefits since 2006).
   Which one 15.2's bands use — confirm in the bulletin's מבוא before the page defines it.
 
+## Interfaces (other side: worker serves any pub:<name> as /data/<name>)
+- `pub:avgwage` → `/data/avgwage` (live, workflow update-avgwage.yml, monthly).
+- `pub:btl-unemployment` → `/data/btl-unemployment` (workflow update-btl.yml,
+  monthly; parse_btl.py, needs xlrd — CI installs it; parse-btl.bat local fallback).
+  One combined snapshot, each table its own shape under tables.{payments,
+  by_wage, daily_avg, by_group, grants}; by_wage carries suspect_years+note.
+
 ## Open
-- Green run of fetch-btl.bat (Mercy) → then add btl\ row to pipeline\shared\CLAUDE.md map.
+- Green run of update-btl workflow → then add btl\ row to pipeline\shared\CLAUDE.md map.
 - (Mercy) The site ignores inflation entirely — current prices only, and no
   inflation caption/mention anywhere. Parser still keeps the constant-price
   columns in the snapshot, so this stays a display-only decision.
-- Parse step (xlrd) + publish decision: raw stays 5 files; published snapshot shape TBD (Mercy).
-- Snapshot format needs a per-datapoint flag mechanism (first use: 15.2 1991–93 suspected-wrong).
 - 15.5: the grant goes to the SOLDIER, not employers — no company list exists.
   Indirect beneficiaries = the sectors listed in law (link the list on the page).
   Check BTL annual review for a per-branch breakdown of grant recipients (Mercy wants).

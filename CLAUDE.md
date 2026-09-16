@@ -48,6 +48,7 @@ The roadmap lives in each notes file's "Open" section.
   re-examine the model. Answer "what is the correct way?" first.
 - Product mind: present options, she decides. Plain explanations.
 - Windows, runs .bat files, edits in Notepad, NO node on PATH → zero-install.
+- Git via GitHub Desktop (no git CLI) — describe commit/push steps in its terms.
 - She pastes logs/screenshots, and does DevTools captures
   (F12 → Network → Copy as cURL) for bot-protected sites.
 
