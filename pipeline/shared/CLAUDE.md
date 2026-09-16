@@ -9,8 +9,10 @@ Connect this folder + the ONE dataset folder the problem lives in.
   (strips BOM) → commit both → push → green run = done. Push nothing while
   refresh-data.yml runs (its push fails if main moves); collectors commit
   nothing, run anytime.
-- Collect raw, keep sources separate, keep raw forever; the merge is a
-  separate re-runnable step. BudgetKey never stands in for a ministry file at
+- Collect raw, keep sources separate; the merge is a separate re-runnable
+  step. Raw is archived forever ONLY for the contracts dataset, whose
+  ministry reports vanish from the internet (Mercy) — elsewhere the latest
+  copy is enough. BudgetKey never stands in for a ministry file at
   collection — only at merge, labelled, for reports gone from the internet.
 - FIELDS.xlsx v2 (`audit\`) is the schema constitution; no script reads it.
 

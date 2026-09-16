@@ -1,0 +1,45 @@
+# Refreshes the legal average wage snapshot (שכר ממוצע לפי חוק) once a month:
+# scrapes BTL's נתונים כלליים page, parses the s1/s2 x benefits/contributions
+# table, publishes KV pub:avgwage (served as /data/avgwage by the relay).
+#
+# Tiny data, strict parse: fetch_avgwage.py refuses to publish if the page
+# layout changed (sanity gates), so a BTL redesign fails loudly here instead
+# of silently poisoning the site. Commits NOTHING to git; the raw page lands
+# as a small artifact. Credentials: repo secrets CF_API_TOKEN + CF_ACCOUNT_ID
+# (cf_kv.py reads them from the environment).
+name: update avgwage
+
+on:
+  schedule:
+    - cron: "41 4 2 * *"      # the 2nd monthly, after BTL's Jan-1-style updates settle
+  workflow_dispatch:          # and on demand
+
+permissions:
+  contents: read              # commits nothing
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: fetch, parse, publish
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: python3 pipeline/btl/fetch_avgwage.py --publish
+
+      - name: keep the raw page + parsed json as an artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: avgwage-raw
+          path: |
+            pipeline/btl/raw/latest/avgwage.html
+            pipeline/btl/raw/latest/avgwage.json
+          retention-days: 90
+          if-no-files-found: warn
