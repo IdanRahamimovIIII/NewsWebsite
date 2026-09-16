@@ -11,6 +11,13 @@
 # (which also puts the ctr_* tables + search index live, replacing the
 # manual upload-to-d1 .bats for good).
 #
+# TWO JOBS since 2026-09-10 (Mercy: "can we split the build and upload?"):
+# the ~40-minute BUILD hands work/contracts-public.db to the UPLOAD job as
+# a workflow artifact (kept 7 days). D1 wobbled three runs in a row on the
+# upload side - with the split, Actions -> the failed run -> "Re-run
+# failed jobs" repeats ONLY the upload, reusing the already-built db.
+# Never re-run ALL jobs for an upload failure: that rebuilds for nothing.
+#
 # SECRETS this needs (repo Settings -> Secrets and variables -> Actions):
 #   CF_ACCOUNT_ID / CF_DATABASE_ID / CF_API_TOKEN - the same three values
 #   as pipeline\d1-config.json. Without them the update step fails loudly.
@@ -26,6 +33,7 @@ on:
   #   - cron: "23 2 3 * *"    # the 3rd monthly, 02:23 UTC - after the 1st's
   #                           # collect run; registers (12th) and budgetkey
   #                           # (25th) feed the NEXT month's build
+  #                           # (schedule = both jobs, build then upload)
 
 permissions:
   contents: write             # release assets (inputs + baseline rotation)
@@ -33,7 +41,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    timeout-minutes: 200
     steps:
       - uses: actions/checkout@v6
 
@@ -80,6 +88,45 @@ jobs:
           python3 pipeline/contractors/pipeline2.py build \
             --inputs inputs --work work --scrub \
             --baseline "${{ steps.base.outputs.path }}"
+
+      - name: hand the public db to the upload job
+        uses: actions/upload-artifact@v4
+        with:
+          name: contracts-public-db
+          path: work/contracts-public.db
+          if-no-files-found: error
+          retention-days: 7
+
+  upload:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v6
+
+      # bare Python on purpose - update-d1 and rotate-baseline never touch
+      # openpyxl (the zero-install rule): nothing to pip install here
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: take the built public db from the build job
+        uses: actions/download-artifact@v4
+        with:
+          name: contracts-public-db
+          path: work
+
+      # the SAME baseline the build seeded its string ids from - the
+      # Release only rotates at the END of this job, so a re-run of this
+      # job alone still fetches the identical file
+      - name: fetch the baseline (what D1 holds now)
+        id: base
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          B=$(python3 pipeline/contractors/pipeline2.py get-baseline --dest . | tail -1)
+          echo "path=$B" >> "$GITHUB_OUTPUT"
+          echo "baseline: $B"
 
       - name: update D1 (delta - or the full first upload)
         env:

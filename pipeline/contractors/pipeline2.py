@@ -557,10 +557,9 @@ def apply_sql_parts(outdir, meta, log=print):
             log("  = %s already verified" % part["file"])
             continue
         log("  ▸ %s (%d of %d)" % (part["file"], i + 1, len(meta["parts"])))
-        U.import_part(cfg, outdir, part, meta)
-        if not U.verify(cfg, part, log=log):
-            sys.exit("row counts do not match after %s — re-run this step "
-                     "(verified parts are skipped)." % part["file"])
+        # import + count-verify, re-importing a rolled-back part (the
+        # 2026-09-10 lesson lives in U.import_verified's docstring)
+        U.import_verified(cfg, outdir, part, meta, log=log)
         state["done"].append(part["file"])
         with open(state_path, "w") as fh:
             json.dump(state, fh)

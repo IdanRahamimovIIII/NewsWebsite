@@ -18,7 +18,7 @@ version sent ONE 1.2 GB file and trusted the poll answer "Not currently
 importing anything." as completion — but that answer is the same for
 "finished" and for "failed and rolled back", and the import HAD failed:
 the tables did not exist. A single giant file is also all-or-nothing.
-So now: the dump is split at ~60 MB boundaries, each part is imported
+So now: the dump is split at ~30 MB boundaries, each part is imported
 and then CHECKED — the API is asked to COUNT the rows and the count must
 match what the dump manifest says that part should have reached. A part
 that verifies is recorded in a state file; re-running skips it. Trust
@@ -42,12 +42,15 @@ DB = _DB_OLD if (os.path.exists(_DB_OLD) and not os.path.exists(_DB_NEW)) else _
 OUT = os.path.join(ROOT, "build", "d1")
 
 MAX_STMT = 60_000        # bytes per INSERT — D1 rejects overlong statements
-PART_MAX = 60_000_000    # bytes per upload part — was 120 MB until the first
-                         # AUTOMATED full upload (2026-09-09): part-001 died
-                         # in D1's storage layer ("storage operation exceeded
-                         # timeout which caused object to be reset"). Halved:
-                         # ~50 parts instead of 26, each comfortably inside
-                         # D1's timeouts and cheap to retry when D1 wobbles
+PART_MAX = 30_000_000    # bytes per upload part — was 120 MB, then 60. The
+                         # first AUTOMATED full upload killed both (2026-09-09
+                         # + -10): D1's storage layer times out and resets
+                         # mid-import ("storage operation exceeded timeout
+                         # which caused object to be reset"); the 60 MB part
+                         # died ~823 queries ≈ 49 MB in. 30 MB stays under
+                         # the observed death point (and matches the FTS
+                         # part size, proven live 2026-09-08); each part is
+                         # cheap to retry when D1 wobbles
 FTS_PART_MAX = 30_000_000  # FTS5 inserts cost far more CPU per byte than
                            # plain rows (the index is built as they land) —
                            # smaller parts keep each import under D1's CPU
@@ -443,6 +446,30 @@ def _import_once(cfg, outdir, part, meta, log=print):
             return                       # says complete — VERIFY anyway
 
 
+def import_verified(cfg, outdir, part, meta, log=print, attempts=3):
+    """import_part + the count-verify, RE-IMPORTING when the counts say the
+       import rolled back. THE LESSON OF 2026-09-10 (the first automated
+       full upload, third try): D1 reset mid-import and the poll then
+       answered 'Not currently importing anything.' — which v1 taught is
+       ALSO how failed-and-rolled-back answers — so import_part returned
+       as if done, the verify saw the live tables still holding LAST
+       month's data, and the run died at a point where simply re-importing
+       the part (safe: a failed import rolls back) would have carried on."""
+    for i in range(attempts):
+        import_part(cfg, outdir, part, meta, log)  # its own retries inside
+        if verify(cfg, part, log=log):
+            return
+        if i + 1 < attempts:
+            log("    the counts say this import ROLLED BACK — waiting 60s, "
+                "then re-importing %s (attempt %d of %d)"
+                % (part["file"], i + 2, attempts))
+            time.sleep(60)
+    sys.exit("row counts do not match after %s, %d imports in a row — D1 "
+             "keeps rolling this part back. See %s; re-running this step is "
+             "safe (verified parts are skipped)."
+             % (part["file"], attempts, os.path.join(outdir, "last-poll.json")))
+
+
 def main():
     cfg = config()
     if not os.path.exists(DB):
@@ -474,13 +501,7 @@ def main():
             print("  = %s already verified" % part["file"])
             continue
         print("  ▸ %s (%d of %d)" % (part["file"], i + 1, len(parts)))
-        import_part(cfg, OUT, part, meta)
-        if not verify(cfg, part, log=print):
-            sys.exit("row counts do not match after %s — the import did not "
-                     "fully apply. Run this again (verified parts are "
-                     "skipped); if it fails at the same part twice, tell "
-                     "Claude and attach build\\d1\\last-poll.json."
-                     % part["file"])
+        import_verified(cfg, OUT, part, meta)
         state["done"].append(part["file"])
         with open(state_path, "w") as fh:
             json.dump(state, fh)
