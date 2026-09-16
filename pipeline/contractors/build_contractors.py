@@ -1,53 +1,17 @@
 #!/usr/bin/env python3
-r"""
-build_contractors.py — precompute THE CONTRACTORS PAGE's aggregates into
-contractors\out\contracts-public.db, so the page can leave BudgetKey live
-queries behind. Run by double-clicking build-contractors.bat (adds the
-tables to the ALREADY-BUILT public db); build_database.py in this folder
-also calls this at the end of every full build, so a rebuild never loses
-the tables.
+r"""build_contractors.py — precompute the contractors page's aggregates
+(ctr_years, ctr_top, ctr_ex, ctr_sup, ctr_fts) into contractors\out\
+contracts-public.db. Run via build-contractors.bat; every full build
+(build_database.py, pipeline2 build) also runs it last, so a rebuild never
+loses the tables. A re-run replaces the ctr_* tables cleanly.
 
-WHY PRECOMPUTE (the ruling in contractors\NOTES.md, 2026-09-08):
-  D1 bills every row READ. "Top suppliers of 2024" as a live query is a full
-  scan of ~1M rows per page view, per visitor. But the aggregates change AT
-  MOST QUARTERLY (when ministry reports are published) — so they are computed
-  ONCE here, at build time, and the worker serves dumb, indexed, tiny tables.
+Precomputed because D1 bills row READS and these aggregates change at most
+quarterly. The definitions (in-force years, exempt phrase, sid, ranking by
+volume) are the page's honesty rules — the authoritative list with reasons:
+contractors\NOTES.md. Change = this file + test_contractors.py + NOTES,
+together.
 
-WHAT IT WRITES (all table names prefixed ctr_ so they are recognizably this
-job's; a re-run replaces them cleanly):
-
-  ctr_years   one row per year: contracts in force, distinct suppliers, total
-              volume, the exempt slice, and the top-10 suppliers' volume —
-              the page's three headline tiles from ONE tiny read.
-  ctr_top     top 25 suppliers per (year, lens), lens ∈ {all, exempt}.
-  ctr_ex      top 25 exemption citations per year (page shows 10).
-  ctr_sup     one row per supplier: facts + per-ministry rollup (JSON) +
-              year-by-year in-force series (JSON) + the order_ids of the 25
-              largest contracts (JSON) — a profile is ONE indexed read, plus
-              25 primary-key reads for the contract rows.
-  ctr_fts     FTS5 over supplier name + purpose → the free-text search that
-              was always "the day it moves". Carries order_id back.
-
-THE DEFINITIONS ARE THE PAGE'S HONESTY RULES — they moved here verbatim from
-site\budget_page\ (contractors\NOTES.md keeps the full list with reasons):
-  - "in force in year Y" = first_year <= Y <= last_year AND first_year > 1990
-    (junk years live at both edges; a junk MIN would put a contract in force
-    since 1899 so it is excluded; a junk MAX means open-ended and is KEPT).
-  - every contract counts IN FULL in every year it is in force — the tiles,
-    the rankings and the profile chart all share this one definition.
-  - "פטור ממכרז" is counted by the record's own words: the method field
-    contains the phrase. No cleaner taxonomy without a ruling from Mercy.
-  - the exemptions ranking requires BOTH: the method records פטור ממכרז AND
-    the citation (the exemption field) contains "תקנה". Combos stay verbatim.
-  - paid summed over only-unknowns is unknown (NULL), never 0 — SQLite's
-    SUM() already does this; nothing here coalesces paid to zero.
-  - supplier identity = entity_id where present, else the exact supplier
-    name (sid = COALESCE(entity_id, supplier)); rows with neither are
-    excluded from supplier rankings — they must never clump into one giant.
-  - rankings order by VOLUME, the number the reader sees.
-
-Stdlib only. Needs a python whose sqlite has FTS5 (the official installer's
-does; the script checks and says so if not).
+Stdlib only; needs a python whose sqlite has FTS5 (python.org's does).
 """
 import argparse, datetime, json, os, sqlite3, sys
 
@@ -163,11 +127,9 @@ def build(db_path, year_from=YEAR_FROM, log=print):
     """)
 
     log("supplier rollups per year…")
-    # ONE canonical name+kind per sid, taken from the supplier's LARGEST
-    # contract. The bare supplier/kind columns next to a SINGLE MAX() are
-    # SQLite's documented bare-column-with-max behaviour — deliberate, and it
-    # only holds with exactly one min/max in the query, so this table exists
-    # precisely so no other query needs to repeat the trick.
+    # ONE canonical name+kind per sid, from its largest contract — bare
+    # columns beside a single MAX() (documented SQLite behaviour; only valid
+    # with exactly one min/max, which is why this table exists).
     db.executescript("""
       CREATE TEMP TABLE supname AS
       SELECT sid, supplier AS name, kind, MAX(COALESCE(volume, 0)) AS _big
@@ -301,13 +263,9 @@ def build(db_path, year_from=YEAR_FROM, log=print):
 
 if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
-    # the db lives HERE in contractors\out\ (by-DATASET reorg 2026-09-08);
-    # pipeline\out\ is honoured until apply-dataset-reorg.bat moves it
-    _new = os.path.join(here, "out", "contracts-public.db")
-    _old = os.path.join(os.path.dirname(here), "out", "contracts-public.db")
     ap = argparse.ArgumentParser()
-    ap.add_argument("--db", default=_old if (os.path.exists(_old) and
-                                             not os.path.exists(_new)) else _new)
+    ap.add_argument("--db",
+                    default=os.path.join(here, "out", "contracts-public.db"))
     ap.add_argument("--year-from", type=int, default=YEAR_FROM)
     a = ap.parse_args()
     build(a.db, a.year_from)

@@ -2,15 +2,8 @@
 # It does NOT combine the sources - that step is deliberately not wired in
 # until collection is finished. See pipeline/contractors/NOTES.md, COLLECTION.
 #
-# WHY MONTHLY AND NOT QUARTERLY (measured 2026-08-23):
-#   - reports are quarterly but published LATE  -  the Q4-2024 education report
-#     is dated 2025-04-07, three months after the quarter closed
-#   - reports get REVISED: the source carries revision 0..2, so a report we
-#     already parsed can change underneath us
-#   - 82 publishers do not publish in step
-#   Quarterly checking would match the publication rhythm and miss both the
-#   stragglers and every revision. Monthly is cheap because fetch_reports.py
-#   asks for each file's size first and only downloads what actually changed.
+# MONTHLY, not quarterly: reports are published late, revised (rev 0..2),
+# and 82 publishers are out of step. Cheap - only changed files download.
 name: collect ministry reports
 
 on:
@@ -56,21 +49,9 @@ jobs:
           key: reports-${{ github.run_id }}
           restore-keys: reports-
 
-      # a cache saved before 2026-09-05 unpacks at the OLD path (reports);
-      # adopt it once so nothing is re-downloaded after the folder move
-      - name: adopt a reports cache saved under the old layout
-        run: |
-          if [ -d reports ] && [ ! -d pipeline/reports ]; then
-            mkdir -p pipeline
-            mv reports pipeline/reports
-            echo "adopted the old-layout cache into pipeline/reports"
-          fi
-
-      # PIPELINE v2 (2026-09-09): refill the evicted cache FROM THE ARCHIVE
-      # before fetching. The archive is permanent, so an eviction now costs
-      # nothing - no re-downloads, no blocked hosts, and the never-shrink
-      # guard cannot trip on a publisher that merely failed to re-fetch in
-      # time (seen live: 78 -> 77 publishers, red run).
+      # refill an evicted cache FROM THE ARCHIVE before fetching - an
+      # eviction then costs nothing and the never-shrink guard cannot trip
+      # on a publisher that merely failed to re-fetch in time.
       - name: restore the reports from the raw archive
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -78,35 +59,11 @@ jobs:
           mkdir -p pipeline/reports
           python3 pipeline/contractors/pipeline2.py restore-reports --dest pipeline/reports
 
-      # WHY BUDGETKEY IS STILL ASKED WHERE THE REPORTS ARE (2026-08-23):
-      # we tried to drop it. The plan was one seed url per ministry plus the
-      # calendar, since education's report is at
-      #   .../BlobFolder/.../education_1_2025/he/education_1_2025.xlsx
-      # and swapping the date works. It does not generalise. Real urls from
-      # other ministries look like
-      #   .../BlobFolder/dynamiccollectorresultitem/health_1/he/<hebrew> 4 - 2020.xlsx
-      #   .../BlobFolder/dynamiccollectorresultitem/tourism_201/he/repository-of-answers_...xlsx
-      # where health_1 is an item id, not a quarter, and the filename is free
-      # text. The dated form is not the rule, so addresses cannot be assumed
-      # derivable - they have to be looked up, and BudgetKey's report index is
-      # the only list of them we found a way to reach.
-      # It is used HERE for addresses only. No BudgetKey DATA is collected.
-      # --wayback: the alternative route, measured 2026-08-24. foi.gov.il
-      # refuses every server (1,181 reports, 2015-2020) and some gov.il
-      # addresses are dead (404/403) - but the Internet Archive crawled both
-      # hosts for years and web.archive.org serves everyone. Every recovered
-      # file is stamped via=wayback in the manifest, because a number from an
-      # archived copy must never look like one read from the live server.
-      # An archived snapshot never changes, so each url is recovered ONCE and
-      # skipped forever after; only the still-missing ones are retried monthly.
-      #
-      # --deadline-minutes 240: the lesson of the first wayback pass. GitHub
-      # kills a job at 6 hours, and a killed job runs NOTHING afterwards - no
-      # parse, no commit, maybe no cache save, so hours of downloads simply
-      # evaporated. Now the fetch stops CLEANLY at 4h (direct downloads always
-      # first, the slow archive grind last), everything downloaded is parsed,
-      # committed and cached, and the remainder continues next run from the
-      # manifest. A big backlog drains over 2-3 runs instead of dying at 6h.
+      # report URLs are NOT derivable (BudgetKey's index is used for
+      # ADDRESSES only, no data). --wayback recovers blocked/dead urls from
+      # the Internet Archive, stamped via=wayback. --deadline-minutes 240:
+      # stop cleanly inside GitHub's 6h kill so parse/commit/cache still run.
+      # Details: contractors/NOTES.md, "Collection".
       - name: ask where the reports are, and fetch the ones that changed
         timeout-minutes: 300
         run: |
@@ -118,12 +75,9 @@ jobs:
             --deadline-minutes 240 \
             ${{ (inputs.wayback || 'yes') != 'no' && '--wayback' || '' }}
 
-      # PIPELINE v2 phase 1 (2026-09-08): every fetched report file goes into
-      # THE PERMANENT RAW ARCHIVE - the raw-archive GitHub Release - keyed by
-      # content hash, a revised report becoming a NEW entry beside its old
-      # one. This runs BEFORE parsing, so even a broken parse cannot lose a
-      # raw file. The archive's table of contents is committed below with
-      # the rest. Design: pipeline/contractors/NOTES.md, PIPELINE v2.
+      # every fetched file goes into THE PERMANENT RAW ARCHIVE (content-
+      # hashed; a revision is a NEW entry). BEFORE parsing, so a broken
+      # parse cannot lose a raw file.
       - name: archive the raw reports, forever
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -133,32 +87,20 @@ jobs:
             --reports pipeline/reports \
             --manifest pipeline/contractors/archive/manifest.json
 
-      # oldest first, so the newest report has the last word on a cumulative
-      # figure. An alphabetical shell loop got this right by luck and wrong by
-      # the same luck.
-      # WHY THIS STILL RUNS after the paid overlay was deleted (2026-09-08):
-      # the .full.json parsed beside the lean documents are the full-records
-      # artifact — the DATABASE build's input (build-database.bat) — and the
-      # lean documents in git are what parse_report merges into, so a report
-      # that became unreachable keeps its figures, and the inventory guard
-      # below has something real to compare against. No page reads them.
+      # oldest first - the newest report gets the last word on a cumulative
+      # figure. The .full.json become the full-records artifact (the local
+      # build's input); the lean documents in git are the merge base +
+      # never-shrink baseline. No page reads them.
       - name: parse every report into pipeline/paid
         run: |
           python3 pipeline/contractors/parse_all.py \
             --reports pipeline/reports \
             --out pipeline/paid
 
-      # WHERE THE COMBINING WOULD GO.
-      # It is deliberately not here yet. Each source stays whole and separate
-      # until collection is finished: every ministry that publishes (56 turned
-      # up in 2022-2026), every quarter, every column each source carries. Merging a fraction of the
-      # data teaches us to merge that fraction well, and the decisions are not
-      # reversible without re-downloading everything.
-      # build_dataset.py exists and its 35 tests run below. It is not wired in.
-
+      # no combining here (Mercy: sources stay separate until collection is
+      # finished) - the merge lives in build-and-update.yml.
       # inventory.txt is read BEFORE it is overwritten: the run refuses to
-      # commit a collection that shrank. Its home is pipeline/collection now
-      # (it was site/data until 2026-09-06 - the guard was off while it had none).
+      # commit a collection that shrank.
       - name: what have we collected so far
         run: |
           mkdir -p pipeline/collection
@@ -169,13 +111,8 @@ jobs:
             --out pipeline/collection/inventory.txt \
             ${{ inputs.allow-shrink == 'yes' && '--allow-shrink' || '' }}
 
-      # the failure lists are DATA, not logs. failed.json (per url: what went
-      # wrong) and unreachable.json (the foi.gov.il hole) exist only in the
-      # Actions cache, so nobody outside a run can read them - which is how 79
-      # failures stayed a number in a report instead of 79 addresses someone
-      # could check. Copy them into the repo beside the inventory. The manifest
-      # comes too: it is the record of what was collected, and the cache it
-      # lives in is evicted after 7 unused days.
+      # the failure lists are DATA, not logs - committed beside the
+      # inventory so someone can actually read the addresses.
       - name: keep the failure lists where they can be read
         run: |
           mkdir -p pipeline/collection
@@ -189,9 +126,8 @@ jobs:
           python3 pipeline/tests/test_merge.py
           python3 pipeline/tests/test_fetch.py
 
-      # every column of every row, ~240 MB - too big for git, still yours to
-      # download. Kept for 90 days by GitHub, then regenerated by the next run.
-      # (build-database.bat reads this zip from pipeline/inputs.)
+      # every column of every row, ~240 MB - too big for git; the local
+      # build (contractors/inputs/full-records.zip) reads this artifact.
       - name: keep the full records as a downloadable artifact
         uses: actions/upload-artifact@v7
         with:
@@ -200,24 +136,13 @@ jobs:
           retention-days: 90
           if-no-files-found: warn
 
-      # (the "publish to Cloudflare KV" step lived here 2026-09-06 →
-      # 2026-09-08 — deleted with the paid overlay once the budget page
-      # switched to the D1 contracts database.)
-
-      # what is committed: pipeline/paid (the lean documents, ~20 MB) and
-      # pipeline/collection (inventory + failure lists). The documents STAY in
-      # git on purpose: parse_all.py merges into last month's files, so a
-      # section whose report has become unreachable (gov.il blocks, an evicted
-      # reports cache) keeps its figures instead of vanishing from the record -
-      # and the inventory guard above has something real to compare against.
-      # The .full.json beside them never enter git (artifact only).
+      # committed: pipeline/paid (lean documents - the merge base) and
+      # pipeline/collection (inventory + failure lists). The .full.json
+      # never enter git (artifact only).
       - name: commit whatever changed
         run: |
           git config user.name  "our-money bot"
           git config user.email "bot@users.noreply.github.com"
-          # until 2026-09-06 the data lived under site/data - if that folder is
-          # still tracked, this run removes it from the index for good
-          git rm -r --cached --ignore-unmatch -q site/data || true
           git add pipeline/paid pipeline/collection pipeline/contractors/archive
           git rm --cached --ignore-unmatch -q pipeline/paid/*.full.json || true
           if git diff --cached --quiet; then

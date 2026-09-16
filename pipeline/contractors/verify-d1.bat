@@ -2,7 +2,6 @@
 REM ---------------------------------------------------------------------
 REM  verify-d1.bat - checks that the data in Cloudflare D1 really MATCHES
 REM  contracts-public.db, content and all - not just the row counts.
-REM  (in contractors\ since the 2026-09-08 by-DATASET reorg)
 REM
 REM  Compares the whole strings table, plus every column of every row of
 REM  40 random orders across contracts / allocations / reports, plus the

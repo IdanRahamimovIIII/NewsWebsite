@@ -13,20 +13,16 @@ carries applies here) with two differences:
   - its memory lives in build\d1\ctr\ (its own manifest + state), so it
     cannot confuse the full uploader's memory in build\d1\.
 
-NOTE for a full re-upload day: nothing special to do — the full dump now
-carries the ctr_* tables and the FTS index too (upload_to_d1.py learned
-FTS5's shadow-table rule), so upload-to-d1.bat alone ships everything.
+(A FULL upload needs nothing special — the full dump carries ctr_* too.)
 """
 import json, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)                      # pipeline\
-sys.path.insert(0, os.path.join(ROOT, "tools"))      # oldest fallback
-sys.path.insert(0, os.path.join(ROOT, "database"))   # fallback (forwarders)
-sys.path.insert(0, os.path.join(ROOT, "shared"))     # the real home
+sys.path.insert(0, os.path.join(ROOT, "shared"))
 import upload_to_d1 as U                          # noqa: E402
 
-DB = U.DB                  # contractors\out\contracts-public.db (old home honoured)
+DB = U.DB                  # contractors\out\contracts-public.db
 OUT = os.path.join(ROOT, "build", "d1", "ctr")
 
 

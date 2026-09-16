@@ -6,12 +6,12 @@
            https://next.obudget.org/api/query?query=<SQL>   (CORS-open, no relay)
      the CONTRACTS — our own database, served by the relay from Cloudflare D1
            GET <PROXY>/contracts?code=<budget line>&year=<y>&n=25
-       (since 2026-09-08: one deduplicated record per contract, ministry
+       (one deduplicated record per contract, ministry
         files + BudgetKey + the mr.gov.il registers merged field by field
         by the pipeline — see pipeline\CLAUDE.md. BudgetKey's own contract
         rows drop the paid column on newer reports; ours do not.)
 
-   THE ONE THING TO KNOW ABOUT raw_budget (verified live 2026-08-22):
+   THE ONE THING TO KNOW ABOUT raw_budget (verified live):
    the `code` column holds TWO SEPARATE TREES plus the revenue root.
      '00'          המדינה — the root of the administrative tree
      '0000'        הכנסות המדינה — REVENUE. A child of '00', but not a ministry.
@@ -265,7 +265,7 @@ async function loadContracts(code, year) {
     throw new Error("DATASET::" + ((j && j.error) || "bad /contracts response"));
   const out = { rows: j.rows, more: !!j.more, year: y };
   /* An empty YEAR list can mean two different things, and the reader should
-     know which (Mercy, 2026-09-08): "nothing in force this year" versus
+     know which (Mercy): "nothing in force this year" versus
      "this line appears in the public reporting not at all". One extra
      request tells them apart — the worker caches it, so it is nearly free. */
   if (!out.rows.length) {

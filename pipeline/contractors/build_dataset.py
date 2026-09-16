@@ -2,12 +2,11 @@
 """
 build_dataset.py — merge every source into one record per contract.
 
-THE RULES (Mercy, 2026-08-23). Each is enforced here, and each has a test:
-  3. only the fields we care about        → FIELDS below, which is FIELDS.xlsx
-                                            (repo root) turned into code. That
-                                            file is the schema's constitution:
-                                            a לשמור row is here, a להשמיט row
-                                            is not. Approved 2026-08-25.
+THE RULES (Mercy's; each enforced here, each tested):
+  3. only the fields we care about        → FIELDS below = audit\FIELDS.xlsx
+                                            turned into code (the schema's
+                                            constitution: a לשמור row is here,
+                                            a להשמיט row is not)
   4. fill every cell some source can fill → per-field precedence, in order
   5. 0 and empty differ, and a 0 must     → ZERO RULE: for money, a zero is
      never beat a real number               held back and used only if nothing
@@ -17,12 +16,11 @@ THE RULES (Mercy, 2026-08-23). Each is enforced here, and each has a test:
   8. missing is not zero                  → MISSING stays None, never 0
 
 THE SOURCES
-  file — the ministry's own quarterly report (site/data/paid/<sec>.full.json;
-         in git those exist only as the workflow's full-records artifact)
-  bk   — BudgetKey contract_spending, raw per-section pulls (build/raw)
+  file — the ministry's own quarterly report (<sec>.full.json rows)
+  bk   — BudgetKey contract_spending, raw per-section pulls
   ex   — the exemptions register, mr.gov.il's own monthly export
   tn   — the tenders register, same origin
-  The registers have NO order number (measured 2026-08-23) — they can never
+  The registers have NO order number (measured) — they can never
   create a contract, only decorate one, joined through the publication number.
 
 Union on order_id: a contract present in ANY payment source is a contract.
@@ -122,7 +120,7 @@ def canon_flag(v):
 # resolved ONCE (cached) through these matchers, the same loose-matching idea
 # parse_report.py uses. Order matters: the specific before the general.
 #
-# Deliberately ABSENT, per FIELDS.xlsx (Mercy, 2026-08-25):
+# Deliberately ABSENT, per FIELDS.xlsx (Mercy):
 #   שם אתר         — duplicates the organisation name        (להשמיט)
 #   מטבע חשבונית   — measured: never differs from מטבע       (להשמיט)
 #   קבוצת רכש      — the raw code; only its description stays (להשמיט)
@@ -204,9 +202,9 @@ TEXT, DATE, MONEY, CODE, IDNUM, YEAR, FLAG = \
     "text", "date", "money", "code", "id", "year", "flag"
 
 # field → (kind, [(source, key), …] in order of precedence).
-# Sources: "file" (@tags above) · "bk" · "ex" · "tn". The order of each row
-# follows the settled precedence table (CLAUDE.md 2026-08-23) with the
-# registers appended where FIELDS.xlsx names them as a source.
+# Sources: "file" (@tags above) · "bk" · "ex" · "tn". Row order follows the
+# settled precedence table (contractors\NOTES.md, "Merge — column by column")
+# with the registers appended where FIELDS.xlsx names them as a source.
 FIELDS = [
     # BudgetKey first: it resolves spelling variants to one entity, which is
     # what makes a supplier page possible at all
@@ -286,7 +284,7 @@ KIND_FN = {TEXT: canon_text, DATE: canon_date, MONEY: canon_num,
            CODE: canon_code, IDNUM: canon_id, YEAR: canon_year,
            FLAG: canon_flag}
 
-# BudgetKey free texts, kept whole under one roof (החלטת מרסי 24.08: לשמור)
+# BudgetKey free texts, kept whole under one roof (Mercy: לשמור)
 BK_NOTES = ("explanation", "buyer_description", "manof_ref", "manof_excerpts")
 
 # rule 7, stated so nobody re-adds them by accident

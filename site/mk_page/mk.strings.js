@@ -37,7 +37,7 @@ window.PAGE_STR = {
     factBorn: "לידה", factDied: "פטירה", factAliyah: "עלייה", factHome: "מגורים",
     factEdu: "השכלה", factArmy: "צבא", factNat: "שירות לאומי", factProf: "מקצוע", factLangs: "שפות",
 
-    /* positions — the section titles are the reader's questions (Mercy, 2026-09-06) */
+    /* positions — the section titles are the reader's questions (Mercy) */
     secPositions: "מה עשו לאורך השנים?",
     posNow: "מכהנ/ת",
     posKnesset: "כנסת",

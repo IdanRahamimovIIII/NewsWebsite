@@ -3,23 +3,21 @@
 """
 cf_kv.py — the pipeline's one Cloudflare KV client (standard library only).
 
-Shared by every publisher (publish_photos.py; publish_paid.py used it until
-the paid overlay was deleted on 2026-09-08) so there is exactly ONE place
+Shared by every publisher (publish_photos.py) so there is exactly ONE place
 that knows how to talk to Cloudflare from Mercy's machine or from GitHub
 Actions. Import it with
 
     sys.path.insert(0, os.path.join(<pipeline>, "shared")); import cf_kv
 
 CREDENTIALS — env first (CI: repo secrets CF_API_TOKEN + CF_ACCOUNT_ID),
-then a JSON config file (Mercy's machine: pipeline\\d1-config.json, the D1
-token with "Workers KV Storage: Edit" added on 2026-09-06).
+then a JSON config file (Mercy's machine: pipeline\\d1-config.json — the
+D1 token also carries "Workers KV Storage: Edit").
 
-NAMESPACE — found by TITLE, never by an id copied into a file. worker.js's
-header says to name it "our-money-data"; Mercy's account has it titled
-"DATA" (same as the binding — found by the first live publish, 2026-09-06).
-Both are tried; a lone namespace is taken whatever its title.
+NAMESPACE — found by TITLE, never by an id copied into a file
+("our-money-data" or "DATA"; Mercy's account titles it "DATA"). Both are
+tried; a lone namespace is taken whatever its title.
 
-RULE (the D1 lesson of 2026-08-26): never trust an API's status words.
+RULE (the D1 lesson): never trust an API's status words.
 Every publisher reads its keys back and compares — `read_back` is here so
 they all do it the same way.
 
@@ -28,9 +26,8 @@ per request (we chunk at 40 MB) · binary values go through the bulk
 endpoint base64-encoded (`base64: true`) · list/keys pages by cursor ·
 the API itself allows ~1,200 requests per 5 minutes: `verify` reads keys
 back ONE call each, so a 1,000-portrait publish sits right at that line —
-a 429 is waited out (Retry-After, else 15 s) and the call retried, never
-reported as a failed publish (added 2026-09-06 before the first full
-historical run).
+a 429 is waited out (Retry-After, else 15 s) and retried, never reported
+as a failed publish.
 """
 import base64, json, os, re, time, urllib.error, urllib.parse, urllib.request
 
@@ -216,9 +213,8 @@ def envelope(data, t=None):
 
 
 def relay_url(pipeline_root):
-    """the worker's address, from site\\shared\\config.js beside the pipeline
-    (config.js moved into shared\\ on 2026-09-08; the old root path is kept as
-    a fallback). Comments are stripped first — the header carries an EXAMPLE
+    """the worker's address, from site\\shared\\config.js beside the
+    pipeline. Comments are stripped first — the header carries an EXAMPLE
     address. Else env RELAY_URL."""
     for c in (os.path.join(pipeline_root, "..", "site", "shared", "config.js"),
               os.path.join(pipeline_root, "..", "site", "config.js")):

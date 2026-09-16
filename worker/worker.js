@@ -1,56 +1,7 @@
 /**
- * Our Money — data relay + snapshot store + vote index + contracts DB (Cloudflare Worker) — v9
- * ----------------------------------------------------------------
- * WHAT'S NEW IN v9: THE CONTRACTORS PAGE's data is served from here.
- *   The pipeline now PRECOMPUTES the page's aggregates at build time
- *   (pipeline\contractors\build_contractors.py → tables ctr_years, ctr_top,
- *   ctr_ex, ctr_sup and the FTS5 search index ctr_fts, uploaded by
- *   contractors\upload-to-d1-contractors.bat) and five read-only endpoints
- *   serve them dumb and fast — no live aggregation ever touches the big
- *   contracts table:
- *     /contractors/summary[?year=]           — the headline tiles, ALL years in
- *                                              one tiny read (year switch = free)
- *     /contractors/top?year=&lens=all|exempt — top 25 suppliers
- *     /contractors/exemptions?year=[&n=10]   — the regulations ranking
- *     /contractors/supplier?sid=             — one profile: facts + byOffice +
- *                                              series + 25 largest contracts,
- *                                              in ONE response
- *     /contractors/search?q=                 — free-text over name + purpose
- *                                              (FTS5 — the day it moved, it got
- *                                              its index)
- *   sid is COALESCE(entity_id, supplier name) — the same identity rule the
- *   page always used. The definitions behind the numbers (in-force years,
- *   junk-year exclusion, פטור ממכרז by the record's own words) live in the
- *   BUILD, not here — pipeline\contractors\NOTES.md is the contract.
- *   A "no such table: ctr_years" error means the tables were never uploaded:
- *   run pipeline\contractors\build-contractors.bat, then its upload .bat.
- *
- * WHAT'S NEW IN v8: the CONTRACTS DATABASE is served from here.
- *   The pipeline built one deduplicated record per government contract
- *   (986,942 of them — ministry files + BudgetKey + the mr.gov.il registers,
- *   merged field by field) and uploaded it to Cloudflare D1 with
- *   pipeline\contractors\upload-to-d1.bat. Three read-only endpoints serve it:
- *     /contracts?code=<budget line>[&year=YYYY][&n=25]  — who was paid from a line
- *     /contract?id=<order_id>                           — one contract, in full
- *     /supplier?hp=<ח"פ>[&n=50]                          — one supplier's contracts
- *   Every query hits an index (D1 bills rows READ — a full scan of ~1M rows
- *   costs ~1M reads); the Cache API sits in front so repeats never reach D1;
- *   every list has a LIMIT. Add &fresh=1 to bypass the cache after re-upload.
- *   The budget page reads /contracts; BudgetKey stays for the budget tree.
- *   ONE-TIME: bind the D1 database — setup step D below — and Deploy.
- *   Also in v8: the /data/budget snapshot no longer mixes the two code trees
- *   (it stores the administrative sections only, '00xx' without '0000').
- *
- * WHAT'S NEW IN v7: our own INDEX of every Knesset plenum vote, 2003 → today.
- *   The Knesset API can only answer "which votes happened between two dates",
- *   so searching the whole history through it means ~165 requests from the
- *   browser. Instead we harvest every vote once into KV (~7 MB, one file per
- *   year) and search OUR copy: whole history, instantly, no date defaults.
- *   ONE-TIME: open build.html in your browser after deploying this file. It
- *   runs the harvest step by step (~2 minutes) and shows progress. The 6-hourly
- *   cron then keeps the current window fresh by itself.
- *   Endpoints: /build/votes (one harvest step) · /search/votes?q=… ·
- *              /data/votesmeta (what the index holds)
+ * Our Money — data relay + snapshot store + vote index + contracts DB
+ * (Cloudflare Worker) — v9. Routes and rules: worker\CLAUDE.md (this file
+ * is the deploy artifact; Mercy pastes it into the dashboard → Deploy).
  *
  * Four jobs:
  *   1. RELAY — fetches Israeli government open data server-side and returns
@@ -169,13 +120,9 @@ const PRESETS = {
      Claude's fetch refuses a relay URL much past 248, and this query in the
      /b64/ form comes to 343.
 
-     WHY sec= AND NOT ALL AT ONCE: the previous version of this preset asked
-     for DISTINCT ON (publisher) across the whole table and it TIMES OUT —
-     tested 2026-08-23, "Read timeout while fetching the URL". That table has
-     roughly four million rows and sorting all of them to pick one per
-     publisher is too much work for one request. Filtered to a section it is
-     an index range and answers in seconds; the same query ran fine inside
-     GitHub Actions. So: one call per section, 0001..0099.
+     WHY sec= AND NOT ALL AT ONCE: DISTINCT ON (publisher) across the whole
+     ~4M-row table TIMES OUT; filtered to a section it is an index range and
+     answers in seconds. One call per section, 0001..0099.
 
      Returns one row per (url, publisher, year, period) — the caller decides
      what to keep. */
@@ -302,13 +249,12 @@ async function refreshDataset(name, env) {
   return entry;
 }
 
-/* PUBLISHED datasets (2026-09-06): documents the PIPELINE writes into KV
-   under "pub:<name>" — already in the snapshot envelope {t, data} — that
-   the worker only hands out (today: the MK photo manifest, pub:mkphotos;
-   the paid overlay used this 2026-09-06 → 09-08, until the budget page
-   switched to D1). Nothing here rebuilds them: if a key is missing the
-   answer is 404 "not published", never an upstream fetch.
-   Any /data/<name> that is not a built-in DATASET lands here. */
+/* PUBLISHED datasets: documents the PIPELINE writes into KV under
+   "pub:<name>" (already in the snapshot envelope {t, data}) that the
+   worker only hands out — today the MK photo manifest, pub:mkphotos.
+   Nothing here rebuilds them: a missing key answers 404 "not published",
+   never an upstream fetch. Any /data/<name> that is not a built-in
+   DATASET lands here. */
 async function servePublished(name, env) {
   if (!/^[A-Za-z0-9_.\-\/]{1,64}$/.test(name))
     return new Response('{"error":"bad dataset name"}', { status: 400, headers: { ...CORS, "Content-Type": "application/json" } });
@@ -324,7 +270,7 @@ async function servePublished(name, env) {
     { headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" } });
 }
 
-/* MK PORTRAITS (2026-09-06): the pipeline's publish_photos.py stores each
+/* MK PORTRAITS: the pipeline's publish_photos.py stores each
    image as photo:mk/<MkId>-<hash8>.<ext> (binary) and the manifest as
    pub:mkphotos (served above as /data/mkphotos). The name carries a content
    hash, so the bytes behind a name NEVER change — hence immutable, one-year
@@ -375,7 +321,7 @@ async function serveDataset(name, env) {
    contracts_v undoes the dictionary encoding, so queries here read plain
    text and pay nothing for it.
 
-   THE RULES (agreed with Mercy 2026-08-25 — D1 bills rows READ):
+   THE RULES (Mercy — D1 bills rows READ):
    - every query hits an index; there is NO free-text search here, and none
      should be added without an FTS table (an ILIKE over ~1M rows bills ~1M
      reads per call). The page's text search stays on BudgetKey live.

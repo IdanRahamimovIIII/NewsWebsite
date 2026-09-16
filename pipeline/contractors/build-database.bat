@@ -1,7 +1,6 @@
 @echo off
 REM ---------------------------------------------------------------------
 REM  build-database.bat - builds the contracts database on THIS computer.
-REM  (in contractors\ since the 2026-09-08 by-DATASET reorg)
 REM
 REM  Inputs it looks for in inputs\ HERE (see build_database.py):
 REM    full-records.zip            required (Actions -> refresh data)

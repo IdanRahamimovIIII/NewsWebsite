@@ -1,9 +1,7 @@
-# THE CONTRACTORS DATASET's local data - never in git (2026-09-08 by-DATASET
-# reorg: inputs\ and out\ moved here from the pipeline root, where the root
-# .gitignore used to cover them; this file covers their new home).
-# The raw data's permanent home is the raw-archive GitHub Release, not git -
-# see NOTES.md, PIPELINE v2. What DOES belong in git from this folder: the
-# scripts, the .bats, NOTES.md, the tests, and archive/manifest.json.
+# THE CONTRACTORS DATASET's local data - never in git. The raw data's
+# permanent home is the raw-archive GitHub Release (see NOTES.md,
+# PIPELINE v2). In git from this folder: scripts, .bats, NOTES.md, tests,
+# and archive/manifest.json.
 inputs/
 out/
 __pycache__/

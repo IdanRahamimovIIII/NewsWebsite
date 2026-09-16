@@ -3,25 +3,25 @@
 audit_server.py — the local backend of compare.html: Mercy's permanent tool
 for checking the built dataset against the sources, by hand, forever.
 
-WHY LOCAL (Mercy, 2026-08-25): "the audit is just for myself, we don't need
+WHY LOCAL (Mercy): "the audit is just for myself, we don't need
 it on the website or in Cloudflare; compare.html is only expected to work
 locally." So this serves pipeline/audit/ (compare.html) at
 the root and mounts the website under /site/ (the pages need its shared
 CSS, config.js and common.js), PLUS a few read-only /audit endpoints
 answered from the FULL database — the one with provenance per field and
-the raw register rows embedded. Since 2026-09-06 that file is a build
+the raw register rows embedded. That file is a build
 INTERMEDIATE, pipeline/build/contracts-full.db (the public copy in out/ is
 derived from it and carries no provenance — it cannot feed an audit).
 Nothing here is deployed anywhere; closing the window ends it.
 
-THIS FOLDER IS THE WHOLE AUDIT (Mercy, 2026-09-06): audit.bat, this server,
+THIS FOLDER IS THE WHOLE AUDIT (Mercy): audit.bat, this server,
 compare.html and the test drivers live together here,
 so a chat about checking the output needs pipeline/audit/ and nothing else.
 
 Standard library only (http.server + sqlite3) — Mercy's machine has no
 node; audit.bat finds python or says plainly what to install.
 
-the ministry-report documents (2026-09-06 — the site keeps no data):
+the ministry-report documents (the site keeps no data):
   /paid/index.json · /paid/<section>.json   from pipeline/paid/ (the 52 lean
                                             overlay docs the workflow publishes to KV)
   /paid/<section>.full.json                 from pipeline/build/full/ (every column,

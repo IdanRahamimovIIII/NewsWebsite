@@ -8,7 +8,7 @@ REM  Run it AFTER database\build-database.bat (it needs the public db to
 REM  exist), or any time on the current db to refresh just these tables.
 REM  A full database build also runs this step by itself at the end, so
 REM  normally you only need this one when adding the tables to a db that
-REM  was built before 2026-09-08 - like the one you have right now.
+REM  predates the ctr_ tables.
 REM
 REM  It prints SANITY numbers at the end (2024 vs the live BudgetKey
 REM  figures) - read them; a LARGE gap means a definition drifted.

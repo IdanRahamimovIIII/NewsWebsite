@@ -16,7 +16,7 @@
    ===================================================================== */
 
 const VOTES_PER_PAGE = 25;
-const POS_PREVIEW = 4;     // positions shown before "show all" (Mercy, 2026-09-06: the last 4)
+const POS_PREVIEW = 4;     // positions shown before "show all" (Mercy: the last 4)
 const BILLS_PAGE = 20;     // bills shown before "more" (one list, filtered)
 
 /* =====================================================================
@@ -59,7 +59,7 @@ function avFail(img) {
    2. THE DIRECTORY GRID
    ===================================================================== */
 
-/* ---- the search filters the grid in place (Mercy, 2026-09-07) ----
+/* ---- the search filters the grid in place (Mercy) ----
    Typing cuts the cards that don't match (name, party or role); nothing
    else changes on screen. People the grid doesn't hold yet are fetched by
    name and slotted in as cards. Enter / the button opens a lone match. */
@@ -112,7 +112,7 @@ function renderDirectory() {
   const list = state._dir;
   if (!list) return;
   // one continuous grid: the current Knesset, then everyone else by the last
-  // year in office — no dividers (Mercy, 2026-09-07), the years on the cards say it.
+  // year in office — no dividers (Mercy), the years on the cards say it.
   // A search only removes cards; a match by party/role adds the reason to its card.
   const shown = visibleDir();
   const searching = !!(state.dirQ || "").trim();
@@ -154,10 +154,10 @@ async function dirMore() {
 function dirCardHtml(e, hit) {
   const role = cardRole(e);
   const years = cardYears(e);
-  // no laws passed → no line at all (Mercy, 2026-09-06); unknown → no line either
+  // no laws passed → no line at all (Mercy); unknown → no line either
   const bills = e.bills === undefined ? "…" : !e.bills ? ""
     : e.bills === 1 ? t("dirPassed1") : t("dirPassed").replace("{n}", e.bills);
-  // name → role (blue, the eye's second stop) → party → years → laws (Mercy, 2026-09-07)
+  // name → role (blue, the eye's second stop) → party → years → laws (Mercy)
   return avatarHtml(e.name, e.m.Id, "avxl") +
     `<span class="dcname">${esc(e.name)}</span>` +
     `<span class="dcrole">${role === null ? "…" : esc(role)}</span>` +
@@ -191,7 +191,7 @@ function renderAll() {
   // not crash here (2026-09-06: it did, and a card click froze on "loading")
   const searchCard = document.getElementById("mkq").closest(".card");
   if (searchCard) searchCard.style.display = on ? "none" : "block";
-  // …and so does the site tagline common.js puts above the cards (Mercy, 2026-09-06)
+  // …and so does the site tagline common.js puts above the cards (Mercy)
   document.querySelectorAll('[data-i18n="tagline"]').forEach(el => { el.style.display = on ? "none" : ""; });
   if (!on) { renderDirectory(); return; }   // (a language switch re-words the cards)
   renderHead(); renderTiles(); renderPositions(); renderBills(); renderVotesSec();
@@ -254,7 +254,7 @@ function bioText(v) {
 const bioClause = v => bioText(v).split("\n").map(s => s.replace(/^[-–•]\s*/, "").trim()).filter(Boolean).join(", ");
 /* a year out of whatever the CMS wrote — "כ\"ח בתשרי תש\"י , 21/10/1949" included */
 const yearIn = v => { const m = String(v || "").match(/\d{4}/g); return m ? m[m.length - 1] : ""; };
-/* ---- personal background: a small table under the bills sentence (Mercy, 2026-09-06) ----
+/* ---- personal background: a small table under the bills sentence (Mercy) ----
    Label · value, one row per filled-in field, as little space as it can:
    two tight columns, bullets folded into comma runs, no borders. */
 function bioFacts() {
@@ -309,7 +309,7 @@ const inLatestKnesset = s => {
   return !latest || (s.cmb || []).some(x => x.KnessetId === latest);
 };
 
-/* ---- the hero: one breath about the person (Mercy, 2026-09-06) ----
+/* ---- the hero: one breath about the person (Mercy) ----
    portrait · name and what they are today · one line of story (faction,
    how long in the Knesset) */
 function renderHead() {
@@ -353,7 +353,7 @@ function renderTiles() {
         : p === 1 ? t("billsStory1").replace("{t}", total)
         : t("billsStory").replace("{t}", total).replace("{p}", p);
       // the sentence and the three counts; the stacked bar that was between
-      // them said nothing the counts don't (Mercy, 2026-09-06)
+      // them said nothing the counts don't (Mercy)
       bar = `<div class="billsbar">
           <div class="bhead">${esc(head)}</div>
           <div class="vmeta bleg">
@@ -433,7 +433,7 @@ function renderBills() {
   const dotOf = Object.fromEntries(BUCKETS.map(([k, , dot]) => [k, dot]));
   const shown = list.slice(0, state.billShown);
   state._bShown = shown;
-  // each row opens to the bill's official documents (Mercy, 2026-09-07)
+  // each row opens to the bill's official documents (Mercy)
   const rows = shown.map((x, i) => `<button class="brow${x._open ? " sel" : ""}" onclick="openBill(${i})"><span class="dot ${dotOf[x._bucket]}" title="${esc(t(BUCKETS.find(u => u[0] === x._bucket)[1]))}"></span><span class="bname">${x._open ? "▾" : "▸"} ${esc(x.Name)}${
       x._lead ? ` <span class="leadchip">${esc(t("bLead"))}</span>` : ""}
       <span class="names">— ${esc(x._status)}${x.KnessetNum ? ` · ${esc(t("knesset"))} ${x.KnessetNum}` : ""}</span></span></button>` +

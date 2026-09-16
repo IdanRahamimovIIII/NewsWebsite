@@ -1,25 +1,14 @@
 #!/usr/bin/env python3
-"""
-fetch_reports.py — find the ministries' quarterly procurement reports and
-download the ones that changed.
+"""fetch_reports.py — find the ministries' quarterly procurement reports
+and download the ones that changed.
 
-WHAT WE PROVED BEFORE WRITING THIS (2026-08-23, through the worker):
-  • https://www.gov.il/BlobFolder/…/education_1_2025.xlsx → 200, 679,714 bytes
-  • https://www.gov.il/BlobFolder/…/health_3_2024.xlsx    → 200, 1,802,611 bytes
-    Two ministries, same shape. The spreadsheets ARE served to a server.
-  • https://www.gov.il/he/departments/…      → 403, a 5,679-byte HTML wall
-  • https://foi.gov.il/sites/default/files/… → 403, a 5,682-byte HTML wall
-    So: gov.il's BLOBFOLDER serves files. gov.il's PAGES and ALL of foi.gov.il
-    are behind bot protection. Reports moved hosts over time — foi.gov.il holds
-    the older archive, BlobFolder the recent ones (health: foi for 2018, gov.il
-    from 2022 on). Since we want each ministry's NEWEST report, that is the
-    reachable one. Never scrape a page: BudgetKey stores every report URL.
-  • DISTINCT ON over quarterly_contract_spending_reports TIMES OUT (~4M rows).
-    Discovery therefore goes section by section, which is indexed and fast.
-
-Downloads only what changed: a report already in the manifest with the same
-Content-Length is skipped. Ministries also REVISE reports (the source carries
-revision 0..2), so this checks monthly rather than quarterly.
+Measured facts this build rests on (details: NOTES.md, "Collection"):
+gov.il's BlobFolder serves files to a server; gov.il PAGES and all of
+foi.gov.il answer 403 (bot wall). Report URLs are not derivable — BudgetKey
+indexes them; DISTINCT ON over its ~4M-row report table times out, so
+discovery goes section by section (indexed, fast). Ministries REVISE
+reports (revision 0..2), so fetch monthly and skip a url whose
+Content-Length is unchanged.
 
 usage:
   fetch_reports.py --out reports --manifest reports/manifest.json
@@ -31,25 +20,15 @@ import urllib.parse, urllib.request
 API = "https://next.obudget.org/api/query"
 UA = {"User-Agent": "our-money/1.0 (+https://github.com/) python-urllib"}
 
-# Fallback only. The real list comes from raw_budget — see sections_from_budget.
-# "0001".."0099" was a guess at what exists, and a guess is how we ended up
-# asking 99 questions to find 63 answers while still missing nothing useful.
+# fallback only — the real list comes from raw_budget (sections_from_budget)
 FALLBACK_SECTIONS = ["%04d" % n for n in range(1, 100)]
 
 
 def sections_from_budget(log=print, year=None):
-    """The budget's OWN list of four-digit sections, with their names.
-
-       Mercy's question: "isn't this imply we can just call for a table of all
-       the sections?" Yes. raw_budget is the same table the budget page reads,
-       and its four-character codes ARE the sections. Asking it costs one fast
-       query and replaces a hundred guesses with the real list — and it tells us
-       what each section is called, which a guessed number never could.
-
-       Note what is NOT in it: 4521, 5520, 6200, 6210, 6220, 6230, all of which
-       turned up in the parsed files on 2026-08-23. They are not sections we
-       failed to sweep; they are budget codes in the ministries' own
-       spreadsheets that do not exist in the national budget. See flag_unknown."""
+    """The budget's OWN list of four-digit sections, with names (raw_budget —
+       one fast query instead of 99 guesses). NOT in it: 4521, 5520, 62xx —
+       codes in ministries' own spreadsheets that do not exist in the national
+       budget; they are not un-swept sections."""
     year = year or datetime.date.today().year
     for y in range(year, year - 4, -1):
         try:
@@ -184,25 +163,10 @@ def filename_for(url, meta):
 
 
 def encode_url(url):
-    """Percent-encode the path and query.
-
-       THE 1,190-FAILURE BUG (2026-08-23). The ministries name their files in
-       Hebrew, with spaces, apostrophes, brackets and invisible RTL marks:
-         .../he/רבעון 4 - 2020.xlsx
-         .../he/הסנגוריה הציבורית - תשלום בפועל רבעון 1 לשנת 2018 - לפרסום (3).xlsx
-       Handed to urllib as-is, those die with "URL can't contain control
-       characters (found at least ' ')" or "'ascii' codec can't encode". Out of
-       1,816 reports the first full run downloaded 626 and failed on 1,190 —
-       roughly two thirds of the archive — and every one of those failures was
-       ours, not the government's.
-
-       It also silently biased everything downstream: the ministries that
-       survived were the ones whose filenames happened to be plain ASCII, so a
-       ministry looked like it had stopped reporting when really its Hebrew
-       filenames were unfetchable.
-
-       quote() with '%' in safe is idempotent, so an already-encoded url passes
-       through unchanged."""
+    """Percent-encode path + query. Ministries name files in Hebrew with
+       spaces/brackets/RTL marks — raw urls die in urllib (once lost 2/3 of
+       the archive, and only ASCII-named ministries survived, a silent bias).
+       quote() with '%' in safe is idempotent: pre-encoded urls pass through."""
     p = urllib.parse.urlsplit(url)
     return urllib.parse.urlunsplit((
         p.scheme, p.netloc,
@@ -239,17 +203,10 @@ def prev_quarter(year, period):
 # ---------------------------------------------------------------- the catalogue
 
 def load_catalogue(path):
-    """One known-good report URL per publisher, checked into the repo.
-
-       Mercy's point, and she is right: the address is static except for the
-       quarter and the year. Asking BudgetKey every month which reports exist
-       makes a monthly job depend on a third party's index — the same index we
-       already caught lagging four quarters behind משרד החינוך. With one real
-       URL per ministry we can walk the calendar ourselves, in both directions,
-       and never call BudgetKey at all.
-
-       The catalogue is a plain file you can read and edit. When a ministry
-       changes its naming, the fix is one line in it."""
+    """One known-good report URL per publisher, checked into the repo
+       (Mercy: the address is static except quarter/year). Walking the
+       calendar from it removes the monthly dependence on BudgetKey's index,
+       which lags. A ministry renames → fix one line here."""
     with open(path, encoding="utf-8") as fh:
         doc = json.load(fh)
     return doc.get("publishers") or []
@@ -307,20 +264,16 @@ def from_catalogue(entries, log=print, today=None):
 
 
 def bump_url(url, year, period, new_year, new_period):
-    """gov.il names a report <slug>_<quarter>_<year> and repeats it in the path.
-       Swapping both numbers is a real address — Mercy checked this by hand
-       before we relied on it."""
+    """gov.il names a report <slug>_<quarter>_<year> (repeated in the path);
+       swapping both numbers is a real address (checked by hand)."""
     old, new = "_%d_%d" % (period, year), "_%d_%d" % (new_period, new_year)
     return url.replace(old, new) if old in url else None
 
 
 def probe_forward(url, meta, log=print, today=None):
     """{url: meta} for EVERY quarter published after the newest one BudgetKey
-       has indexed — not just the newest of them.
-
-       BudgetKey's index lags: for משרד החינוך it stopped at Q1 2025 while the
-       ministry has gone on publishing. This asks, it does not assume: a quarter
-       counts only if the file is really there and is really a file."""
+       indexed (its index lags). Asks, never assumes: a quarter counts only
+       if the file is really there and really a file."""
     out = {}
     try:
         year, period = int(meta.get("year")), int(meta.get("period"))
@@ -353,14 +306,9 @@ def probe_forward(url, meta, log=print, today=None):
 
 
 def classify(data):
-    """\"xlsx\", \"xls\" or None — decided by the bytes, not the extension.
-
-       THE 16 \"not an xlsx\" FAILURES (run of 2026-08-24): the check demanded a
-       PK header, but Excel's OLD format (.xls, OLE2, used by ministries into
-       ~2020 — משרד החוץ, תיאום הפעולות בשטחים) starts D0 CF 11 E0 instead. A
-       legitimate government report was being rejected as a block page, and the
-       error message even asserted it was probably HTML. When rejecting, say
-       what the bytes actually were, so nobody has to guess again."""
+    """"xlsx", "xls" or None — decided by the BYTES, never the extension:
+       PK = xlsx, D0 CF 11 E0 = the old OLE2 .xls (ministries used it into
+       ~2020). When rejecting, say what the bytes were."""
     if len(data) < 5000:
         return None
     if data[:2] == b"PK":
@@ -420,10 +368,9 @@ def wayback_fetch(url, path, timeout=30):
        is stamped via=\"wayback\" in the manifest: a number from an archived
        copy must never look like one read from the government's own server.
 
-       timeout=30, not 120 — measured 2026-08-24: the first full wayback pass
-       hit the archive's rate limiting as slow reads and dropped handshakes,
-       and at 120s per hang the pass alone blew GitHub's 6-hour job ceiling.
-       A timed-out url is simply retried next run."""
+       timeout=30, not 120: the archive rate-limits as slow reads/dropped
+       handshakes, and long hangs blow GitHub's 6-hour ceiling. A timed-out
+       url is retried next run."""
     req = urllib.request.Request(wayback_url(url), headers=UA)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         data = r.read()
@@ -435,13 +382,9 @@ def wayback_fetch(url, path, timeout=30):
 
 def run(out_dir, manifest_path, sections, years, limit=None, log=print,
         catalogue=None, wayback=False, deadline_minutes=0):
-    # THE TIME BUDGET (2026-08-24): GitHub kills a job at 6 hours, and a killed
-    # job runs NOTHING after the fetch — no parse, no commit, and possibly no
-    # cache save, so hours of downloads can simply evaporate. The budget makes
-    # the fetch stop CLEANLY with time to spare: manifest and failure lists are
-    # written, the later steps run, the cache is saved, and whatever was not
-    # reached continues next run from the manifest. Everything is resumable —
-    # a deadline never loses work, it only splits it across runs.
+    # time budget: GitHub kills a job at 6h and a killed job runs NOTHING
+    # after the fetch. Stop CLEANLY instead — manifest + failure lists
+    # written, later steps run; the rest resumes next run.
     deadline = (time.time() + deadline_minutes * 60) if deadline_minutes else None
     os.makedirs(out_dir, exist_ok=True)
     manifest = {}
@@ -464,26 +407,15 @@ def run(out_dir, manifest_path, sections, years, limit=None, log=print,
     all_found = discover(sections, years, log=log)
     log("%d distinct report urls" % len(all_found))
 
-    # EVERY report we can reach, not one per ministry.
-    # This used to keep only the newest report per publisher, on the reasoning
-    # that its payment column is cumulative so it answers the same question.
-    # That reasoning is wrong twice over: education's Q2 2025 file is 295 KB
-    # against Q1's 663 KB, so a later report can list FEWER contracts than an
-    # earlier one; and a single snapshot cannot say what was paid in a given
-    # year, which needs the whole series. Collecting is not the place to decide
-    # what matters.
+    # EVERY reachable report, not one per ministry: a later report can list
+    # FEWER contracts than an earlier one, and per-year figures need the whole
+    # series. Collecting is not the place to decide what matters.
     found = {u: m for u, m in all_found.items() if reachable(u)}
     newest, blocked = newest_per_publisher(all_found, log=log)
     log("%d reports reachable, %d ministries unreachable" % (len(found), len(blocked)))
 
-    # WRITE DOWN WHAT WE COULD NOT REACH.
-    # This line used to be the whole story of the gap, and it was silent about
-    # the size of it: newest_per_publisher only names a ministry with NO
-    # reachable report at all. A ministry with a 2024 file on gov.il and twenty
-    # 2016-2019 files on foi.gov.il lost the twenty and nothing said so — which
-    # is exactly "a partial answer shown as if it were complete".
-    # Now every skipped url is recorded next to the reports, so the inventory
-    # can say how big the hole is instead of implying there isn't one.
+    # write down what we could NOT reach — every skipped url, so the
+    # inventory can say how big the hole is instead of implying there is none.
     skipped = {u: m for u, m in all_found.items() if not reachable(u)}
     if skipped:
         log("%d reports exist that we CANNOT download (host refuses a server)"
@@ -579,15 +511,10 @@ def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log,
                 time.sleep(0.5)                   # be a polite guest
                 continue
 
-        # THE SECOND CHANCE: the Wayback Machine. Tried for every direct
-        # failure and for every url on a host that refuses servers outright.
-        #
-        # THE CIRCUIT BREAKER (2026-08-24, run 2): after our heavy sweeps,
-        # archive.org started REFUSING connections outright — and the run
-        # spent hours collecting nothing but [Errno 111]. A refused
-        # connection is not "no snapshot"; it is "come back later". After
-        # enough consecutive connection-level refusals, stop asking for the
-        # rest of THIS run; every skipped url is retried next run.
+        # second chance: the Wayback Machine — every direct failure and
+        # every refused host. CIRCUIT BREAKER: a refused connection is
+        # "come back later", not "no snapshot"; after enough consecutive
+        # refusals stop asking THIS run (the rest retries next run).
         wb_err = None
         if wayback and wb_refused >= WB_REFUSALS_LIMIT:
             wb_err = "not tried — the archive refused %d consecutive connections this run" % wb_refused
@@ -628,11 +555,9 @@ def _download_all(found, blocked, out_dir, manifest, manifest_path, limit, log,
                                (" · wayback: " + wb_err) if wb_err else ""))
         time.sleep(0.5)
 
-    # A DEAD ADDRESS IS NOT ALWAYS A MISSING REPORT. BudgetKey indexes the
-    # same report under several urls (foi.gov.il + gov.il, old and new hosts),
-    # and in the 2026-08-24 run a large share of the 79 "failures" were dead
-    # twins of files that downloaded fine under another address. Say which,
-    # so the failure list shows the real hole and not the noise.
+    # a dead address is not always a missing report: BudgetKey indexes the
+    # same report under several urls — mark dead twins (covered_by) so the
+    # failure list shows the real hole, not the noise.
     have = {}
     for m in manifest.values():
         have[(m.get("publisher"), str(m.get("year")), str(m.get("period")))] = m.get("file")
@@ -673,10 +598,8 @@ if __name__ == "__main__":
     ap.add_argument("--out", required=True)
     ap.add_argument("--manifest")
     ap.add_argument("--sections", default="")
-    # five years back, not two: the newest report a ministry has published can
-    # be years old, and newest_per_publisher only ever takes the latest one it
-    # is shown. Asking 2026,2025 alone found education and NOTHING for health
-    # or defence, whose latest indexed reports are older than that.
+    # five years back, not two: a ministry's newest report can be years old
+    # (2026+2025 alone missed health and defence entirely).
     ap.add_argument("--years", default="2026,2025,2024,2023,2022")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--catalogue", help="the checked-in list of seed urls. "

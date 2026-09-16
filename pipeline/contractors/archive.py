@@ -38,10 +38,9 @@ TAG = "raw-archive"
 API = "https://api.github.com"
 BUNDLES = 16                      # reports-0.zip … reports-f.zip
 
-# GitHub's release API hiccups (the first phase-2 run died on a bare HTTP 500
-# downloading a bundle, 2026-09-09). Transient trouble — 5xx, 429, timeouts,
-# dropped connections — is retried with growing waits; ~8 minutes of patience
-# total, then a loud death. A clean 404 is an ANSWER and is never retried.
+# GitHub's release API hiccups. Transient trouble — 5xx, 429, timeouts,
+# dropped connections — is retried with growing waits (~8 min of patience),
+# then a loud death. A clean 404 is an ANSWER and is never retried.
 RETRIABLE = {429, 500, 502, 503, 504}
 RETRY_WAITS = (10, 30, 60, 120, 240)
 _sleep = time.sleep               # the tests replace this
@@ -271,9 +270,8 @@ def ingest_reports(reports_dir, manifest_path, fetch_manifest_path,
 
     if not new_by_bundle:
         # still (create and) write the manifest: the workflows git-add its
-        # folder right after this, and a first run over an empty cache must
-        # leave a real file behind, not a missing pathspec (learned from the
-        # first live bootstrap run, 2026-09-08 — exit 128 on git add)
+        # folder right after this — a first run over an empty cache must
+        # leave a real file behind, not a missing pathspec
         save_manifest(manifest_path, man, old_n)
         print("nothing new to archive (%d files already in)" % old_n)
         return {"new": 0, "bundles": []}

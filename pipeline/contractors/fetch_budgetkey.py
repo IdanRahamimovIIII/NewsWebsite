@@ -1,38 +1,18 @@
 #!/usr/bin/env python3
-"""
-fetch_budgetkey.py — pull the contract_spending rows for a set of budget
-sections, so build_dataset.py has a SECOND source to merge against.
+"""fetch_budgetkey.py — pull the contract_spending rows for a set of
+budget sections, so build_dataset.py has a second source to merge against
+(entity resolution, budget_title, the payments[] history and every contract
+the newest ministry report no longer lists exist only there).
 
-WHY THIS EXISTS
-  The first automated run built site/data/contracts/contracts.json and printed:
+HOW IT PAGES: the API caps rows per answer and gives no cursor; ORDER BY
+over a large unindexed slice times out. So walk the budget-code TREE —
+'0020%', and when an answer comes back full (possibly truncated) split one
+digit deeper; splitting a bucket that was exactly full costs ten cheap
+queries, assuming it was complete could lose thousands. Only a slice small
+enough to sort falls back to keyset paging on (order_id, budget_code).
 
-      contracts: 2455  (file only: 2455 · BudgetKey only: 0 · both: 0)
-
-  Zero from BudgetKey. The merge was doing nothing — it was the ministry's own
-  spreadsheet, reshaped. Rule 2 asks for a COMBINED database and rule 4 asks
-  every cell to be filled from wherever it can be; neither is possible with one
-  source in the room. entity_kind and budget_title exist only in BudgetKey, the
-  full supplier resolution exists only in BudgetKey, and every contract that
-  BudgetKey holds but the newest report does not was simply absent.
-
-HOW IT PAGES
-  The API caps how many rows it will return and gives no cursor. ORDER BY over
-  a large unindexed slice times out (we learned that the hard way with
-  DISTINCT ON over the report table). So this walks the budget code TREE:
-  ask for '0020%'; if the answer comes back full it is probably truncated, so
-  ask '00200%', '00201%' … and so on, one digit deeper each time. Buckets that
-  fit are taken whole. Only at a complete 10-digit code — a slice small enough
-  to sort — does it fall back to keyset paging on order_id.
-
-  A full bucket might be exactly full rather than truncated. Splitting it
-  anyway costs ten cheap queries and cannot lose a row; assuming it was
-  complete could lose thousands. We split.
-
-WHAT IT SELECTS
-  Only the columns the merge actually reads, and it asks the table which
-  columns exist first. A column we want that is missing is printed by name and
-  loudly counted — never silently dropped, which is how a field goes quietly
-  empty and nobody notices for a month.
+Collects EVERY column the table has (decide later, not at collection);
+a wanted column missing upstream is named LOUDLY, never dropped quietly.
 
 usage:
   fetch_budgetkey.py --sections 0020,0024 --out reports/budgetkey.json
@@ -44,9 +24,8 @@ API = "https://next.obudget.org/api/query"
 UA = {"User-Agent": "our-money/1.0 (+https://github.com/) python-urllib"}
 TABLE = "contract_spending"
 
-# the columns the MERGE reads. This is not the collection list — everything the
-# table has is collected. It is here so that a column disappearing upstream is
-# reported by name instead of turning a field quietly empty.
+# the columns the MERGE reads (not the collection list — everything is
+# collected); a column vanishing upstream is reported by name.
 WANT = [
     "order_id", "budget_code", "budget_title", "publisher_name",
     "purchasing_unit", "supplier_name", "entity_name", "entity_kind",
@@ -55,8 +34,7 @@ WANT = [
     "tender_key", "payments", "min_year", "max_year",
 ]
 
-# rule 7. These are lifetime totals divided by a year count. Reading one is
-# how we once shipped a "paid this year" column that was an average.
+# rule 7: lifetime totals divided by a year count — never a measurement.
 NEVER_READ = {"volume_per_year", "executed_per_year"}
 
 PAGE = 1000          # first guess at rows per request, until the API says otherwise
@@ -75,16 +53,9 @@ def bk(sql, rows=PAGE, timeout=180):
 
 
 def columns(log=print):
-    """EVERY column the table has, minus the two computed averages.
-
-       This used to select only the 21 columns the merge reads. That is a
-       decision about what matters, taken during collection, before anyone had
-       looked at the data — and it is not reversible without re-downloading a
-       million rows. Collect the column, decide later.
-
-       The exception is rule 7: volume_per_year and executed_per_year are a
-       lifetime total divided by a year count. They are not a measurement of
-       anything and storing them invites someone to read them by accident."""
+    """EVERY column the table has, minus the two computed averages
+       (rule 7). Collect the column, decide later — dropping one at
+       collection is irreversible without re-downloading a million rows."""
     probe = bk("SELECT * FROM %s LIMIT 1" % TABLE, rows=1)
     if not probe:
         raise RuntimeError("%s returned no rows at all — cannot read its shape" % TABLE)
@@ -109,11 +80,8 @@ CAP = [None]        # how many rows the API will really hand over; learned once
 
 
 def how_many(where, stats):
-    """count(1) before fetching. Two queries that cost almost nothing beat
-       pulling a thousand rows, finding the page full, throwing them away and
-       pulling ten more thousand-row pages to replace them. A prefix count on
-       budget_code is an index range, not the unindexed ILIKE scan that we
-       already know times out."""
+    """count(1) before fetching — a prefix count on budget_code is an index
+       range (cheap), and knowing the size first saves throwaway pages."""
     stats["queries"] += 1
     rows = bk("SELECT count(1) AS n FROM %s WHERE %s" % (TABLE, where), rows=1)
     return int((rows[0] if rows else {}).get("n") or 0)
@@ -148,10 +116,8 @@ def by_code(prefix, cols, out, stats, log=print, depth=None):
         CAP[0] = len(rows)                  # now we know the ceiling
         log("  the API returns at most %d rows per query" % CAP[0])
 
-    # Too big for one query. Paging it in order is far cheaper than splitting
-    # the code tree — descending six digits to reach a concentrated bucket costs
-    # ten counts per level. Sorting is only dangerous on a slice this side of
-    # enormous, and now we know the size before we ask.
+    # too big for one query: paging in order beats splitting six digits
+    # deep (ten counts per level); sorting is safe now the size is known
     if n is not None and n <= KEYSET_MAX:
         keyset(where, cols, out, stats, log, label=prefix, expected=n)
         return

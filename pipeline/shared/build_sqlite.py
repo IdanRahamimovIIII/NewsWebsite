@@ -1,45 +1,20 @@
 #!/usr/bin/env python3
-r"""
-build_sqlite.py — turn the built dataset (build/contracts/<sec>.json,
-build_dataset.py's output) into ONE SQLite database.
+r"""build_sqlite.py — turn build_dataset.py's section JSONs into ONE SQLite
+database. Lives in shared\: contractors\build_database.py builds with it,
+and contractors\, audit\ and worker\ tests build their fixture dbs with
+the REAL schema through it.
 
-LIVES IN shared\ (since 2026-09-08): shared\ is the folder every pipeline
-chat connects, and this module is infrastructure several jobs build on —
-database\build_database.py (the build), contractors\test_*.py and
-worker\wtest_*.mjs (they build their fixture dbs with the REAL schema),
-audit\cmp_audit.mjs (same). database\build_sqlite.py is a forwarder.
-
-WHY SQLITE (Mercy, 2026-08-25: "what is the correct way to do it?")
-  The JSON shards are the database's SOURCE, not its serving form. SQLite is
-  a real SQL database in a single file — indexes, queries, no server — and
-  it is exactly what Cloudflare D1 runs, so this file IS the thing the
-  worker will query. Field names stop repeating half a million times, which
-  is where the JSON's weight came from.
-
-THE MONTHLY DELTA (her point, same day: "why would we write all 513K
-lines? we only need to update what's relevant")
-  Every contract row carries a FINGERPRINT — a hash of its full record.
-  Next month's build compares fingerprints against this file and writes
-  only new / changed / gone rows to D1. The full write happens once, at
-  bootstrap. Same principle as the whole pipeline: never redo what did not
-  change.
-
-WHAT GOES WHERE
-  contracts    — one row per contract, every scalar field of FIELDS.xlsx v2,
-                 plus sources/provenance/notes as compact JSON text (compare
-                 .html must show which source won each field — rule R3).
-  allocations  — (order_id, budget_code) rows, live and historical labelled.
-  reports      — the payments[] history, one row per (order_id, year, period).
-
-THE REGISTERS RIDE ALONG (full db only, 2026-08-25)
-  --exemptions/--tenders embed the raw mr.gov.il register rows as a
-  `registers` table indexed by publication number, so the local audit
-  server (compare.html's backend) answers everything from ONE file instead
-  of re-parsing 140 MB of JSON on every start. The PUBLIC copy never
-  carries it — the registers are an input, not part of the served dataset.
+SQLite because it is exactly what Cloudflare D1 runs — this file IS what
+the worker queries. Tables: contracts (one row per contract, every scalar
+of FIELDS.xlsx v2 + sources/provenance/notes JSON), allocations (live and
+historical, labelled), reports (one row per (order_id, year, period)).
+Each contract carries a FINGERPRINT (hash of the full record) so a monthly
+delta writes only new/changed/gone rows. --exemptions/--tenders embed the
+raw register rows into the FULL db only (the audit server reads them; the
+public copy never carries them).
 
 usage:
-  build_sqlite.py --contracts site/data/contracts --out contracts.db \
+  build_sqlite.py --contracts <dir> --out contracts.db \
                   [--exemptions ex.json --tenders tn.json] [--public pub.db]
 """
 import argparse, hashlib, json, os, sqlite3, sys
@@ -101,12 +76,8 @@ CREATE INDEX ix_reports_order         ON reports(order_id);
 
 
 def _vacuum_close(db, path):
-    """Compact and close — WITHOUT the in-place VACUUM's disk bill. In-place
-       VACUUM holds the original + a full temp copy + the journal at once
-       (~3x the db); it died with 'database or disk is full' on the CI
-       runner's ~14 GB disk (build-and-update's first run, 2026-09-09).
-       VACUUM INTO writes just the compacted copy (~2x peak), which is then
-       swapped over the original. Same result, one db less on disk."""
+    """VACUUM INTO + swap: ~2x disk at peak instead of in-place VACUUM's
+       ~3x, which overflows the CI runner's ~14 GB disk."""
     tmp = path + ".vacuum"
     if os.path.exists(tmp):
         os.unlink(tmp)
@@ -221,31 +192,20 @@ def embed_registers(db_path, ex_path=None, tn_path=None, log=print):
     db.close()
 
 
-# the public copy DICTIONARY-ENCODES these: low-cardinality Hebrew text that
-# repeats across hundreds of thousands of rows ("משרד החינוך" tens of
-# thousands of times). Each becomes an integer into ONE strings table.
-# D1 bills storage AND rows read — smaller rows serve both (Mercy,
-# 2026-08-25: "still try to optimize storage and calls").
+# the public copy DICTIONARY-ENCODES these low-cardinality Hebrew columns
+# as integers into one strings table — D1 bills storage AND rows read.
 DICT_COLS = ["ministry", "unit", "purchase_group", "budget_title", "method",
              "exemption", "currency", "entity_kind", "approver", "decision",
              "publication_status", "topics", "continuation_reason"]
 
 
 def public_copy(full_db, out_path, log=print, strings_from=None):
-    """The D1 version: same data, NO audit. Provenance and fingerprints are
-       for Mercy's own verification (compare.html, which runs locally against
-       the full db) and for the monthly delta — the website needs neither
-       (settled 2026-08-25: 'the audit is just for myself'). sources stays:
-       a reader is entitled to know which sources fed a contract.
-
-       The `contracts_v` VIEW undoes the dictionary encoding, so worker
-       queries can read plain text columns and pay nothing for it.
-
-       strings_from (PIPELINE v2, 2026-09-08): a PREVIOUS public db whose
-       string ids are copied in first, so ids stay STABLE across rebuilds
-       and a monthly delta stays a delta — without it a rebuild could
-       renumber the dictionary and make every row look changed. New values
-       only APPEND after the old ids."""
+    """The D1 version: same data, no provenance/fingerprints (audit stays
+       local); sources kept — a reader may see which sources fed a contract.
+       The contracts_v VIEW undoes the dictionary encoding for the worker.
+       strings_from = the previous public db: its string ids are copied in
+       FIRST and new values only append, so ids stay stable across rebuilds
+       and a monthly delta stays a delta."""
     if os.path.exists(out_path):
         os.unlink(out_path)
     db = sqlite3.connect(out_path)

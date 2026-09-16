@@ -3,30 +3,17 @@
 """Collect the official Knesset member photos onto our own disk — hands-free.
 get-photos.bat runs this; run it again after each election.
 
-How it knows where the photos are (settled 2026-08-25, from Mercy's DevTools
-capture): GET /WebSiteApi/knessetapi/MKs/GetMkdetailsHeader?mkId=N returns an
-`MkImage` field with that member's official portrait URL (fs.knesset.gov.il).
-Both the API and the image answer through our Cloudflare relay — verified
-live before this script was written. (The other route the site uses,
-SpList/GetMKImages, checks the request's Origin/Referer and answers `null`
-to anyone else — don't bother with it.)
+Where the photos are: GET MKs/GetMkdetailsHeader?mkId=N → `MkImage`
+(current members) else `LobbyImage` (past members) on fs.knesset.gov.il;
+both answer through our relay. (SpList/GetMKImages checks Origin/Referer
+and answers a literal `null` — don't bother.) A genuine miss is one where
+BOTH fields are empty or the image does not download. More lessons:
+NOTES.md here.
 
-PAST members (found 2026-09-06): for anyone who is not a current MK the same
-call answers `MkImage: null` but carries the portrait in `LobbyImage`
-(https://fs.knesset.gov.il/globaldocs/MK/<id>/…jpeg) — checked on a Knesset-1
-member (500) and a Knesset-10–14 member (2). So the rule is: MkImage first,
-LobbyImage second. The first `--all` run (2026-08-25) read only MkImage and
-wrote all ~980 past members into misses.json as "no photo" — that file was
-reset the day the bug was found; a genuine miss is one where BOTH fields
-are empty or the image does not download.
-
-Output: mk/<MkId>.<ext> + mk/index.json, NEXT TO THIS SCRIPT (pipeline\photos\)
+Output: mk/<MkId>.<ext> + mk/index.json, next to this script
         ({"<MkId>": "<filename>"} — the page shows photos ONLY for ids in
-        that manifest; nobody ever gets a guessed URL or a broken image).
-        Since 2026-09-06 the site keeps no photos of its own: publish-photos.bat
-        (publish_photos.py) puts the manifest and the images into Cloudflare
-        KV, and the page reads <relay>/data/mkphotos + <relay>/photos/mk/<file>.
-        After this script: run publish-photos.bat.
+        the manifest). The site keeps no photos of its own: after this
+        script run publish-photos.bat, which puts everything into KV.
 
 Zero-install: standard library only. If Pillow is ALSO installed
 (`pip install pillow`), photos are shrunk to web size (512px, JPEG) — the
@@ -159,7 +146,7 @@ def proxy_url():
 
 # where the portrait URL lives in a GetMkdetailsHeader answer, in order of
 # preference: current members fill MkImage; past members have MkImage null
-# and the portrait in LobbyImage (see the docstring, 2026-09-06)
+# and the portrait in LobbyImage (see the docstring)
 IMAGE_FIELDS = ("MkImage", "LobbyImage")
 
 

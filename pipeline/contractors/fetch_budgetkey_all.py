@@ -15,7 +15,7 @@ WHY A DRIVER AND NOT ONE BIG RUN
   correctly (counts first, pages by what actually came back, keeps every
   column except the two rule-7 averages). This only drives it.
 
-RULES: BudgetKey is collected RAW and kept SEPARATE (Mercy, 2026-08-24) —
+RULES: BudgetKey is collected RAW and kept SEPARATE (Mercy) —
   nothing here is combined with the ministry files or the registers.
 
 usage:

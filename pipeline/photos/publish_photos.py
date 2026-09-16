@@ -4,10 +4,10 @@
 publish_photos.py — puts the Knesset members' portraits (photos\\mk\\) into
 Cloudflare KV, where the relay serves them to the MK page.
 
-WHY (Mercy, 2026-08-25: photos are SELF-HOSTED; 2026-09-06: the site keeps
+WHY (Mercy: photos are SELF-HOSTED; the site keeps
 no data, everything a page shows comes from an API or from Cloudflare).
 get-photos.bat collects the official portraits from the Knesset; this
-publishes them. KV, not R2 (settled 2026-09-06): 120 files × ~20 KB today,
+publishes them. KV, not R2 (settled): 120 files × ~20 KB today,
 ~22 MB if every past member is ever collected — KV is already bound to the
 worker and the token already writes to it; a bucket, a binding and a
 permission would be infrastructure for 3 MB of files.

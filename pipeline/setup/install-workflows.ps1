@@ -1,5 +1,5 @@
 # =====================================================================
-#  install-workflows.ps1 (2026-09-06) - copies pipeline\workflows\*.yml
+#  install-workflows.ps1 - copies pipeline\workflows\*.yml
 #  into <project>\.github\workflows\, which is where GitHub insists on
 #  finding them. Run via install-workflows.bat (double-click).
 #

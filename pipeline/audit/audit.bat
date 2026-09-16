@@ -9,7 +9,7 @@ REM  field and the register rows embedded. compare.html uses it to show
 REM  what the built dataset really holds, next to what every live source
 REM  says.
 REM
-REM  The full database is a BUILD INTERMEDIATE since 2026-09-06:
+REM  The full database is a BUILD INTERMEDIATE:
 REM     ..\build\contracts-full.db     written by ..\contractors\build-database.bat,
 REM                                    deleted by ..\clean-up.bat, rebuildable.
 REM  (out\contracts-public.db is the D1 upload - it has no provenance and

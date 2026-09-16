@@ -1,4 +1,4 @@
-# PIPELINE v2 phase 2 (2026-09-08) - THE AUTOMATED MONTHLY BUILD.
+# PIPELINE v2 phase 2 - THE AUTOMATED MONTHLY BUILD.
 # Mercy's requirement 2: "we update the dataset without me doing so manually."
 #
 # The chain: pull everything from the raw-archive Release (reports at their
@@ -11,7 +11,7 @@
 # (which also puts the ctr_* tables + search index live, replacing the
 # manual upload-to-d1 .bats for good).
 #
-# TWO JOBS since 2026-09-10 (Mercy: "can we split the build and upload?"):
+# TWO JOBS (Mercy: "can we split the build and upload?"):
 # the ~40-minute BUILD hands work/contracts-public.db to the UPLOAD job as
 # a workflow artifact (kept 7 days). D1 wobbled three runs in a row on the
 # upload side - with the split, Actions -> the failed run -> "Re-run
@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@v6
 
       # the runner offers ~14 GB free and the first full run blew past it
-      # (2026-09-09: the public db's VACUUM died on "database or disk is
+      # (the public db's VACUUM once died on "database or disk is
       # full"). Dropping preinstalled toolchains this job never touches
       # frees ~25 GB more; --scrub on the build step (below) does the rest.
       - name: free runner disk (toolchains this job never uses)
@@ -60,8 +60,8 @@ jobs:
           python-version: "3.12"
       - run: pip install openpyxl xlrd
 
-      # a bad secret must cost seconds, not the build (learned 2026-09-09:
-      # a 401 surfaced only at upload time, 40 minutes in). Read-only.
+      # a bad secret must cost seconds, not the build (a 401 once surfaced
+      # only at upload time, 40 minutes in). Read-only.
       - name: prove the Cloudflare credentials before anything else
         env:
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}

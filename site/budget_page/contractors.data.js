@@ -67,7 +67,7 @@ const state = {
    One exact query, no classification table: the method field's own words.
    "בפטור ממכרז" counts the contracts whose report records פטור ממכרז —
    the field is dirty (currency codes, empty arrays, multi-value combos,
-   verified live 2026-09-08), so counting the phrase as-published is the
+   verified live), so counting the phrase as-published is the
    only claim that needs no judgment call of ours. */
 const EXEMPT_MARK = "פטור ממכרז";
 const inForce = y => `min_year <= ${+y} AND max_year >= ${+y} AND min_year > 1990`;
@@ -113,7 +113,7 @@ async function loadTopSuppliers(year, mode) {
 /* ---------- which exemption regulations carry the money ----------
    exemption_reason is an array, verbatim from the report — including
    combinations. The field also carries junk (an order number was seen in
-   it, verified live 2026-09-08), so only rows that actually cite a תקנה
+   it, verified live), so only rows that actually cite a תקנה
    are asked for; the view prints the citation exactly as recorded. */
 async function loadExemptions(year) {
   if (state.exByYear[year]) return state.exByYear[year];
@@ -179,7 +179,7 @@ async function loadSupplier(sid) {
 
 /* ---------- the exemption's own publication ----------
    ~9% of exempt contracts carry a tender_key into the mr.gov.il exemptions
-   register (3,822 of 41,180 in force 2024, verified live 2026-09-08) —
+   register (3,822 of 41,180 in force 2024, verified live) —
    each element is a JSON STRING encoding [publication_id, type, tender_id].
    Where one exists, the register has the publication's description, the
    reason, the regulation, the committee decision and the page itself

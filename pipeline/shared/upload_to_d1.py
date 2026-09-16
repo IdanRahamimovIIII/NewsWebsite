@@ -1,60 +1,31 @@
 #!/usr/bin/env python3
-r"""
-upload_to_d1.py — upload contracts-public.db into Cloudflare D1, in PARTS,
-each one VERIFIED by counting rows through the API before moving on.
-Run by double-clicking contractors\upload-to-d1.bat.
+r"""upload_to_d1.py — upload contracts-public.db into Cloudflare D1 in
+PARTS, each import VERIFIED by row counts through the API before moving on
+(trust nothing the API says about success; trust the counts — the full
+lesson list lives in contractors\NOTES.md, "D1 uploader"). Run by
+upload-to-d1.bat, by upload_contractors.py (ctr_* only), and by pipeline2's
+update-d1. Stdlib only — the REST import flow (init md5-etag -> PUT ->
+ingest -> poll) is what wrangler uses underneath, without needing Node.
 
-LIVES IN shared\ (since 2026-09-08): shared\ is the folder every pipeline
-chat connects, and this module's dump/import/verify machinery is used by
-both uploads of the contractors dataset — the full one (upload-to-d1.bat)
-and the small ctr_-tables one (upload_contractors.py), plus its test.
+Verified parts are recorded in a state file; a re-run skips them.
 
-WHY NOT WRANGLER: Cloudflare's CLI needs Node and this machine has none.
-The REST import flow is what wrangler uses underneath anyway:
-init (md5 etag) → PUT the SQL to a one-time url → ingest → poll.
-
-WHY PARTS, WHY VERIFY (learned 2026-08-26, the hard way): the first
-version sent ONE 1.2 GB file and trusted the poll answer "Not currently
-importing anything." as completion — but that answer is the same for
-"finished" and for "failed and rolled back", and the import HAD failed:
-the tables did not exist. A single giant file is also all-or-nothing.
-So now: the dump is split at ~30 MB boundaries, each part is imported
-and then CHECKED — the API is asked to COUNT the rows and the count must
-match what the dump manifest says that part should have reached. A part
-that verifies is recorded in a state file; re-running skips it. Trust
-nothing the API says about success; trust the row counts.
-
-CONFIG: d1-config.json at the project root (gitignored — it holds the
-token). Created as a template on first run:
-  account_id  — dash.cloudflare.com, right side of the account home
-  database_id — Storage & Databases → D1 → the database → its UUID
-  api_token   — profile → API Tokens → Custom token, Account · D1 · Edit
+CONFIG: pipeline\d1-config.json (gitignored — holds the token), or the
+CF_ACCOUNT_ID / CF_DATABASE_ID / CF_API_TOKEN env values in CI.
 """
 import hashlib, json, os, sqlite3, sys, time, urllib.request, urllib.error
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG = os.path.join(ROOT, "d1-config.json")            # pipeline\d1-config.json (gitignored)
-# the db lives in contractors\out\ since the 2026-09-08 by-DATASET reorg;
-# the old pipeline\out\ home is honoured until apply-dataset-reorg.bat moves it
-_DB_NEW = os.path.join(ROOT, "contractors", "out", "contracts-public.db")
-_DB_OLD = os.path.join(ROOT, "out", "contracts-public.db")
-DB = _DB_OLD if (os.path.exists(_DB_OLD) and not os.path.exists(_DB_NEW)) else _DB_NEW
+DB = os.path.join(ROOT, "contractors", "out", "contracts-public.db")
 OUT = os.path.join(ROOT, "build", "d1")
 
 MAX_STMT = 60_000        # bytes per INSERT — D1 rejects overlong statements
-PART_MAX = 30_000_000    # bytes per upload part — was 120 MB, then 60. The
-                         # first AUTOMATED full upload killed both (2026-09-09
-                         # + -10): D1's storage layer times out and resets
-                         # mid-import ("storage operation exceeded timeout
-                         # which caused object to be reset"); the 60 MB part
-                         # died ~823 queries ≈ 49 MB in. 30 MB stays under
-                         # the observed death point (and matches the FTS
-                         # part size, proven live 2026-09-08); each part is
-                         # cheap to retry when D1 wobbles
-FTS_PART_MAX = 30_000_000  # FTS5 inserts cost far more CPU per byte than
-                           # plain rows (the index is built as they land) —
-                           # smaller parts keep each import under D1's CPU
-                           # limit, the same lesson the indexes taught
+PART_MAX = 30_000_000    # bytes per part. 120 and 60 MB died: D1's storage
+                         # layer resets ~49 MB into an import; 30 MB stays
+                         # under the death point and is cheap to retry
+FTS_PART_MAX = 30_000_000  # FTS5 inserts cost far more CPU per byte (the
+                           # index builds as they land) — small parts stay
+                           # under D1's CPU limit
 TABLES_LAST = ("index", "view")
 
 
@@ -128,10 +99,9 @@ class Parts:
         self.objects = []
 
     def stmt(self, text, table=None, rows=0, obj=None, cap=None):
-        """obj = name of an index/view this statement creates. Such a
-           statement gets a part OF ITS OWN (learned 2026-08-26, part-011:
-           ten CREATE INDEXes over millions of rows in one import blew
-           D1's CPU limit and the whole part was rolled back).
+        """obj = name of an index/view this statement creates — it gets a
+           part OF ITS OWN (several CREATE INDEXes over millions of rows in
+           one import blow D1's CPU limit and roll the part back).
            cap = a smaller per-part byte limit (FTS inserts)."""
         b = text.encode("utf-8")
         if self.size and (self.break_next or obj or
@@ -250,8 +220,8 @@ def api(cfg, path, body, timeout=120, attempts=1, soft=False):
 def count_remote(cfg, table):
     j = api(cfg, "query", {"sql": 'SELECT COUNT(*) AS n FROM "%s"' % table},
             timeout=300, attempts=8, soft=True)
-    # A 400 "no such table" is a real answer: the part that creates the
-    # table has not been applied yet (learned 2026-08-26, part-006).
+    # a 400 "no such table" is a real answer: the part that creates the
+    # table has not been applied yet
     try:
         return j["result"][0]["results"][0]["n"]
     except (KeyError, IndexError, TypeError):
@@ -290,9 +260,8 @@ def _transient(msg):
 
 def init_when_free(cfg, etag, log=print, max_wait=4 * 3600):
     """Ask for an upload slot; if D1 says another import is still running
-       (learned 2026-08-26: a previous run's part, killed mid-poll on our
-       side, keeps running on theirs — and there is no cancel call), WAIT
-       for it instead of giving up. Returns the init answer's result."""
+       (a part killed mid-poll on our side keeps running on theirs, and
+       there is no cancel call), WAIT instead of giving up."""
     waited = 0
     while True:
         j = api(cfg, "import", {"action": "init", "etag": etag}, attempts=4)
@@ -356,14 +325,10 @@ def already_applied(cfg, part, log=print):
 
 
 def import_part(cfg, outdir, part, meta, log=print, attempts=3):
-    """Import one part, retrying a D1-SIDE failure (2026-09-09, the first
-       automated full upload: part-001 died on 'D1 DB storage operation
-       exceeded timeout which caused object to be reset' — Cloudflare's
-       storage layer, not our SQL — and one wobble killed a 40-minute
-       run). A failed import ROLLS BACK (the v1 lesson), so re-importing
-       the same part is safe, and already_applied() still counts first in
-       case it landed after all. A network drop mid-upload/poll gets the
-       same retry; a NON-transient error (bad SQL, auth) dies at once."""
+    """Import one part, retrying a D1-SIDE transient failure (storage
+       resets, network drops). A failed import ROLLS BACK, so re-importing
+       is safe; already_applied() still counts first in case it landed.
+       A NON-transient error (bad SQL, auth) dies at once."""
     for i in range(attempts):
         try:
             return _import_once(cfg, outdir, part, meta, log)
@@ -389,11 +354,10 @@ def _import_once(cfg, outdir, part, meta, log=print):
     if already_applied(cfg, part, log):
         return
     if not res.get("upload_url") or not res.get("filename"):
-        # A leftover from an aborted attempt: the file is already in the
-        # upload store, so init hands back no slot — and no filename to
-        # ingest by (learned 2026-08-26: ingest with filename=null is a
-        # 400). Make the part NEW again — one harmless SQL comment changes
-        # the checksum — and take the full path.
+        # a leftover from an aborted attempt: the file is already in the
+        # upload store, so init hands back no slot (and ingest with
+        # filename=null is a 400). One harmless SQL comment makes the part
+        # NEW again; take the full path.
         log("    (already uploaded once — refreshing the part and re-uploading)")
         with open(path, "ab") as fh:
             fh.write(("\n-- retry %d\n" % int(time.time())).encode())
@@ -426,11 +390,9 @@ def _import_once(cfg, outdir, part, meta, log=print):
             log("    " + str(m))
         if seen:
             last = seen[-1]
-        # THE LESSON OF 2026-08-26, twice over: `result.success` only means
-        # the POLL request succeeded. The import's real state is
-        # `result.status` — keep waiting while it is "active"; anything
-        # else is decided below. Walking away early is how v1 declared a
-        # rolled-back import "done" and v2 queried a locked database.
+        # `result.success` only means the POLL request succeeded; the
+        # import's real state is `result.status`. Walking away early once
+        # declared a rolled-back import "done".
         err = res.get("error") or j.get("error")
         status = res.get("status")
         if err and "Not currently importing" in str(err):
@@ -448,13 +410,9 @@ def _import_once(cfg, outdir, part, meta, log=print):
 
 def import_verified(cfg, outdir, part, meta, log=print, attempts=3):
     """import_part + the count-verify, RE-IMPORTING when the counts say the
-       import rolled back. THE LESSON OF 2026-09-10 (the first automated
-       full upload, third try): D1 reset mid-import and the poll then
-       answered 'Not currently importing anything.' — which v1 taught is
-       ALSO how failed-and-rolled-back answers — so import_part returned
-       as if done, the verify saw the live tables still holding LAST
-       month's data, and the run died at a point where simply re-importing
-       the part (safe: a failed import rolls back) would have carried on."""
+       import rolled back — the poll answers 'Not currently importing
+       anything.' for finished AND for failed-and-rolled-back, so only the
+       counts can tell them apart."""
     for i in range(attempts):
         import_part(cfg, outdir, part, meta, log)  # its own retries inside
         if verify(cfg, part, log=log):

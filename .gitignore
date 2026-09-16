@@ -1,26 +1,26 @@
-# ---------------------------------------------------------------------------
-#  הכסף שלנו — what does NOT belong in the repository
-# ---------------------------------------------------------------------------
+# הכסף שלנו — what does NOT belong in the repository
 
-# The ministries' spreadsheets are BUILD INPUTS, not source. The workflow
-# caches them between runs; 82 files a quarter in git history would bloat the
-# repo forever to store something we can re-download in a minute.
-# the pipeline's work area and its fetched reports (pipeline/ since 2026-09-05;
-# the old root-level names stay so stragglers are still ignored)
+# the pipeline's work area and its fetched reports: build inputs, cached
+# between CI runs (and rebuilt locally), never source
 pipeline/build/
-pipeline/reports/*.xlsx
-pipeline/reports/manifest.json
-reports/*.xlsx
-reports/manifest.json
+pipeline/reports/
 
-# a stray copy in the project root — it belongs in reports\
-/repository-of-answers_*.xlsx
+# parsed full records: every column of every row, ~240 MB/month — they ship
+# as a workflow artifact, never through git history (the lean documents in
+# pipeline/paid ARE committed: merge base + never-shrink baseline)
+pipeline/paid/*.full.json
 
-# the raw contract_spending pull. Also a build input: hundreds of MB of the
-# same rows the API will hand us again next month.
-build/
+# the local build's inputs and output live in pipeline/contractors/inputs
+# and /out — covered by pipeline/contractors/.gitignore
 
-# LibreOffice / Excel leave these behind while a file is open
+# the D1/KV config — it holds an API TOKEN. Never in git.
+/pipeline/d1-config.json
+
+# leftovers from clean-up .bats (moved, not deleted, until Mercy empties it)
+_old_delete_me/
+*.log
+
+# editors and office apps
 .~lock.*#
 ~$*
 *.tmp
@@ -29,57 +29,10 @@ build/
 node_modules/
 package-lock.json
 
-# python leaves these next to any module it imports — the test runs on GitHub
-# will make tools/__pycache__ every time
+# python
 __pycache__/
 *.pyc
 .venv/
-
-# leftovers from tidy-up.bat / clean-up-2.bat
-_old_delete_me/
-*.log
-
-# downloaded Actions artifacts and the locally built databases — the inputs
-# and outputs of build-database.bat (added 2026-08-25). Hundreds of MB, all
-# reproducible: artifacts re-download from Actions, the databases rebuild
-# in one click.
-# Since 2026-09-05 they live in pipeline\inputs\ (zips + export folders) and
-# pipeline\out\ (the two databases); the older patterns stay so a copy left
-# at an old place is still ignored.
-/pipeline/inputs/
-/pipeline/out/
-/_inputs/
-/_out/
-/full-records.zip
-/budgetkey-raw.zip
-/portal-registers.zip
-/publications-register.zip
-/contracts.db
-/contracts-public.db
-
-# the D1 upload config — it holds an API TOKEN. Never in git.
-/pipeline/d1-config.json
-/d1-config.json
-
-# NOTE: site/data/**  IS committed on purpose. Those JSON files are what the
-# site actually reads, and what the monthly workflow updates. That is the
-# point of putting this on GitHub.
-#
-# WITH ONE EXCEPTION, added 2026-08-23 after the first full run.
-# The .full.json files — every column of every row — came to 241 MB across 49
-# sections, with 0024.full.json alone at 33.7 MB. GitHub's recommended maximum
-# file size is 1 MB (enforced at 100 MB) and 28 of them are over it. They are
-# rewritten every month, so each refresh would add another 241 MB to history
-# forever. The lean files the site actually loads are 7.6 MB for all 49.
-# The full files are still produced and still downloadable — the workflow
-# uploads them as a build artifact. They just do not live in git.
-site/data/paid/*.full.json
-
-# raw register exports from mr.gov.il (Mercy downloads them by hand - the
-# portal does not serve robots) and the JSON they convert to. Hundreds of MB;
-# they live on disk, never in git history.
-/Exemptions-*/
-/Tenders-*/
 
 # screenshots the Playwright tests write next to themselves
 site/tests/*.png

@@ -13,7 +13,7 @@ This folder is the whole job. Done; nothing scheduled.
 State: 1,093 portraits (120 current + 973 past), ~27 MB, all published and
 read back. No portrait anywhere for ids 312, 454, 513, 560, 573, 694, 762,
 775, 856 (page shows initials). After each election: get-photos.bat (current
-only) → publish-photos.bat. Leftover: delete stale `pipeline\photos\photos\`.
+only) → publish-photos.bat. KV is the durable copy; mk\ is rebuildable.
 
 Uses `..\shared\cf_kv.py`, `..\d1-config.json` (token with Workers KV Storage:
 Edit), `site\config.js` (relay URL). Page side: `site\mk_page\mk.data.js` `photoOf()`.

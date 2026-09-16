@@ -1,7 +1,6 @@
 @echo off
 REM ---------------------------------------------------------------------
 REM  clean-up.bat - deletes the REBUILDABLE files, ~10 GB.
-REM  (in contractors\ since the 2026-09-08 by-DATASET reorg)
 REM
 REM  Everything below can be recreated by build-database.bat from the
 REM  files we KEEP (contractors\inputs\: the three zips + the export
@@ -16,7 +15,7 @@ REM  ..\build\d1\manifest.json + state.json are kept on purpose (and the
 REM  same pair in ..\build\d1\ctr\): they are how the uploaders remember
 REM  an upload is complete.
 REM
-REM  This one really DELETES (Mercy asked, 2026-09-05). It shows the list
+REM  This one really DELETES (Mercy asked). It shows the list
 REM  first and waits for a key.
 REM ---------------------------------------------------------------------
 cd /d "%~dp0.."

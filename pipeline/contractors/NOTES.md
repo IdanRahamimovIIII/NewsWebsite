@@ -30,9 +30,8 @@ precomputed tables. Serving = `worker\`.
 - build-and-update.yml ran end to end: full upload (no baseline yet), every
   part count-verified, baseline rotated → db-current.sqlite.gz on the Release.
   From here every run is a DELTA. Schedule enabled (3rd monthly) same commit.
-- Cause of the failed attempts before it: 60 MB parts (D1 storage resets
-  ~49 MB in); the 30 MB fix sat UNCOMMITTED while CI ran the old code —
-  after a fix, git status before re-running.
+- After a fix: git status before re-running — CI runs the COMMITTED code
+  (a fix once sat uncommitted while three runs failed on the old code).
 - 2026-09 build: contracts 987,090 · strings 6,202 · allocations 1,058,371 ·
   reports 2,924,853 · ctr_years 12 · ctr_top 600 · ctr_ex 297 · ctr_sup
   69,424 · ctr_fts 986,025. (Counts from the 2026-09-10 build's dump; CONFIRM

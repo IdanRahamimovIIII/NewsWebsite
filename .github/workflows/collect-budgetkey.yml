@@ -24,7 +24,7 @@ on:
 permissions:
   contents: write             # commits nothing; write is for uploading the
                               # rotating snapshot onto the raw-archive Release
-                              # (PIPELINE v2 phase 1, 2026-09-08)
+                              #
 
 jobs:
   collect:
@@ -42,16 +42,6 @@ jobs:
           path: pipeline/build/raw
           key: budgetkey-${{ github.run_id }}
           restore-keys: budgetkey-
-
-      # a cache saved before 2026-09-05 unpacks at the OLD path (build/raw);
-      # adopt it once so nothing is re-downloaded after the folder move
-      - name: adopt a BudgetKey cache saved under the old layout
-        run: |
-          if [ -d build/raw ] && [ ! -d pipeline/build/raw ]; then
-            mkdir -p pipeline/build
-            mv build/raw pipeline/build/raw
-            echo "adopted the old-layout cache into pipeline/build/raw"
-          fi
 
       # no network in these tests - they gate the pull, not depend on it
       - name: the collector's own tests first

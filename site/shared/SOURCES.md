@@ -1,7 +1,7 @@
 # SOURCES.md — upstream APIs used by more than one page (as measured)
 
 Single-page sources live in that page's NOTES.md (BudgetKey → budget_page,
-court → court_page). Probing rules: `Claude\CLAUDE.md`.
+court → court_page). Probing rules: root `CLAUDE.md`.
 
 ## Knesset — general
 - Everything through the relay (no CORS; datacenter/bot fetches get 4xx;

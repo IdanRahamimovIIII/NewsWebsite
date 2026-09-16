@@ -3,7 +3,7 @@
 verify_d1.py — prove the data in Cloudflare D1 MATCHES contracts-public.db,
 not just that the row counts do. Run by double-clicking verify-d1.bat.
 
-WHY (2026-09-05): the upload was verified by row counts and by the
+WHY: the upload was verified by row counts and by the
 indexes/view existing — that proves the SHAPE. It cannot prove the
 CONTENT: a corrupted value, mangled Hebrew, or a shifted column would
 pass a count check invisibly. So this compares real rows, both sides:
@@ -22,7 +22,6 @@ Uses the same d1-config.json and API helper as the uploader.
 """
 import json, os, random, sqlite3, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-# upload_to_d1 lives in shared\ since 2026-09-08 (two jobs use its machinery)
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "shared"))
 from upload_to_d1 import DB, OUT, api, config
@@ -41,7 +40,7 @@ def remote_rows(cfg, sql, params):
 
 def canon(v):
     """A sortable stand-in for any value, IDENTICAL for both sides.
-       Two lessons from the first live run (2026-09-05):
+       Two lessons from the first live run:
        - D1 answers in JSON, which turns REAL 819.0 into int 819, while
          local SQLite keeps the float — ints and floats must canonicalize
          to the SAME thing or every numeric column 'differs';

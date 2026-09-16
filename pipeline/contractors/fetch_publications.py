@@ -15,16 +15,13 @@ WHAT THIS IS
     exemptions  65c8fced-…  דוח התקשרויות בפטור והליכים תחרותיים  (~165,705)
     tenders     7038b3e6-…  דוח מכרזים                            (~14,205)
 
-FRESHNESS — MEASURED 2026-08-24, do not assume this register is live.
-  The CKAN package metadata says both files were "manually updated" through
-  2021-01-31, and the record counts have not moved since we first measured
-  them (2026-08-22). Treat this as the REGISTER'S HISTORY, frozen; the live
-  continuation is the procurement administration's own portal (mr.gov.il /
-  gov.il tenders), which is an Angular app and needs a DevTools capture to
-  reach. This script prints the newest תאריך פרסום it saw, so the staleness
-  is measured every run instead of remembered.
+FRESHNESS — measured, do not assume this register is live: frozen at
+  2021-01-31 (counts unmoved since first measured). It is the REGISTER'S
+  HISTORY; the live continuation is the portal (fetch_portal_registers).
+  The newest תאריך פרסום is printed every run, so staleness is measured,
+  not remembered.
 
-RULES (Mercy's, 2026-08-24): nothing is combined — this is collected whole,
+RULES (Mercy's): nothing is combined — this is collected whole,
   every field, and stored SEPARATE from the reports and from BudgetKey.
   The register is small enough (~180k records, ~20 requests) that every run
   re-pulls all of it; no cache, no diffing, no chance of a stale copy.

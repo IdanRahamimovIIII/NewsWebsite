@@ -5,7 +5,7 @@ parse_portal_export.py — turn an mr.gov.il export into compact JSON.
 WHAT THESE FILES ARE
   Mercy exported the publication register from the procurement portal itself
   (mr.gov.il, מינהל הרכש הממשלתי) — פלט מכרזים / פלט פטורים. Measured
-  2026-08-24 on the tenders export: rows 2009 → 2026, which SUPERSEDES the
+  measured on the tenders export: rows 2009 → 2026, which SUPERSEDES the
   data.gov.il register (frozen at 2021-01-31) for both history and present.
   This is Origin B's primary form, obtained through a browser because the
   portal, like foi.gov.il, does not serve robots.
@@ -20,7 +20,7 @@ WHAT THIS WRITES
   spellings], rows: [[...]], counts} — every column, every row, nothing
   renamed, nothing dropped, empty cells as "". Rows-as-arrays because the
   exemptions export runs to hundreds of MB and repeating Hebrew keys per row
-  would double it. NOT combined with anything (Mercy's rule, 2026-08-24).
+  would double it. NOT combined with anything (Mercy's rule).
 
 usage:
   parse_portal_export.py "פלט מכרזים_B.xls" out.json
@@ -59,7 +59,7 @@ PARSER_VERSION = 2      # bump when parsing logic changes, so already-converted
 def rows_of(path):
     """One row at a time, elements freed as they pass — constant memory.
 
-       THE ss:Index BUG (found 2026-08-24, by Mercy's currency question):
+       THE ss:Index BUG (found by Mercy's currency question):
        SpreadsheetML OMITS empty cells; the next cell then carries
        ss:Index="N" saying which column it really is. Version 1 ignored
        that and collected values in sequence — so every register row with

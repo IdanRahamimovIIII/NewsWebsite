@@ -5,7 +5,6 @@ rem each photo lives. Then run publish-photos.bat to put them on Cloudflare.
 rem Run again after each election to pick up the new members.
 rem Options:  get-photos.bat --refresh   (re-download updated portraits)
 rem           get-photos.bat --all       (past members too, not just current)
-rem  (lives in pipeline\photos\ since 2026-09-06 — the site keeps no photos)
 cd /d "%~dp0"
 where python >nul 2>nul
 if errorlevel 1 (

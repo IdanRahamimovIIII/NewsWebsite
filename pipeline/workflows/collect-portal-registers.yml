@@ -1,6 +1,6 @@
 # Collects Origin B from the procurement portal ITSELF - the monthly export
 # files (Tenders-DDMMYYYY.zip / Exemptions-DDMMYYYY.zip) that minhal
-# harechesh publishes on its news page. Found 2026-08-24 when Mercy exported
+# harechesh publishes on its news page. Found when Mercy exported
 # them by hand; the page answers a plain server fetch, no session needed,
 # so this can run unattended. These files SUPERSEDE the data.gov.il register
 # (frozen at 2021-01): measured 07.08.2026 content is tenders 24,572 rows
@@ -22,7 +22,7 @@ on:
 permissions:
   contents: write             # commits nothing; write is for uploading the
                               # monthly snapshot onto the raw-archive Release
-                              # (PIPELINE v2 phase 1, 2026-09-08)
+                              #
 
 jobs:
   collect:
@@ -42,16 +42,6 @@ jobs:
           path: pipeline/build/portal
           key: portal-${{ github.run_id }}
           restore-keys: portal-
-
-      # a cache saved before 2026-09-05 unpacks at the OLD path (build/portal);
-      # adopt it once so nothing is re-downloaded after the folder move
-      - name: adopt a portal cache saved under the old layout
-        run: |
-          if [ -d build/portal ] && [ ! -d pipeline/build/portal ]; then
-            mkdir -p pipeline/build
-            mv build/portal pipeline/build/portal
-            echo "adopted the old-layout cache into pipeline/build/portal"
-          fi
 
       # no network in these tests - they gate the pull, not depend on it
       - name: the collector's own tests first

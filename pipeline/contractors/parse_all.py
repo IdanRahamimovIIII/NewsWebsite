@@ -2,21 +2,11 @@
 """
 parse_all.py — parse every downloaded report, OLDEST FIRST.
 
-WHY THE ORDER MATTERS
-  parse_report.py merges each file into <section>.json, and a later write wins.
-  The workflow used to loop `for f in reports/*.xlsx`, which is ALPHABETICAL:
-  education_1_2025.xlsx sorts before education_2_2025.xlsx by luck, and
-  health_1_2026.xlsx sorts before health_3_2024.xlsx by the same luck going the
-  other way. The payment column is cumulative, so letting an older report land
-  last quietly rolls a contract's paid figure BACKWARDS — a wrong number, not a
-  missing one, and nothing in the output would say so.
-
-  Sorting by the report's own (year, period) makes the newest report the last
-  word, which is what "the newer report is the one to believe" actually means.
-
-  It also passes --source-url, which the shell loop never did: without it the
-  parsed file records no source and no vintage, so the comparison tool cannot
-  tell a reader WHICH published report a number came from.
+WHY THE ORDER MATTERS: parse_report.py merges each file into
+  <section>.json and a later write wins; the paid column is cumulative, so
+  an older report landing last rolls a figure BACKWARDS — wrong, not
+  missing, and silent. (year, period) order makes the newest report the
+  last word. Also passes --source-url so every number keeps its vintage.
 
 usage:
   parse_all.py --reports reports --out site/data/paid
@@ -42,9 +32,7 @@ def ordered(reports_dir, manifest_path, log=print):
 
     items = []
     for name in sorted(os.listdir(reports_dir)):
-        # .xls too: ministries published in Excel's OLD format into ~2020
-        # (משרד החוץ, תיאום הפעולות בשטחים among others), and the fetcher now
-        # keeps those instead of rejecting them as block pages
+        # .xls too — ministries published in Excel's old OLE2 format into ~2020
         if not name.lower().endswith((".xlsx", ".xls")):
             continue
         url, meta = by_file.get(name, ("", {}))

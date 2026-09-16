@@ -7,9 +7,12 @@ Change procedure: `..\shared\CLAUDE.md`. Paths inside are repo-root relative.
 | `refresh-data.yml` | 1st 03:17 UTC + manual | refill cache from archive → fetch ministry reports (+wayback) → archive → parse → `pipeline/paid` → tests | `pipeline/paid`, `pipeline/collection`, archive manifest |
 | `collect-portal-registers.yml` | 12th 04:43 UTC + manual | mr.gov.il export zips → JSON; dated zip to archive | no |
 | `collect-budgetkey.yml` | 25th 03:37 UTC + manual | contract_spending per section; rotates budgetkey-latest/previous | no |
-| `collect-publications.yml` | manual (source frozen 2021-01-31) | data.gov.il register history, ~180k | no |
-| `bootstrap-archive.yml` | manual, done | reports cache → archive | manifest |
-| `build-and-update.yml` | manual until first green (3rd-monthly schedule commented) | BUILD → UPLOAD (see contractors NOTES) | no |
+| `build-and-update.yml` | 3rd 02:23 UTC + manual | BUILD → UPLOAD: archive → merge → dbs → D1 delta (count-verified) → rotate baseline (see contractors NOTES) | no |
+
+Retired to `_old_delete_me\` (recoverable from git history):
+`bootstrap-archive.yml` (one-time cache→archive bootstrap, done) and
+`collect-publications.yml` (data.gov.il register frozen 2021-01-31; the
+collected zip lives in `contractors\inputs\`, the script stays).
 
 Secrets: `CF_*` ×3 (API token with D1 + Workers KV Storage: Edit, account
 id, D1 database id). Optional variable `RELAY_URL`. Collectors need

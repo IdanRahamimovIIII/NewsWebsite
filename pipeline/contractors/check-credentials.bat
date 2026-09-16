@@ -7,7 +7,7 @@ REM
 REM  Use it BEFORE pasting the values into the GitHub repo secrets
 REM  (CF_ACCOUNT_ID / CF_DATABASE_ID / CF_API_TOKEN): if this says OK,
 REM  the values are right and any workflow 401 is a paste problem.
-REM  (added 2026-09-09, after a bad secret cost a 40-minute build run)
+REM  (a bad secret must cost seconds, not a 40-minute build)
 REM ---------------------------------------------------------------------
 cd /d "%~dp0.."
 echo.

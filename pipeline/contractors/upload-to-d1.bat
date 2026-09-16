@@ -1,8 +1,6 @@
 @echo off
 REM ---------------------------------------------------------------------
 REM  upload-to-d1.bat - uploads contracts-public.db to Cloudflare D1.
-REM  (in contractors\ since the 2026-09-08 by-DATASET reorg; the code it
-REM   runs is shared\upload_to_d1.py - both uploads use that machinery)
 REM
 REM  FIRST TIME: it creates ..\d1-config.json and stops. Fill in the three
 REM  values (where to find each one is written inside shared\upload_to_d1.py

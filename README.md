@@ -7,4 +7,4 @@ sources, through our Cloudflare relay and our own datasets.
 - `site\` the website · `pipeline\` the data factory · `worker\` the relay
   (paste worker.js into Cloudflare → Deploy) · `scripts\serve.bat` preview.
 - Each folder's notes list its double-click .bat files.
-- Folder map and rules for Claude: `CLAUDE.md`.
+- Folder map and rules for Claude: `CLAUDE.md` (repo root).

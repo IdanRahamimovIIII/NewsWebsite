@@ -43,7 +43,7 @@ const state = {
   cmb: null, persons: null, posNames: null, statuses: null, dropdown: null,
   positions: null, posAll: false,
   bills: null,
-  billPile: "",                 // the ONE pile on screen (radio, Mercy 2026-09-07); "" = pick the default
+  billPile: "",                 // the ONE pile on screen (radio, Mercy); "" = pick the default
   billQ: "", billShown: 20,     // the name search, and how many rows are on screen
   votesByK: {},         // KnessetId → groups (each: title, date, votes[])
   vK: null,             // the Knesset whose record is on screen
@@ -107,9 +107,9 @@ async function ensureDropdown() {
 
 /* ---- photos ----
    Official MK photos, collected ONCE by the pipeline's get-photos.bat
-   (Mercy's call 2026-08-25: a one-time collection refreshed after each
+   (Mercy's call: a one-time collection refreshed after each
    election beats hotlinking a pattern that can change or start blocking).
-   Since 2026-09-06 the site keeps NO photos of its own (Mercy: everything the
+   The site keeps NO photos of its own (Mercy: everything the
    pages use comes from a public API or from Cloudflare). The page asks the
    relay for the manifest, GET <PROXY>/data/mkphotos → {t, data:{"<MkId>":
    "<image URL or filename>"}}; a bare filename means <PROXY>/photos/mk/<file>.
@@ -265,7 +265,7 @@ function tidyPositions(rows) {
   return out;
 }
 
-/* the timeline's order (Mercy, 2026-09-06): everything they hold NOW first,
+/* the timeline's order (Mercy): everything they hold NOW first,
    heaviest role first, then the past newest-first as before */
 function ongoingFirst(rows) {
   const start = r => { const d = dateOf(r.StartDate); return d ? d.getTime() : 0; };
@@ -337,17 +337,17 @@ async function loadPositions(sel, seq) {
    ===================================================================== */
 
 /* ---- what a card shows and where it comes from ----
-   (Mercy, 2026-09-06: "like a profile on social media" — photo in the middle,
+   (Mercy: "like a profile on social media" — photo in the middle,
    name, then party · years · last role · bills count.)
    What the card shows and where it comes from, cheapest first:
      party   — GetVotesCmbData carries a Factions table and each member's
-               faction_id (measured 2026-09-06: 16 factions in K25). Free.
+               faction_id (measured: 16 factions in K25). Free.
      years   — first Knesset they appear in (cmb.Knessets has KnessetStart)
                … refined to the register's earliest StartDate once positions
                land (cmb only reaches back to K16 / 2003).
      role    — KNS_PersonToPosition, batched, only for cards that scrolled
                into view (an IntersectionObserver in the view asks dirWant()).
-     laws    — bills they signed that BECAME LAW (Mercy, 2026-09-06: "law
+     laws    — bills they signed that BECAME LAW (Mercy: "law
                they wanted to pass that actually got passed"):
                KNS_BillInitiator/$count?$filter=PersonID eq N and
                (KNS_Bill/StatusID eq 118 …) — the passed statuses are the
@@ -371,7 +371,7 @@ function factionShort(name) {
   return s;
 }
 
-/* ---- the importance order (Mercy, 2026-09-06) ----
+/* ---- the importance order (Mercy) ----
    1 serving now · 2 tier: PM → alternate/deputy PM → Knesset Speaker →
    opposition leader → minister → deputy minister → committee chair →
    former minister (most recent ministry first) → everyone else ·
@@ -383,7 +383,7 @@ const isMkRow = r => /^חבר(ת)?\s*(ה)?כנסת$/.test(String(r._role || "").
 const isDeputyish = r => /סגן|סגנית|ממלא מקום|מ"מ/.test(String(r._role || ""));
 const isMinisterRow = r => !!r.GovMinistryName && !isDeputyish(r);   // the PM's rows count too
 /* For the CURRENT Knesset the tier comes from the roles held NOW (open-ended
-   rows); for an EARLIER Knesset's block (infinite scroll, 2026-09-07) from
+   rows); for an EARLIER Knesset's block (infinite scroll) from
    the roles held at any point DURING that Knesset — nobody there is
    "serving", so the same tiers just order the block. */
 function dirRank(e, drop, past, kEnd) {
@@ -411,7 +411,7 @@ function dirRank(e, drop, past, kEnd) {
   e.lastK = e.serving ? 9999 : (ends.length ? Math.max(...ends) : ((kEnd && kEnd[e.block]) || 0));
 }
 /* after the current Knesset: everyone else by the last year they were in
-   office, newest first (Mercy, 2026-09-07), then the tiers, then name */
+   office, newest first (Mercy), then the tiers, then name */
 const tailOrder = (a, b) =>
   (b.lastK - a.lastK) || (b.tier - a.tier) || (b.lastMin - a.lastMin) ||
   String(a.m.Name).localeCompare(String(b.m.Name), "he");
@@ -426,7 +426,7 @@ const dirOrder = (a, b) =>
    AND when the photo manifest lands; two concurrent builds once raced — the
    later one built its block against a page that already showed everyone,
    got an empty block, and overwrote the directory with it (seen live
-   2026-09-07: the 25th Knesset vanished, the 24th loaded undeduplicated). */
+   once: the 25th Knesset vanished, the 24th loaded undeduplicated). */
 function buildDirectory() {
   if (!state._dirP) state._dirP = buildDirectoryOnce().catch(e => { state._dirP = null; throw e; });
   return state._dirP;
@@ -448,7 +448,7 @@ async function buildDirectoryOnce() {
   for (const [pid, nm] of Object.entries(persons)) (pidByKey[nameKey(nm)] = pidByKey[nameKey(nm)] || []).push(+pid);
   mks.forEach(m => { const k = nameKey(m.Name); firstK[k] = Math.min(firstK[k] || 99, +m.KnessetId || 99); });
   /* who is this, in the persons table? Exact word-set match first. When
-     that misses (6 of 151 in K25, measured 2026-09-06: "גנץ בני" is
+     that misses (6 of 151 in K25, measured: "גנץ בני" is
      "בנימין גנץ", "סטרוק אורית" is "אורית מלכה סטרוק", "סגלוביץ" carries an
      apostrophe, "פינדרוס יצחק זאב" / "מלקו צגה צגנש" have an extra word),
      a tolerant pass: apostrophes and quotes ignored, every word of the
@@ -516,7 +516,7 @@ async function buildDirectoryOnce() {
         };
       });
     // the few names the persons snapshot spells differently (6 of 151 in K25,
-    // measured 2026-09-06): one try by KNS_Person, both word orders, BEFORE
+    // measured): one try by KNS_Person, both word orders, BEFORE
     // ranking — without a PersonID they have no rows and would sink to the
     // bottom as if they had left
     await Promise.all(block.filter(e => !e.personIds.length).map(async e => {
@@ -555,7 +555,7 @@ async function buildDirectoryOnce() {
   return state._dir;
 }
 
-/* ---- infinite scroll (Mercy, 2026-09-07): when the reader reaches the
+/* ---- infinite scroll (Mercy): when the reader reaches the
    bottom, the previous Knesset's members (those not on the page yet) are
    fetched — one bulk query per Knesset, ~550 rows — and the whole tail
    after the current Knesset is re-sorted by the last year in office,
@@ -589,7 +589,7 @@ function cardRole(e) {
   const now = currentRole(rows);
   if (now) return now;
   // a sitting member with no role of substance today is "חבר/ת הכנסת" — the
-  // current role always outranks a historical one (Mercy, 2026-09-07: a card
+  // current role always outranks a historical one (Mercy: a card
   // saying "סגן שר · 2022" next to "2019–היום" read as a contradiction).
   // The past role lives in the portfolio's timeline.
   if (e.serving) return t("posMember");
@@ -609,7 +609,7 @@ function cardYears(e) {
   if (!a) return "";
   // "היום" only for someone sitting in the current Knesset — the register
   // leaves rows open for people who are long gone, so an open row is not
-  // enough (Mercy, 2026-09-07)
+  // enough (Mercy)
   if (e.serving) return `${a}–${t("untilNow")}`;
   const ends = rows.map(r => yearOf(r.FinishDate)).filter(Boolean);
   const b = ends.length ? Math.max(...ends) : (e.lastK && e.lastK !== 9999 ? e.lastK : "");
@@ -670,7 +670,7 @@ async function countBills(e) {
    2015–2019", or the party). Dashes and quote marks are normalized on both
    sides: the register writes "יושב–ראש" (en dash) for some rows and
    "יושב-ראש" for others, and people type a hyphen (Ohana, the sitting
-   Speaker, was missed live 2026-09-07). */
+   Speaker, was missed live). */
 /* Matching is by WORDS, not substrings (Mercy, 2026-09-07 — "ראש ממשלה"
    was catching Ohana through the old faction name "הליכוד בהנהגת בנימין
    נתניהו לראשות הממשלה": "ראש" inside "לראשות"). Every query word must be a
@@ -713,7 +713,7 @@ function dirMatches(list, words) {
   return out;
 }
 
-/* the grid IS the search result (Mercy, 2026-09-07): typing filters the
+/* the grid IS the search result (Mercy): typing filters the
    cards in place. Names the grid doesn't hold yet (people not scrolled to,
    or in the persons table only) are fetched by findCandidates and added
    to the grid as cards — in their place by last year in office — so there
@@ -734,7 +734,7 @@ async function dirSearch(q) {
 }
 
 /* every person the query matches — by NAME across both directories, and
-   (Mercy, 2026-09-07) by PARTY or ROLE across the people the directory
+   (Mercy) by PARTY or ROLE across the people the directory
    knows: the current Knesset's members with all their rows in it plus every
    ministry row since 2003, and anyone the infinite scroll has already
    appended. "שר החוץ" finds every foreign minister since 2003, "ליכוד" the
@@ -845,7 +845,7 @@ async function loadBills(sel, seq) {
     };
     await Promise.all(Array.from({ length: Math.min(4, batches.length) }, worker));
     const statuses = await stP;
-    // the undecided split by Knesset (Mercy, 2026-09-06): a bill of THIS
+    // the undecided split by Knesset (Mercy): a bill of THIS
     // Knesset with no verdict is "בתהליך"; one from an earlier Knesset never
     // got a verdict and never will — "לא הוכרעו", not "still pending"
     const latestK = Math.max(...(((state.cmb && state.cmb.MKS) || []).map(m => +m.KnessetId || 0)), 0);
@@ -864,11 +864,11 @@ async function loadBills(sel, seq) {
   renderTiles();
 }
 
-/* ---- a bill's official documents (Mercy, 2026-09-07) ----
+/* ---- a bill's official documents (Mercy) ----
    KNS_DocumentBill: one row per file — GroupTypeDesc is the stage ("הצעת
    חוק לדיון מוקדם", "…לקריאה הראשונה", "…השנייה והשלישית", "חוק - פרסום
    ברשומות", "חומר רקע", "קטע מדברי הכנסת"), ApplicationDesc the format
-   (PDF/DOC), FilePath the file on fs.knesset.gov.il (measured 2026-09-07:
+   (PDF/DOC), FilePath the file on fs.knesset.gov.il (measured:
    public, 200 application/pdf; paths may carry a doubled slash after the
    host and even spaces — normalized here). A vote's VoteHeader.FK_ItemID
    is the BillID for a bill vote (verified: 2202055 ↔ the same Name), so
@@ -886,7 +886,7 @@ async function billDocs(billId) {
         if (!r.FilePath) return;
         const type = String(r.GroupTypeDesc || "").trim() || "—";
         if (!byType[type]) { byType[type] = { type, files: [] }; groups.push(byType[type]); }
-        // the format from the file itself — the register labels a .pdf "PPT" now and then (seen live 2026-09-07)
+        // the format from the file itself — the register labels a .pdf "PPT" now and then (seen live)
         const ext = (String(r.FilePath).match(/\.([a-z0-9]+)\s*$/i) || [])[1];
         const fmt = ext ? ext.toUpperCase().replace(/^DOCX$/, "DOC").replace(/^PPTX$/, "PPT").replace(/^XLSX$/, "XLS")
           : (String(r.ApplicationDesc || "").trim().toUpperCase() || "DOC");
@@ -1002,7 +1002,7 @@ async function annotateGroups(groups, seq, onDone) {
    8. PERSONAL BACKGROUND
    ===================================================================== */
 
-/* ---- GetMkDetailsContent (Mercy spotted it, 2026-08-25) ----
+/* ---- GetMkDetailsContent (Mercy spotted it) ----
    GetMkDetailsContent carries what the member reported to the Knesset:
    birth, immigration, residence, education, military/national service,
    profession, languages. Official, Hebrew-only, one GET per person. */
@@ -1020,7 +1020,7 @@ async function loadBio(sel, seq) {
     }
   } catch (e) { debug("bio: " + e.message); }
   // (a gender for prose verbs is one GET away — KNS_Person GenderID 251 זכר /
-  //  250 נקבה, measured 2026-09-06 — should the hero ever speak in sentences again)
+  //  250 נקבה, measured — should the hero ever speak in sentences again)
   if (state.seq !== seq) return;
   state.bio = bio;
   renderTiles();   // the background table rides under the bills sentence
@@ -1041,7 +1041,7 @@ async function openPerson(c) {
   renderAll();
   // the person goes into the address bar (linkable/shareable) AND into the
   // browser history: a card click is a step the Back button must undo
-  // (Mercy, 2026-09-06: Back used to leave the site — replaceState). When
+  // (Mercy: Back used to leave the site — replaceState). When
   // the address already names them (a ?name= arrival, a popstate) there is
   // nothing to push.
   try {
@@ -1055,7 +1055,7 @@ async function openPerson(c) {
   if (state.vK !== null) loadMkVotes(state.vK, seq);
   // someone the persons snapshot missed (found only in the votes directory)
   // still has a PersonID in KNS_Person — resolve it ONCE, before both the
-  // positions and the bills ask for it (2026-09-06: positions used to be
+  // positions and the bills ask for it (positions used to be
   // asked with an empty id list and came back "no recorded positions")
   if (!c.personIds.length) {
     c.personIds = await fallbackPersonIds(c.name).catch(() => []);

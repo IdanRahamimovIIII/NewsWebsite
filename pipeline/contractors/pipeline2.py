@@ -1,52 +1,33 @@
 #!/usr/bin/env python3
-r"""
-pipeline2.py — PHASE 2 of the raw-archive redesign: the fully automatic
-monthly chain, run by the build-and-update workflow. Mercy's requirement 2:
-"we update the dataset without me doing so manually."
-Design + phases: NOTES.md, "PIPELINE v2".
+r"""pipeline2.py — the fully automatic monthly chain (build-and-update.yml).
+Each piece is a subcommand so the workflow stays thin and a failed step
+re-runs alone. Design: NOTES.md, "PIPELINE v2".
 
-The chain (each piece is a subcommand so the workflow stays thin and a
-failed step can be re-run alone):
-
-  fetch-inputs --dest DIR     pull everything a build needs from the
-                              raw-archive Release: the report bundles
-                              (materialized as the NEWEST revision of each
-                              file + a fetcher-style manifest so parse_all
-                              keeps its oldest-first ordering), the
-                              BudgetKey snapshot, the newest register
-                              conversions (legacy assets as fallback).
-  build --inputs DIR --work DIR [--scrub]
-                              parse the reports → STREAMING merge (bounded
-                              memory — the in-RAM merge of full BudgetKey
-                              may not fit a CI runner) → full db → public
-                              db with STABLE string ids (seeded from the
-                              baseline, so a delta stays a delta) → the
-                              ctr_* page tables. --scrub (workflow-only)
-                              deletes each stage's files once the chain is
-                              past them — the runner's disk cannot hold
-                              every stage at once (learned 2026-09-09).
-  update-d1 --db PUBLIC --baseline OLD|-  compute the DELTA (new / changed /
-                              gone order_ids + appended strings), apply
-                              only that to D1 through the verified REST
-                              flow, then full-replace the small ctr_*
-                              tables. With no baseline ('-') it does the
-                              FULL upload — the self-sufficient first run.
-  rotate-baseline --db PUBLIC gzip + rotate db-current.sqlite.gz /
-                              db-current-previous.sqlite.gz on the Release
-                              (the two-database window Mercy asked for).
-  check-credentials           prove the three Cloudflare values against D1
-                              in seconds (read-only SELECT 1). The workflow
-                              runs it FIRST, so a bad repo secret costs a
-                              minute, not the 40-minute build (learned
-                              2026-09-09: a 401 surfaced only at upload
-                              time, after fetch + merge + dump). Locally it
-                              reads pipeline\d1-config.json — that is what
-                              check-credentials.bat is for.
+  fetch-inputs --dest DIR      pull everything a build needs from the
+                               raw-archive Release (newest revision of each
+                               report + fetcher-style manifest, BudgetKey
+                               snapshot, newest register conversions).
+  build --inputs DIR --work DIR [--scrub] [--baseline DB]
+                               parse -> streaming merge (bounded memory) ->
+                               full db -> public db with STABLE string ids
+                               (seeded from the baseline) -> ctr_* tables.
+                               --scrub (workflow-only) frees each stage's
+                               disk once past it.
+  update-d1 --db PUB --baseline OLD|-   apply the DELTA to D1 through the
+                               verified REST flow, then full-replace the
+                               small ctr_* tables. '-' = FULL upload (the
+                               self-sufficient first run).
+  rotate-baseline --db PUB     gzip + rotate db-current(.-previous).sqlite.gz
+                               on the Release.
+  check-credentials            prove the three CF_* values against D1 in
+                               seconds (read-only) — the workflow runs it
+                               FIRST so a bad secret costs a minute, not the
+                               40-minute build. Locally: check-credentials.bat.
 
 STRING IDS MUST BE STABLE across builds: the public db dictionary-encodes
-13 Hebrew columns as integers into `strings`. If a rebuild renumbered them,
-every row would "change" and the delta would be the whole database — so
-public_copy() is seeded with the baseline's strings and only APPENDS.
+Hebrew columns as integers into `strings`. A renumbering would make every
+row "change" and turn the delta into the whole database — public_copy() is
+seeded with the baseline's strings and only APPENDS.
 """
 import argparse, glob, gzip, json, os, shutil, sqlite3, sys, tempfile, zipfile
 
@@ -59,11 +40,9 @@ import build_dataset as BD                # noqa: E402
 import build_sqlite as BS                 # noqa: E402
 import build_contractors as BC            # noqa: E402
 import upload_to_d1 as U                  # noqa: E402
-# parse_all (→ parse_report → openpyxl/xlrd) is imported inside build():
-# it is the ONLY third-party dependency, and every other subcommand —
-# check-credentials above all — must run on a machine with bare Python
-# (Mercy's zero-install rule; learned 2026-09-09 when check-credentials.bat
-# died on ModuleNotFoundError: openpyxl before it could check anything).
+# parse_all (-> parse_report -> openpyxl/xlrd) is imported inside build():
+# the ONLY third-party dependency — every other subcommand must run on bare
+# Python (Mercy's zero-install rule).
 
 MANIFEST = os.path.join(HERE, "archive", "manifest.json")
 
@@ -210,9 +189,9 @@ def restore_reports(dest, log=print):
     """Refill pipeline/reports from the archive (newest revision of every
        file the cache no longer holds) and MERGE the provenance into the
        fetcher's manifest — existing (cache) entries win. Run before the
-       fetch: an evicted cache stops meaning re-downloads, blocked hosts,
-       and the never-shrink guard tripping on a publisher that simply
-       failed to re-fetch in time (seen live 2026-09-09: 78 → 77)."""
+       fetch: an evicted cache then stops meaning re-downloads, blocked
+       hosts, and the never-shrink guard tripping on a publisher that
+       simply failed to re-fetch in time."""
     man = ARC.load_manifest(MANIFEST)
     if not man["files"]:
         log("archive empty — nothing to restore (first runs).")
@@ -351,11 +330,8 @@ def stream_build(files_dir, bk_path, out_dir, ex_path=None, tn_path=None,
 
 def _scrub(log, *paths):
     """Free a FINISHED stage's disk now (dirs or files; missing is fine).
-       Only with build --scrub, which only the workflow passes: the runner
-       offers ~14 GB and the first full run died on 'database or disk is
-       full' in the public db's VACUUM (2026-09-09) because every stage's
-       files — inputs, parsed, section JSONs, both dbs — were still there
-       at once. A local build keeps everything for inspection."""
+       Only with build --scrub (workflow-only): the CI runner's ~14 GB
+       cannot hold every stage at once. A local build keeps everything."""
     freed = 0
     for p in paths:
         if not p or not os.path.exists(p):
@@ -388,13 +364,9 @@ def build(inputs, work, baseline=None, scrub=False, log=print):
                             parsed, os.path.basename(zi)), "wb") as out:
                         shutil.copyfileobj(src, out)
                     n += 1
-        log("seeded the parse with %d legacy .full.json documents (reports "
-            "parsed below MERGE INTO them — a report the archive has not "
-            "recovered yet keeps its legacy figures; one it HAS recovered "
-            "gets re-parsed over them in vintage order). KNOWN interim "
-            "wrinkle until the fetch backlog drains: if the archive holds "
-            "only an OLDER quarter of a ministry than the legacy seed, that "
-            "ministry temporarily shows the older cumulative figures." % n)
+        log("seeded the parse with %d legacy .full.json documents (the "
+            "archive's reports re-parse OVER them in vintage order; a "
+            "ministry only the seed covers keeps its legacy figures)." % n)
     reports = os.path.join(inputs, "reports")
     log("parsing the reports, oldest first…")
     import parse_all as PA         # the one third-party import (openpyxl) —
@@ -557,8 +529,6 @@ def apply_sql_parts(outdir, meta, log=print):
             log("  = %s already verified" % part["file"])
             continue
         log("  ▸ %s (%d of %d)" % (part["file"], i + 1, len(meta["parts"])))
-        # import + count-verify, re-importing a rolled-back part (the
-        # 2026-09-10 lesson lives in U.import_verified's docstring)
         U.import_verified(cfg, outdir, part, meta, log=log)
         state["done"].append(part["file"])
         with open(state_path, "w") as fh:

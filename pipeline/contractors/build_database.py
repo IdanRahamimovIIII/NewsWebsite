@@ -1,40 +1,26 @@
 #!/usr/bin/env python3
-"""
-build_database.py — the whole database build, one command, on Mercy's own
-computer. Run by double-clicking contractors\build-database.bat.
-(Lives in pipeline\contractors\ since the 2026-09-08 by-DATASET reorg —
-older notes saying tools\ or database\build_database.py mean this file.)
+"""build_database.py — the whole database build, one command, on Mercy's
+own computer. Run by double-clicking contractors\build-database.bat.
+(CI uses pipeline2.py build instead — same pieces, streaming merge.)
 
-WHY THIS EXISTS: the databases come out at 1–2 GB — too big for the device
-bridge and pointless in git — so the build has to be reproducible LOCALLY
-from the inputs in pipeline\inputs\ (2026-09-05 layout; the old locations
-are still searched as a fallback, so an old copy keeps working):
+The databases come out at 1-2 GB — too big for the device bridge and
+pointless in git — so the build is reproducible LOCALLY from
+contractors\inputs\:
 
-  pipeline\inputs\full-records.zip        the .full.json artifact (Actions → refresh data)
-  pipeline\inputs\*\mr-exemptions.json(.gz) the registers, converted (inside the
-  pipeline\inputs\*\mr-tenders.json         Exemptions-*/ and Tenders-*/ export folders)
-  pipeline\inputs\budgetkey-raw.zip       OPTIONAL until collected (Actions → collect
-  or build/raw/                    budgetkey) — without it the build says loudly
-                                   that the BudgetKey side is missing
+  full-records.zip                  the .full.json artifact (refresh data)
+  */mr-exemptions.json(.gz)         the registers, converted
+  */mr-tenders.json(.gz)
+  budgetkey-raw.zip                 optional — without it the build says
+                                    loudly that the BudgetKey side is missing
 
-and produce ONE output (Mercy, 2026-09-06: one file to manage, not two):
-
-  pipeline\out\contracts-public.db     the D1 upload: no audit, dictionary-encoded.
-
-The FULL database (every field + provenance per field + fingerprints + the
-register rows embedded) is still written — the public copy is DERIVED from
-it (build_sqlite.public_copy ATTACHes it), and audit.bat reads it — but it
-is a build INTERMEDIATE, not an output:
-
-  pipeline\build\contracts-full.db     rebuildable; clean-up.bat deletes it;
-                                       audit.bat says "run the build" when it is gone.
-
-Standard library + the project's own tools. Nothing to install.
+Outputs: contractors\out\contracts-public.db (the D1 upload, ctr_* tables
+included). The FULL db (provenance + fingerprints + embedded registers) is
+a build INTERMEDIATE at build\contracts-full.db — audit.bat reads it,
+clean-up.bat deletes it. Stdlib + the project's own tools; nothing to install.
 """
 import glob, gzip, json, os, shutil, sys, zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-# build_sqlite lives in shared\ since 2026-09-08 (several jobs import it)
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "shared"))
 import build_dataset
@@ -43,18 +29,14 @@ import build_sqlite
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INPUTS = os.path.join("contractors", "inputs")   # the zips and export folders
 OUT = os.path.join("contractors", "out")         # the one output, contracts-public.db
-OLD_INPUTS = "inputs"  # pre-2026-09-08 home — still searched as a fallback
 FULL_DB = os.path.join("build", "contracts-full.db")   # intermediate; audit reads it
 
 
 def newest(patterns):
-    """Newest file matching any pattern, looked for in pipeline\inputs\ first and
-    then at the project root (the pre-2026-09-05 location)."""
+    """Newest file in contractors\inputs\ matching any pattern."""
     hits = []
     for p in patterns:
         hits += glob.glob(os.path.join(ROOT, INPUTS, p))
-        hits += glob.glob(os.path.join(ROOT, OLD_INPUTS, p))
-        hits += glob.glob(os.path.join(ROOT, p))
     return max(hits, key=os.path.getmtime) if hits else None
 
 
@@ -128,12 +110,6 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     full_db = FULL_DB
     public_db = os.path.join(OUT, "contracts-public.db")
-    # an out\contracts.db from before 2026-09-06 is the same thing under its
-    # old name — say so once, so nobody wonders which of the two is current
-    old = os.path.join(OUT, "contracts.db")
-    if os.path.exists(old):
-        print("NOTE: %s is the OLD full database (pre-2026-09-06 layout). The "
-              "build now writes it to %s; delete the old one.\n" % (old, full_db))
     print("\nwriting the full database (intermediate) %s…" % full_db)
     build_sqlite.build(os.path.join("build", "contracts"), full_db,
                        log=lambda *a: None)
@@ -141,10 +117,9 @@ def main():
     print("deriving the public copy…")
     build_sqlite.public_copy(full_db, public_db)
 
-    # ---- the contractors page's precomputed tables (2026-09-08) ----
-    # part of every full build, so a rebuild never loses them; the same
-    # script (in this folder) can also run alone on an existing db via
-    # build-contractors.bat. Definitions: NOTES.md here.
+    # ---- the contractors page's precomputed tables ----
+    # part of every full build so a rebuild never loses them; can also run
+    # alone via build-contractors.bat. Definitions: NOTES.md here.
     print("\nprecomputing the contractors page tables "
           "(build_contractors.py)…")
     import build_contractors

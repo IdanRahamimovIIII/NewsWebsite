@@ -3,13 +3,9 @@
 Turn one ministry's quarterly procurement report (.xlsx, as published on
 gov.il) into the compact JSON the budget page reads.
 
-WHY THIS EXISTS
----------------
-BudgetKey ingests these same files but does not map the payment column: for
-משרד החינוך's 2025 Q1 report it records the order value to the agora and the
-amount paid as 0.00 — ₪7.8bn of payments reading as zero, with no parse error
-flagged. Verified against four contracts, 2026-08-22. Until that is fixed
-upstream we read the ministry's own file for the paid figure.
+WHY: BudgetKey ingests these same files but does not map the payment
+column (₪7.8bn of payments reading as 0.00 in one education report,
+verified) — so the paid figure comes from the ministry's own file.
 
 THE COLUMNS (headers are irregular — match loosely, never by exact string):
   ערך ההזמנה כולל מע"מ                        → volume
@@ -111,17 +107,10 @@ def main(src, outdir, source_url=""):
             paid, vol = num(r[cols["paid"]]), num(r[cols["vol"]])
             rows += 1
 
-            # THE WHOLE ROW, for the merge and the comparison tool — written
-            # for EVERY row, including the ones with no payment figure.
-            # This used to sit below the `paid <= 0` skip, which threw away 924
-            # of education's 3,488 rows before anything could look at them. A
-            # blank payment column is not a contract that does not exist: its
-            # ח"פ, its full purpose, its publication number are all still there,
-            # and BudgetKey may well have the payment the file is missing.
-            # Rule 5 — never let one source's silence delete the row.
-            # Keys stay as the ministry spelled them: renaming them would hide
-            # exactly the thing someone checking us wants to see. An empty cell
-            # is left ABSENT rather than written as 0 (rule 8).
+            # THE WHOLE ROW, for EVERY row — including ones with no payment
+            # figure (a blank paid column is not a contract that does not
+            # exist; another source may hold the payment). Keys stay as the
+            # ministry spelled them; an empty cell stays ABSENT, never 0.
             full = full_by_section.setdefault(code[:4], {})
             rec = {}
             for h, v in zip(hdr_raw, r):

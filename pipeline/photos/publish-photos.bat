@@ -11,7 +11,7 @@ REM  longer in the manifest are deleted from KV. Afterwards it reads
 REM  everything back and asks the relay for the manifest and one face.
 REM
 REM  Credentials: ..\d1-config.json - the same token as the D1 upload,
-REM  with "Workers KV Storage: Edit" (added 2026-09-06). Nothing else.
+REM  with "Workers KV Storage: Edit" (needed for KV). Nothing else.
 REM ---------------------------------------------------------------------
 cd /d "%~dp0"
 echo.

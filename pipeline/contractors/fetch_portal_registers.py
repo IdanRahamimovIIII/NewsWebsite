@@ -3,23 +3,13 @@
 fetch_portal_registers.py — collect Origin B automatically, from the
 procurement portal's own monthly export files.
 
-HOW THIS WAS FOUND (2026-08-24): Mercy exported the register by hand from
-mr.gov.il, and the trail led to a news page —
-  https://mr.gov.il/ilgstorefront/he/news/details/230920201036
-— where מינהל הרכש publishes the export files MONTHLY as dated zips
-(Tenders-DDMMYYYY.zip, Exemptions-DDMMYYYY.zip). The page answers a plain
-server fetch with no session, so no browser and no DevTools capture is
-needed: read the page, follow whatever dated links it carries today.
-
-The download links carry a ?context= token that looks rotatable, so the
-links are ALWAYS re-read from the page — never remembered.
-
-Measured content (07.08.2026 files): tenders 24,572 rows 2009→2026,
-exemptions 239,549 rows 2005→2026, both as SpreadsheetML that lies about
-its encoding — parse_portal_export.py handles that part.
-
-Kept SEPARATE (Mercy's rule): this collects and converts; nothing is
-combined with the ministry reports or BudgetKey.
+מינהל הרכש publishes the export files MONTHLY as dated zips
+(Tenders-DDMMYYYY.zip, Exemptions-DDMMYYYY.zip) on a news page that answers
+a plain server fetch, no session needed. The download links carry a
+?context= token that rotates — ALWAYS re-read from the page, never
+remembered. The .xls inside is SpreadsheetML that lies about its encoding;
+parse_portal_export.py handles that. Kept SEPARATE (Mercy's rule): this
+collects and converts, nothing is combined here.
 
 usage:
   fetch_portal_registers.py --out build/portal
