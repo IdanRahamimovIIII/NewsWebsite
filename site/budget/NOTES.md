@@ -1,4 +1,4 @@
-# NOTES — budget section (site\budget_page\)
+# NOTES — budget section (site\budget\)
 
 TWO pages joined by a sub-header (התקציב · ספקים והתקשרויות; Mercy: no new
 main-nav button). Both set `window.PAGE = "budget"` and load `budget.css`.

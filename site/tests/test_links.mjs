@@ -13,13 +13,13 @@ import { fileURLToPath } from 'node:url';
 const DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8932;
 
-const PAGES = ['budget_page/index.html', 'votes_page/index.html', 'mk_page/index.html',
-               'court_page/index.html', 'votes_page/selftest.html',
+const PAGES = ['budget/index.html', 'votes/index.html', 'mk/index.html',
+               'court/index.html', 'votes/selftest.html',
                'tools/qa.html', 'tools/build.html'];
 /* the forwarding stubs at the old addresses (2026-09-06): each must exist and
    point at a page that exists — they are what keeps old links alive */
-const FORWARDERS = { 'index.html': 'budget_page/', 'votes.html': 'votes_page/',
-                     'mk.html': 'mk_page/', 'court.html': 'court_page/' };
+const FORWARDERS = { 'index.html': 'budget/', 'votes.html': 'votes/',
+                     'mk.html': 'mk/', 'court.html': 'court/' };
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
 const server = http.createServer((req, res) => {
@@ -78,5 +78,16 @@ for (const [stub, target] of Object.entries(FORWARDERS)) {
 
 await browser.close();
 server.close();
+
+/* the baked Hebrew in the HTML shells must match the strings files —
+   crawlers read the raw HTML, so drift here is invisible on screen but
+   real for SEO. Fix: node scripts/bake_i18n.mjs */
+console.log('\nbaked i18n (crawler-visible HTML):');
+const { spawnSync } = await import('node:child_process');
+const bakeRes = spawnSync(process.execPath,
+  [path.join(DIR, '..', 'scripts', 'bake_i18n.mjs'), '--check'], { encoding: 'utf8' });
+ok('HTML shells match the strings files', bakeRes.status === 0,
+   (bakeRes.stderr || bakeRes.stdout || '').trim().split('\n')[0]);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

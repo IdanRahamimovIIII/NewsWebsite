@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הכסף שלנו — שקיפות תקציב המדינה | Our Money — Israeli Budget Transparency</title>
+<meta name="description" content="לאן הולך הכסף שלנו? תקציב מדינת ישראל, הכנסות, חוב והוצאות — בשפה פשוטה, מנתונים רשמיים.">
+<!-- who we are to search engines and social cards (share.png is the shared card image) -->
+<link rel="canonical" href="https://ourmoneyil.com/budget/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="הכסף שלנו — Our Money">
+<meta property="og:title" content="הכסף שלנו — שקיפות תקציב המדינה | Our Money — Israeli Budget Transparency">
+<meta property="og:description" content="לאן הולך הכסף שלנו? תקציב מדינת ישראל, הכנסות, חוב והוצאות — בשפה פשוטה, מנתונים רשמיים.">
+<meta property="og:url" content="https://ourmoneyil.com/budget/">
+<meta property="og:image" content="https://ourmoneyil.com/shared/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="he_IL">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../shared/style.css">
+<link rel="stylesheet" href="budget.css">
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+ {"@type":"WebSite","name":"הכסף שלנו","alternateName":"Our Money",
+  "url":"https://ourmoneyil.com/","inLanguage":["he","en"],
+  "description":"לאן הולך הכסף שלנו? תקציב מדינת ישראל, התקשרויות ממשלתיות, הצבעות בכנסת ופסיקת בית המשפט העליון — בשפה פשוטה, מנתונים רשמיים."},
+ {"@type":"Organization","name":"הכסף שלנו — Our Money",
+  "url":"https://ourmoneyil.com/","logo":"https://ourmoneyil.com/shared/share.png"}]}
+</script>
+</head>
+<body>
+<header class="topbar"><div class="tbwrap">
+      <a class="brand" href="../budget/" data-i18n="title">הכסף שלנו</a>
+      <nav class="tabs"><a href="../budget/" class="active" data-i18n="navBudget">התקציב</a><a href="../votes/" class="" data-i18n="navVotes">הצבעות וחקיקה</a><a href="../mk/" class="" data-i18n="navMk">חברי הכנסת</a><a href="../court/" class="" data-i18n="navCourt">בית המשפט העליון</a></nav>
+      <button class="langbtn" id="langbtn" onclick="toggleLang()">English</button>
+    </div></header>
+
+<!-- the budget section has two pages; this bar is how you move between them -->
+<nav class="subnav">
+  <div class="subnav-in">
+    <a href="./" class="active" aria-current="page" data-i18n="subBudget">התקציב</a>
+    <a href="contractors.html" data-i18n="subSuppliers">ספקים והתקשרויות</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <p class="tagline" data-i18n="tagline">תקציב המדינה — מה קורה לכסף שלנו</p>
+
+  <!-- the year, always within reach -->
+  <div class="yearbar" id="yearbar">
+    <div class="yearbar-in">
+      <label for="yearsel" data-i18n="year">שנה:</label>
+      <select id="yearsel" onchange="loadAll()"></select>
+      <span class="yearstate" id="flowsnote"></span>
+      <span class="loading" id="globalstate"></span>
+    </div>
+  </div>
+
+  <!-- what comes in, what's borrowed, what it costs -->
+  <div class="card" id="flowsec">
+    <h2 data-i18n="flowsTitle">מאיפה הכסף מגיע, ומה החוב עולה לנו</h2>
+    <div class="kpis" id="flows"></div>
+
+    <h3 class="subhead" data-i18n="chartInTitle">לאורך השנים</h3>
+    <div class="legend" id="legIn"></div>
+    <svg class="chart" id="chartIn" viewBox="0 0 900 340" role="img"
+      aria-label="הכנסות המדינה לפי מקור, לפי שנה"></svg>
+    <details class="tabletoggle">
+      <summary data-i18n="tableToggle">הצגת הנתונים כטבלה</summary>
+      <div class="tw"><table id="flowtbl"><thead></thead><tbody></tbody></table></div>
+      <p class="axisnote" data-i18n="tableNote">מהחדש לישן. במיליארדי ₪, ביצוע בפועל; שנה המסומנת ב-★ מציגה את התקציב המאושר.</p>
+    </details>
+  </div>
+
+  <!-- what the debt costs -->
+  <div class="card">
+    <h2 data-i18n="chartCostTitle">מה החוב עולה לנו</h2>
+    <p class="hint" data-i18n="chartCostHint">הריבית כאחוז מגביית המסים — כמה מכל שקל מס הולך לשלם על הלוואות העבר, במקום על שירותים. ביצוע בפועל בלבד.</p>
+    <svg class="chart" id="chartCost" viewBox="0 0 900 250" role="img"
+      aria-label="ריבית כאחוז מגביית המסים, לפי שנה"></svg>
+    <p class="reads" id="costreads"></p>
+    <p class="debtpara" id="debtpara"></p>
+  </div>
+
+  <!-- the tree: where the money goes -->
+  <div class="card">
+    <div class="cardhead">
+      <h2 data-i18n="byMinistry">לאן הולך הכסף</h2>
+      <div class="seg" id="modeswitch" role="group"></div>
+    </div>
+    <p class="hint" id="charthint"></p>
+    <p class="treecount" id="treecount"></p>
+    <div id="chart"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
+    <div class="axisnote" id="chartnote"></div>
+    <p class="scopenote" data-i18n="expenseOnly">התצוגה הזו מציגה הוצאות בלבד. צד ההכנסות מוצג למעלה.</p>
+  </div>
+
+  <!-- the supplier / contract search moved to its own page: contractors.html -->
+
+  <!-- explainer -->
+  <div class="card explain">
+    <h2 data-i18n="explainTitle">איך קוראים את המספרים?</h2>
+    <p data-i18n="explain1">״תקציב מקורי״ הוא מה שאושר בכנסת בחוק התקציב. ״תקציב מעודכן״ כולל שינויים שאושרו במהלך השנה בוועדת הכספים. ״ביצוע״ הוא מה שהוצא בפועל.</p>
+    <p data-i18n="explain2">הסכומים כאן הם ״נטו״ — ההוצאה הממשלתית מכספי המסים, ללא הכנסות מיועדות. סעיף תקציב יכול להיות משרד (חינוך, ביטחון) או נושא (ריבית על החוב, פנסיה תקציבית).</p>
+    <p data-i18n="explain3">טעות במספרים? נתוני התקציב מגיעים ישירות מבסיס הנתונים הפתוח של ״מפתח התקציב״, המבוסס על קבצי משרד האוצר. נתוני ההתקשרויות הם מאגר שבנינו מדוחות ההתקשרויות שמפרסמים המשרדים עצמם, מ״מפתח התקציב״ וממרשמי המכרזים והפטורים — כל התקשרות מציינת את מקורותיה.</p>
+  </div>
+
+  <footer>
+    <span data-i18n="credit">מקורות המידע: </span>
+    <a href="https://next.obudget.org" target="_blank" rel="noopener">obudget.org</a> ·
+    <a href="https://data.gov.il" target="_blank" rel="noopener">data.gov.il</a> ·
+    <a href="https://main.knesset.gov.il/Activity/Info/Pages/databases.aspx" target="_blank" rel="noopener">Knesset OData</a>
+    <div id="debug" style="margin-top:6px"></div>
+  </footer>
+</div>
+
+<div id="tip"></div>
+<div class="pop" id="pop" role="dialog" aria-modal="false" tabindex="-1"></div>
+
+<script src="../shared/config.js"></script>
+<script src="budget.strings.js"></script>
+<script src="../shared/common.js"></script>
+<script src="budget.data.js"></script>
+<script src="budget.view.js"></script>
+</body>
+</html>

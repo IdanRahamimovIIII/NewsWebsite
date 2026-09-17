@@ -1,4 +1,4 @@
-# NOTES — Supreme Court page (site\court_page\)
+# NOTES — Supreme Court page (site\court\)
 
 `index.html` only: shell, `<style>`, `window.PAGE = "court"` + PAGE_STR and
 the script inline. Data: `preset("verdicts", {…})` (relay `/preset/verdicts`)

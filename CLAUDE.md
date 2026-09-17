@@ -12,7 +12,7 @@ Read ONLY the layer the task needs — that is the token budget's whole trick:
 
 | work | read |
 |---|---|
-| one page | `site\shared\CLAUDE.md` → the page's `NOTES.md` (in `site\<name>_page\`) |
+| one page | `site\shared\CLAUDE.md` → the page's `NOTES.md` (in `site\<name>\`) |
 | cross-page (nav, tokens, layout) | `site\shared\CLAUDE.md` |
 | data (collection, merge, D1, photos, audit, workflows) | `pipeline\shared\CLAUDE.md` → that dataset folder's `NOTES.md` |
 | the Cloudflare relay | `worker\CLAUDE.md` |

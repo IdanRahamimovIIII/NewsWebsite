@@ -12,7 +12,7 @@
    throws. A fixture more generous than the real source turns a test into a
    rubber stamp (learned 2026-08-22, twice).
 
-   node site/budget_page/test_contractors.mjs   (needs: npm i playwright)   */
+   node site/budget/test_contractors.mjs   (needs: npm i playwright)   */
 import { chromium } from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
@@ -307,7 +307,7 @@ async function openPage(hash = '') {
     console.log('    [unexpected relay request]', route.request().url());
     route.fulfill({ status: 404, body: '{"error":"unmocked route"}' });
   });
-  await page.goto(`http://localhost:${PORT}/budget_page/contractors.html${hash}`);
+  await page.goto(`http://localhost:${PORT}/budget/contractors.html${hash}`);
   return page;
 }
 const topNames = page => page.$$eval('#topout tbody tr', els =>

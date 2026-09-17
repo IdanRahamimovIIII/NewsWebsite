@@ -5,7 +5,7 @@ rulings live in its `NOTES.md`. Upstream APIs used by several pages:
 `SOURCES.md` here (read only when touching an upstream call).
 
 ## Rules
-- A page folder is the whole page: `<name>_page\` + `shared\` is the complete
+- A page folder is the whole page: `<name>\` + `shared\` is the complete
   set, tests included. From a page chat, `shared\` is READ-ONLY — if a page
   needs something new from common.js/style.css, say so; never copy shared
   code into a page folder.
@@ -37,14 +37,24 @@ rulings live in its `NOTES.md`. Upstream APIs used by several pages:
   sections) · block h2. Hebrew: `לאן` is standard (not `לאיפה`); keep
   `מאיפה` (alternatives read archaic; `מהיכן` if ever needed).
 
+## SEO / crawler-visible HTML (live at https://ourmoneyil.com)
+- The HTML shells carry the Hebrew strings BAKED IN (crawlers and AI bots
+  don't run JS). After editing any `*.strings.js`, common strings, or a
+  `data-i18n` element: `node scripts/bake_i18n.mjs` (cloud). Drift fails
+  `tests/test_links.mjs`. The runtime JS still overwrites everything.
+- `site\robots.txt` (all bots welcome; tools+selftest excluded) ·
+  `sitemap.xml` (add a line per new page) · `_redirects` (Cloudflare Pages
+  301s: root → /budget/, old *_page addresses) · per-page head: canonical +
+  Open Graph (`shared\share.png` is the share card) · JSON-LD on /budget/.
+
 ## Layout
 ```
-site\  index/votes/mk/court.html = forwarders to *_page\ (keep old links)
+site\  index/votes/mk/court.html = forwarders to budget|votes|mk|court\ (keep old links)
 ├─ shared\       style.css · common.js · config.js (window.PROXY_URL)
-├─ budget_page\  index.html (budget) + contractors.html; budget.* contractors.*; test_budget/test_contractors.mjs
-├─ votes_page\   votes.{css,strings,data,search,bills,view}.js; selftest.html/.js
-├─ mk_page\      mk.{css,strings,data,view}.js; test_mk.mjs
-├─ court_page\   index.html (still one file — split when it outgrows it)
+├─ budget\  index.html (budget) + contractors.html; budget.* contractors.*; test_budget/test_contractors.mjs
+├─ votes\   votes.{css,strings,data,search,bills,view}.js; selftest.html/.js
+├─ mk\      mk.{css,strings,data,view}.js; test_mk.mjs
+├─ court\   index.html (still one file — split when it outgrows it)
 ├─ tools\        qa.html (relay/dataset health) · build.html (vote-index harvest)
 └─ tests\        test_links.mjs (layout guard)
 ```
@@ -54,12 +64,14 @@ site\  index/votes/mk/court.html = forwarders to *_page\ (keep old links)
   bottom). Plain scripts, one global scope. Load order: `../shared/config.js`
   → strings → `../shared/common.js` → data → view.
 - Every page/tool sits one level below `site\`: `../shared/…`, own files by
-  bare name; links `../<name>_page/` (`?name=` survives forwarders).
+  bare name; links `../<name>/` (`?name=` survives forwarders).
   `buildChrome()` defaults `BASE` to `"../"` (a deeper page sets `window.BASE`).
-- Adding a page: new `<name>_page\` from a shell, PAGE/PAGE_STR/onLangChange,
-  a NOTES.md, a tab in `buildChrome()`, the page in `tests/test_links.mjs`.
+- Adding a page: new `<name>\` from a shell, PAGE/PAGE_STR/onLangChange,
+  a NOTES.md, a tab in `buildChrome()`, the page in `tests/test_links.mjs`,
+  a `sitemap.xml` line, head tags (copy a page's canonical/OG block), and
+  add it to `scripts/bake_i18n.mjs` PAGES + run the bake.
 - Never test from `file://`: `scripts\serve.bat` (node → python → py →
-  PowerShell; `:8080`, no-store, logs 404s) → `http://localhost:8080/budget_page/`.
+  PowerShell; `:8080`, no-store, logs 404s) → `http://localhost:8080/budget/`.
 
 ## common.js (plain globals)
 Page sets `window.PAGE` (nav tab id), `window.PAGE_STR = {he:{…}, en:{…}}`,

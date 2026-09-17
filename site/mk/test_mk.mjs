@@ -1,23 +1,23 @@
-/* The MK portfolio page (mk_page/index.html) against a fake Knesset that contains the
+/* The MK portfolio page (mk/index.html) against a fake Knesset that contains the
    same traps as the real one: two id spaces bridged by name ("לפיד יאיר" in
    the votes directory, "יאיר לפיד" in the persons table), a duplicate cmb
    entry per Knesset, reservation votes that must fold into one row, and
    statuses that must land in the right pile (passed / rejected / in process).
 
-   node site/mk_page/test_mk.mjs   (needs: npm i playwright)                        */
+   node site/mk/test_mk.mjs   (needs: npm i playwright)                        */
 import { chromium } from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/* the site is this file's parent folder (site/mk_page/ → site/) — works from any cwd */
+/* the site is this file's parent folder (site/mk/ → site/) — works from any cwd */
 const DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8933;
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
 const server = http.createServer((req, res) => {
-  const f = path.join(DIR, decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'mk_page/index.html');
+  const f = path.join(DIR, decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'mk/index.html');
   fs.readFile(f, (err, buf) => {
     if (err) { res.writeHead(404); res.end('missing'); return; }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'text/plain' });
@@ -245,11 +245,11 @@ await page.route(url => url.href.startsWith('https://our-money.'), answer);
 await page.route(url => !url.href.startsWith(`http://localhost:${PORT}/`) && !url.href.startsWith('https://our-money.'), r => r.abort());
 
 console.log('\nthe directory + nav:');
-await page.goto(`http://localhost:${PORT}/mk_page/index.html`, { waitUntil: 'domcontentloaded' });
+await page.goto(`http://localhost:${PORT}/mk/index.html`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('#dir .dircard');
 const tabs = await page.$$eval('nav.tabs a', els => els.map(e => e.getAttribute('href')));
 ok('the nav has four tabs', tabs.length === 4, tabs.join(','));
-ok('the MK page is the active tab', await page.$eval('nav.tabs a.active', e => e.getAttribute('href')) === '../mk_page/');
+ok('the MK page is the active tab', await page.$eval('nav.tabs a.active', e => e.getAttribute('href')) === '../mk/');
 const chips = await page.$$eval('#dir .dircard .dcname', els => els.map(e => e.textContent));
 ok('the directory lists this Knesset\'s members once each', chips.length === 5, chips.join(','));
 ok('ordered by importance: PM → minister → former minister → plain member → the one who left',
@@ -517,7 +517,7 @@ ok('English strings appear', (await page.textContent('#profile')).includes('What
 const page2 = await browser.newPage();
 await page2.route(url => url.href.startsWith('https://our-money.'), answer);
 await page2.route(url => !url.href.startsWith(`http://localhost:${PORT}/`) && !url.href.startsWith('https://our-money.'), r => r.abort());
-await page2.goto(`http://localhost:${PORT}/mk_page/index.html?name=${encodeURIComponent('לפיד יאיר')}`, { waitUntil: 'domcontentloaded' });
+await page2.goto(`http://localhost:${PORT}/mk/index.html?name=${encodeURIComponent('לפיד יאיר')}`, { waitUntil: 'domcontentloaded' });
 await page2.waitForSelector('.mkname');
 ok('?name= opens the portfolio directly', (await page2.$eval('.mkname', e => e.firstChild.textContent.trim())) === 'יאיר לפיד');
 await page2.close();

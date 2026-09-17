@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>הכסף שלנו — בית המשפט העליון | Our Money — Supreme Court</title>
 <meta name="description" content="פסקי הדין וההחלטות האחרונים של בית המשפט העליון — מהמאגר הרשמי, בשפה פשוטה.">
+<!-- who we are to search engines and social cards (share.png is the shared card image) -->
+<link rel="canonical" href="https://ourmoneyil.com/court/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="הכסף שלנו — Our Money">
+<meta property="og:title" content="הכסף שלנו — בית המשפט העליון | Our Money — Supreme Court">
+<meta property="og:description" content="פסקי הדין וההחלטות האחרונים של בית המשפט העליון — מהמאגר הרשמי, בשפה פשוטה.">
+<meta property="og:url" content="https://ourmoneyil.com/court/">
+<meta property="og:image" content="https://ourmoneyil.com/shared/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="he_IL">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="../shared/style.css">
 <style>
   /* ---- court page only ---- */
@@ -34,39 +47,44 @@
 </style>
 </head>
 <body>
-<header class="topbar"></header>
+<header class="topbar"><div class="tbwrap">
+      <a class="brand" href="../budget/" data-i18n="title">הכסף שלנו</a>
+      <nav class="tabs"><a href="../budget/" class="" data-i18n="navBudget">התקציב</a><a href="../votes/" class="" data-i18n="navVotes">הצבעות וחקיקה</a><a href="../mk/" class="" data-i18n="navMk">חברי הכנסת</a><a href="../court/" class="active" data-i18n="navCourt">בית המשפט העליון</a></nav>
+      <button class="langbtn" id="langbtn" onclick="toggleLang()">English</button>
+    </div></header>
 <div class="wrap">
+  <p class="tagline" data-i18n="tagline">מה החליט בית המשפט העליון? המסמכים הרשמיים, בשפה פשוטה.</p>
 
   <!-- fresh rulings -->
   <div class="card">
-    <h2 data-i18n="freshTitle"></h2>
-    <p class="hint" data-i18n="freshHint"></p>
+    <h2 data-i18n="freshTitle">פסיקה טרייה</h2>
+    <p class="hint" data-i18n="freshHint">כל מה שפרסם בית המשפט העליון לאחרונה. לחיצה על שם התיק פותחת את המסמך הרשמי המלא.</p>
 
     <div class="controls" id="rangechips"></div>
     <div class="controls" id="typechips"></div>
     <div class="controls">
-      <label class="tech"><input type="checkbox" id="showtech" onchange="renderList()"><span data-i18n="showTech"></span></label>
+      <label class="tech"><input type="checkbox" id="showtech" onchange="renderList()"><span data-i18n="showTech">הציגו גם החלטות טכניות (דחיות מועד, עניינים מנהליים)</span></label>
     </div>
     <div class="searchrow">
-      <input id="q" data-i18n-ph="qPh" onkeydown="if(event.key==='Enter')reload()">
-      <button onclick="reload()" data-i18n="searchBtn"></button>
+      <input id="q" data-i18n-ph="qPh" onkeydown="if(event.key==='Enter')reload()" placeholder="חיפוש חופשי בפסיקה — לדוגמה: חופש הביטוי">
+      <button onclick="reload()" data-i18n="searchBtn">חיפוש</button>
     </div>
 
     <div class="statrow" id="stats"></div>
-    <div id="list"><div class="loading" data-i18n="loading"></div></div>
+    <div id="list"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
   </div>
 
   <!-- how to read this -->
   <div class="card explain">
-    <h2 data-i18n="expTitle"></h2>
-    <p><span data-i18n="exp1"></span></p>
-    <p><span data-i18n="exp2"></span></p>
-    <p><span data-i18n="exp3"></span></p>
+    <h2 data-i18n="expTitle">איך קוראים את זה?</h2>
+    <p><span data-i18n="exp1">‏<b>פסק דין</b> הוא ההכרעה הסופית בתיק — זה המסמך שמשנה את המציאות. <b>החלטה</b> היא כל צעד בדרך: צווים, בקשות, קביעות ביניים.</span></p>
+    <p><span data-i18n="exp2">‏כשבית המשפט העליון יושב כ<b>בג"ץ</b> (בית משפט גבוה לצדק), אזרחים עותרים נגד המדינה עצמה — ממשלה, שרים, רשויות. שם מתרחשות ההכרעות הגדולות על גבולות הכוח השלטוני.</span></p>
+    <p><span data-i18n="exp3">‏פרשנות של העליון מחייבת את כל בתי המשפט האחרים. לכן גם "החלטה קטנה" יכולה לשנות בפועל את משמעותו של חוק — בלי שהכנסת שינתה מילה.</span></p>
   </div>
 
   <footer>
-    <span data-i18n="credit"></span>
-    <a href="https://supremedecisions.court.gov.il" target="_blank" rel="noopener" data-i18n="srcName"></a>
+    <span data-i18n="credit">מקור המידע: </span>
+    <a href="https://supremedecisions.court.gov.il" target="_blank" rel="noopener" data-i18n="srcName">מאגר פסקי הדין של בית המשפט העליון</a>
     <div id="debug" style="margin-top:6px"></div>
   </footer>
 </div>

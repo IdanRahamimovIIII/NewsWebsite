@@ -1,0 +1,53 @@
+# ourmoneyil.com — everyone is welcome, including AI crawlers.
+# A transparency site wants to be inside the models' knowledge (Mercy).
+# /tools/ and the selftest are internal pages, not content.
+
+User-agent: *
+Allow: /
+Disallow: /tools/
+Disallow: /votes/selftest.html
+
+# Explicit welcomes — a bot that finds its own group reads ONLY that group,
+# so the two internal paths are repeated in each one.
+
+User-agent: Googlebot
+Allow: /
+Disallow: /tools/
+Disallow: /votes/selftest.html
+
+User-agent: Bingbot
+Allow: /
+Disallow: /tools/
+Disallow: /votes/selftest.html
+
+User-agent: GPTBot
+Allow: /
+Disallow: /tools/
+Disallow: /votes/selftest.html
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /tools/
+Disallow: /votes/selftest.html
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /tools/
+Disallow: /votes/selftest.html
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /tools/
+Disallow: /votes/selftest.html
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /tools/
+Disallow: /votes/selftest.html
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /tools/
+Disallow: /votes/selftest.html
+
+Sitemap: https://ourmoneyil.com/sitemap.xml

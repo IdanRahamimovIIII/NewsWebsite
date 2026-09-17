@@ -7,14 +7,14 @@
    (/contracts?code=…&year=…, worker v8) — the page no longer reads them
    from BudgetKey, and the fake 404s any relay route this file doesn't model.
 
-   node site/budget_page/test_budget.mjs   (needs: npm i playwright)                    */
+   node site/budget/test_budget.mjs   (needs: npm i playwright)                    */
 import { chromium } from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/* the site is this file's parent folder (site/budget_page/ → site/) — works from any cwd */
+/* the site is this file's parent folder (site/budget/ → site/) — works from any cwd */
 const DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8931;
 
@@ -202,7 +202,7 @@ function runSql(sql) {
 /* ---------- static server ---------- */
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
 const server = http.createServer((req, res) => {
-  const f = path.join(DIR, decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'budget_page/index.html');
+  const f = path.join(DIR, decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'budget/index.html');
   fs.readFile(f, (err, buf) => {
     if (err) { res.writeHead(404); res.end('no'); return; }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'text/plain' });
@@ -281,7 +281,7 @@ async function openPage({ snapshot, noDebt }) {
     });
   });
 
-  await page.goto(`http://localhost:${PORT}/budget_page/index.html`);
+  await page.goto(`http://localhost:${PORT}/budget/index.html`);
   await page.waitForFunction(() => document.querySelectorAll('.barrow').length > 0, null, { timeout: 12000 });
   return page;
 }

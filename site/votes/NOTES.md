@@ -1,4 +1,4 @@
-# NOTES — votes & bills page (site\votes_page\)
+# NOTES — votes & bills page (site\votes\)
 
 Files beyond the standard split: `votes.search.js` (matching, plain +
 advanced search, paging, filter passes) · `votes.bills.js` (second tab).
@@ -7,7 +7,7 @@ Load order: config → strings → common → data → search → bills → view
 (build, TSV format, `/search/votes`) is the worker's; this page's client is
 `idxMeta()` / `idxSearch()` / `groupsFromIndex()` in votes.data.js.
 Tests `test_votes.mjs` / `test_index.mjs` / `test_selftest.mjs` live in
-Claude's cloud workspace (mocked Knesset). MK links: `../mk_page/?name=…`.
+Claude's cloud workspace (mocked Knesset). MK links: `../mk/?name=…`.
 
 ## selftest.html — use before saying "fixed"
 Loads the REAL page files, drives doSearch / advSearch / currentList against

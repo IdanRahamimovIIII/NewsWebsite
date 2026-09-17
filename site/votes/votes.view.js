@@ -25,7 +25,7 @@ const resLabel = title => {
 
 /* every MK name the page prints can open that person's portfolio */
 const mkLink = n =>
-  `<a class="mklink" href="../mk_page/?name=${encodeURIComponent(n)}" onclick="event.stopPropagation()">${esc(n)}</a>`;
+  `<a class="mklink" href="../mk/?name=${encodeURIComponent(n)}" onclick="event.stopPropagation()">${esc(n)}</a>`;
 
 /* ---------- Hebrew-friendly text matching ----------
    Official titles are punctuated ("חוק הגיוס, התשפ״ה-2025") and people type
@@ -131,7 +131,7 @@ function renderContext() {
   }
   if (state.mkSel) {
     html = `<div class="hint" style="margin:0 0 10px"><b>${esc(state.mkSel.mk.Name)}</b>
-      <a class="votechip" style="margin-inline-start:8px;text-decoration:none;display:inline-block" href="../mk_page/?name=${encodeURIComponent(state.mkSel.mk.Name)}">${esc(t("mkProfile"))}</a>
+      <a class="votechip" style="margin-inline-start:8px;text-decoration:none;display:inline-block" href="../mk/?name=${encodeURIComponent(state.mkSel.mk.Name)}">${esc(t("mkProfile"))}</a>
       <button class="votechip" style="margin-inline-start:8px" onclick="state.mkSel=null;renderVotes()">${esc(t("backToResults"))}</button></div>`;
   } else {
     const f = state.found;

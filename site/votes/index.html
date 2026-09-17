@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הכסף שלנו — הצבעות בכנסת | Our Money — Knesset Votes</title>
+<meta name="description" content="מי הצביע על מה בכנסת? הצבעות המליאה, הצעות חוק, ורשומת ההצבעה של כל חבר כנסת — מנתונים רשמיים.">
+<!-- who we are to search engines and social cards (share.png is the shared card image) -->
+<link rel="canonical" href="https://ourmoneyil.com/votes/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="הכסף שלנו — Our Money">
+<meta property="og:title" content="הכסף שלנו — הצבעות בכנסת | Our Money — Knesset Votes">
+<meta property="og:description" content="מי הצביע על מה בכנסת? הצבעות המליאה, הצעות חוק, ורשומת ההצבעה של כל חבר כנסת — מנתונים רשמיים.">
+<meta property="og:url" content="https://ourmoneyil.com/votes/">
+<meta property="og:image" content="https://ourmoneyil.com/shared/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="he_IL">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<!-- the shared look, then this page's own bits -->
+<link rel="stylesheet" href="../shared/style.css">
+<link rel="stylesheet" href="votes.css">
+</head>
+<body>
+<header class="topbar"><div class="tbwrap">
+      <a class="brand" href="../budget/" data-i18n="title">הכסף שלנו</a>
+      <nav class="tabs"><a href="../budget/" class="" data-i18n="navBudget">התקציב</a><a href="../votes/" class="active" data-i18n="navVotes">הצבעות וחקיקה</a><a href="../mk/" class="" data-i18n="navMk">חברי הכנסת</a><a href="../court/" class="" data-i18n="navCourt">בית המשפט העליון</a></nav>
+      <button class="langbtn" id="langbtn" onclick="toggleLang()">English</button>
+    </div></header>
+<div class="wrap">
+
+  <!-- two rooms, one topic: plenum votes / bills in process -->
+  <nav class="subtabs">
+    <button id="st-votes" class="on" onclick="setTab('votes')" data-i18n="subtabVotes">הצבעות במליאה</button>
+    <button id="st-bills" onclick="setTab('bills')" data-i18n="subtabBills">הצעות חוק בתהליך</button>
+  </nav>
+
+  <!-- TAB 1: plenum votes -->
+  <div class="card" id="votesTab">
+    <h2 data-i18n="pageTitle">הצבעות במליאה</h2>
+    <p class="hint" data-i18n="pageHint">מה עלה להצבעה ומי הצביע. חפשו לפי שם חוק או חבר/ת כנסת.</p>
+    <div class="searchrow">
+      <input id="q" data-i18n-ph="searchPh" onkeydown="if(event.key==='Enter')doSearch()" placeholder="לדוגמה: גיוס, שכירות, לפיד…">
+      <button onclick="doSearch()" data-i18n="searchBtn">חיפוש</button>
+    </div>
+    <div class="filterrow">
+      <button class="advtoggle" style="margin-inline-start:0" onclick="toggleAdv()"><span data-i18n="advToggle">חיפוש מתקדם</span> ▾</button>
+    </div>
+
+    <div class="advpanel" id="advpanel" style="display:none">
+      <div class="advgrid">
+        <label><span data-i18n="advMk">השתתפ/ה בהצבעה</span><input id="advmk" data-i18n-ph="bInitPh" onkeydown="if(event.key==='Enter')doSearch()" placeholder="שם חבר/ת כנסת"></label>
+        <label><span data-i18n="advInit">הוגשה על ידי</span><input id="advinit" data-i18n-ph="bInitPh" onkeydown="if(event.key==='Enter')doSearch()" placeholder="שם חבר/ת כנסת"></label>
+        <label><span data-i18n="bType">סוג</span>
+          <select id="advtype" onchange="doSearch()">
+            <option value="all" data-i18n="allOpt">הכל</option>
+            <option value="54" data-i18n="typePrivate">פרטית</option>
+            <option value="53" data-i18n="typeGov">ממשלתית</option>
+          </select></label>
+        <label><span data-i18n="advFrom">מתאריך</span><input type="date" id="advfrom" onchange="doSearch()"></label>
+        <label><span data-i18n="advTo">עד תאריך</span><input type="date" id="advto" onchange="doSearch()"></label>
+        <label><span data-i18n="advResult">תוצאת ההצבעה</span>
+          <select id="advresult" onchange="doSearch()">
+            <option value="all" data-i18n="allOpt">הכל</option>
+            <option value="passed" data-i18n="passedOpt">התקבלה</option>
+            <option value="failed" data-i18n="failedOpt">לא התקבלה</option>
+          </select></label>
+      </div>
+      <div style="margin-top:10px"><button class="votechip" onclick="advClear()" data-i18n="clearShort">ניקוי</button></div>
+    </div>
+    <div id="results" style="display:none"></div>
+    <div id="votes"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
+  </div>
+
+  <!-- TAB 2: bills in the legislative process -->
+  <div class="card" id="billsTab" style="display:none">
+    <h2 data-i18n="bTitle">הצעות חוק בתהליך החקיקה</h2>
+    <p class="hint" data-i18n="bHint">כל הצעות החוק — גם אלה שמעולם לא הגיעו להצבעה. חפשו לפי שם, שלב או תאריך.</p>
+    <div class="searchrow">
+      <input id="bq" data-i18n-ph="bPh" onkeydown="if(event.key==='Enter')runBSearch()" placeholder="לדוגמה: גיוס, שכירות…">
+      <button onclick="runBSearch()" data-i18n="searchBtn">חיפוש</button>
+    </div>
+    <div class="advgrid" style="margin-bottom:12px">
+      <label><span data-i18n="bInit">הוגשה על ידי</span><input id="binit" data-i18n-ph="bInitPh" onkeydown="if(event.key==='Enter')runBSearch()" placeholder="שם חבר/ת כנסת"></label>
+      <label><span data-i18n="bType">סוג</span>
+        <select id="btype" onchange="runBSearch()">
+          <option value="all" data-i18n="allOpt">הכל</option>
+          <option value="54" data-i18n="typePrivate">פרטית</option>
+          <option value="53" data-i18n="typeGov">ממשלתית</option>
+        </select></label>
+      <label><span data-i18n="bStatus">שלב בתהליך</span>
+        <select id="bstatus" onchange="runBSearch()"><option value="all"></option></select></label>
+      <label><span data-i18n="advFrom">מתאריך</span><input type="date" id="bfrom" onchange="runBSearch()"></label>
+      <label><span data-i18n="advTo">עד תאריך</span><input type="date" id="bto" onchange="runBSearch()"></label>
+    </div>
+    <div id="blist"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
+  </div>
+
+  <footer>
+    <span data-i18n="credit">מקורות המידע: </span>
+    <a href="https://knesset.gov.il/Odata/ParliamentInfo.svc/" target="_blank" rel="noopener">Knesset OData</a> ·
+    <a href="https://oknesset.org" target="_blank" rel="noopener">Open Knesset</a>
+    · <span id="pagever"></span>
+    <div id="debug" style="margin-top:6px"></div>
+  </footer>
+</div>
+
+<!-- Load order matters. Each file has one job:
+       ../shared/config.js       your relay address (shared, one level up)
+       votes.strings.js   every word this page says (Hebrew + English)
+       ../shared/common.js  shared header, language switch, relay helpers
+       votes.data.js      talks to the Knesset APIs and to our vote index
+       votes.search.js    decides WHICH votes to show
+       votes.view.js      draws them (and starts the page at the bottom)
+       votes.bills.js     the second tab, bills in the legislative process -->
+<script src="../shared/config.js"></script>
+<script src="votes.strings.js"></script>
+<script src="../shared/common.js"></script>
+<script src="votes.data.js"></script>
+<script src="votes.search.js"></script>
+<script src="votes.bills.js"></script>
+<script src="votes.view.js"></script>
+</body>
+</html>

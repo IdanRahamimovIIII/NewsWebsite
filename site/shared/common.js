@@ -52,15 +52,15 @@ function t(k) {
 
 /* ---------- language & chrome (header + nav) ---------- */
 function buildChrome() {
-  // Every page is site/<name>_page/index.html and every tool is site/tools/…,
+  // Every page is site/<name>/index.html and every tool is site/tools/…,
   // so from any of them the site root is one level up. A page that lives
   // deeper can set window.BASE (e.g. "../../") before loading this file.
   const BASE = window.BASE || "../";
   const tabs = [
-    ["budget", "budget_page/", "navBudget"],
-    ["votes", "votes_page/", "navVotes"],
-    ["mk", "mk_page/", "navMk"],
-    ["court", "court_page/", "navCourt"],
+    ["budget", "budget/", "navBudget"],
+    ["votes", "votes/", "navVotes"],
+    ["mk", "mk/", "navMk"],
+    ["court", "court/", "navCourt"],
   ];
   const tabsHtml = tabs.map(([id, href, key]) =>
     `<a href="${BASE}${href}" class="${window.PAGE === id ? "active" : ""}" data-i18n="${key}"></a>`).join("");
@@ -68,7 +68,7 @@ function buildChrome() {
   const bar = document.querySelector("header.topbar");
   if (bar && !bar.childElementCount) {
     bar.innerHTML = `<div class="tbwrap">
-      <a class="brand" href="${BASE}budget_page/" data-i18n="title"></a>
+      <a class="brand" href="${BASE}budget/" data-i18n="title"></a>
       <nav class="tabs">${tabsHtml}</nav>
       <button class="langbtn" id="langbtn" onclick="toggleLang()">English</button>
     </div>`;

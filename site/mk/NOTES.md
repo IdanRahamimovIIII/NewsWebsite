@@ -1,4 +1,4 @@
-# NOTES — MK portfolio page (site\mk_page\)
+# NOTES — MK portfolio page (site\mk\)
 
 `index.html`: search card, `#profile` (`#phead`, `#ptiles`, `#positions`,
 `#bills`, `#mkknessets` + `#mkvotes`), `#dirCard` → `#dir`. `mk.data.js`
@@ -146,7 +146,7 @@ Enter opens a lone card; `openByName` with namesakes filters to them.
   honest empty state.
 
 ## Test
-`node site/mk_page/test_mk.mjs` (serves `site/` on :8933, mocks the relay),
+`node site/mk/test_mk.mjs` (serves `site/` on :8933, mocks the relay),
 113 asserts; fixtures commented in the file: two id spaces, duplicate cmb
 rows, twin position codes, split PM term, a real gap, רגב מירי (cmb-only,
 reversed), גנץ בני, בניה גנצר, a namesake with 99 laws, a leaver/former
