@@ -37,3 +37,6 @@ __pycache__/
 # screenshots the Playwright tests write next to themselves
 site/tests/*.png
 pipeline/tests/*.png
+
+# Claude's working notes and drafts — never published with the repo
+Claude outputs/

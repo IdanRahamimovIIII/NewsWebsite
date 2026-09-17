@@ -92,6 +92,7 @@ re-derive a number here. Same discipline as v8, same CONTRACTS binding.
 ## Open
 - v10: store bill id (`sess_item_id` / FK_ItemID) on each vote-index row →
   "bills proposed by X" becomes one exact request (`site\votes_page\NOTES.md`).
-- `BUILD_KEY = "rebuild"` (~line 66) gates `?reset=1` (wipes the vote index)
-  in plain text — keep repo private or move it to a secret.
+- `?reset=1` (wipes the vote index) is gated by the Worker secret `BUILD_KEY`
+  (dashboard → Settings → Variables and Secrets). No secret set → reset is
+  disabled. The word is never in the code (public repo).
 - gov.il report .xlsx: WebFetch can't read binary; files arrive via the bridge.

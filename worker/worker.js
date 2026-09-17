@@ -34,7 +34,7 @@
  *   GET  /contractors/exemptions?year=[&n=]    — exemption regulations ranking (D1, v9)
  *   GET  /contractors/supplier?sid=…           — one supplier profile (D1, v9)
  *   GET  /contractors/search?q=…               — free-text FTS search (D1, v9)
- *   GET  /build/votes[?reset=1&key=rebuild]    — one step of the index harvest
+ *   GET  /build/votes[?reset=1&key=<secret>]   — one step of the index harvest
  *   GET  /search/votes?q=…[&qs=a|b][&from=&to=][&y0=&y1=][&limit=]
  *   GET  /data/votesmeta                       — index manifest (years, rows)
  *   GET  /data/mkphotos                        — MK portrait manifest (pub:mkphotos)
@@ -65,9 +65,11 @@ const ALLOWED = (host) =>
   host === "foi.gov.il";
 
 const CACHE_SECONDS = 300;
-/* only someone who knows this word can wipe the index and start the harvest
-   over (?reset=1&key=…). Change it if you like — build.html asks for it. */
-const BUILD_KEY = "rebuild";
+/* wiping the index and starting the harvest over (?reset=1&key=…) needs the
+   word stored in a Worker SECRET named BUILD_KEY (worker → Settings →
+   Variables and Secrets → Add → type: Secret). No secret set → reset stays
+   disabled, on purpose: the word must never sit in this file (the repo is
+   public). build.html asks for the word when you press rebuild. */
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -893,7 +895,9 @@ export default {
         // a rebuild wipes the manifest only (old year files are overwritten as
         // the harvest walks past them); the key guards against random visitors
         if (reqUrl.searchParams.get("reset") === "1") {
-          if (reqUrl.searchParams.get("key") !== BUILD_KEY)
+          if (!env.BUILD_KEY)  // no secret configured → reset disabled (fail closed)
+            return new Response('{"error":"reset is disabled: add a Secret named BUILD_KEY in the worker\'s Settings → Variables and Secrets, then Deploy"}', { status: 403, headers });
+          if (reqUrl.searchParams.get("key") !== env.BUILD_KEY)
             return new Response('{"error":"bad build key"}', { status: 403, headers });
           await env.DATA.put(IDX_META, JSON.stringify(freshMeta()));
         }

@@ -203,7 +203,7 @@ async function run() {
 function toggleRun() { if (running) { stopReq = true; log("עוצר…"); } else run(); }
 
 async function rebuild() {
-  const key = prompt("בנייה מחדש מוחקת את המאגר הקיים ומתחילה מ‑2021.\nהקלידו את מילת האישור (ברירת מחדל: rebuild)", "rebuild");
+  const key = prompt("בנייה מחדש מוחקת את המאגר הקיים ומתחילה מ‑2021.\nהקלידו את מילת האישור (ה־Secret בשם BUILD_KEY מהגדרות ה־Worker)", "");
   if (!key) return;
   const r = await fetch(PROXY + "/build/votes?reset=1&key=" + encodeURIComponent(key));
   const j = await r.json().catch(() => ({}));

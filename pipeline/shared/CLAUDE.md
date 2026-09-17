@@ -20,6 +20,7 @@ Connect this folder + the ONE dataset folder the problem lives in.
 | problem | connect |
 |---|---|
 | contracts: collection, raw archive, merge → build → D1, contractors tables | `contractors\` (+ `workflows\` if steps change) |
+| BTL data: legal avg wage, unemployment ch.15 → KV snapshots, monthly CI | `btl\` (+ `workflows\` if steps change) |
 | MK portraits | `photos\` |
 | checking the built dataset | `audit\` |
 | GitHub automations | `workflows\` + `setup\` |
@@ -42,7 +43,8 @@ in contractors\, audit\, worker\) · `upload_to_d1.py` (D1 dump/import/verify).
   `build_sqlite.py --public`. Served by worker `/contracts` family (v8),
   `/contractors/*` (v9).
 - KV: `pub:mkphotos` + `photo:mk/*` (photos\) → `/data/mkphotos`,
-  `/photos/mk/<file>`. Any `pub:<name>` is served as `/data/<name>`.
+  `/photos/mk/<file>` · `pub:avgwage` + `pub:btl-unemployment` (btl\, monthly
+  CI). Any `pub:<name>` is served as `/data/<name>`.
 
 ## Open (cross-dataset)
 - Phase 2 → 3 of pipeline v2: `contractors\NOTES.md`.
