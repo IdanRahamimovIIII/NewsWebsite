@@ -16,7 +16,7 @@ read back. No portrait anywhere for ids 312, 454, 513, 560, 573, 694, 762,
 only) → publish-photos.bat. KV is the durable copy; mk\ is rebuildable.
 
 Uses `..\shared\cf_kv.py`, `..\d1-config.json` (token with Workers KV Storage:
-Edit), `site\config.js` (relay URL). Page side: `site\mk_page\mk.data.js` `photoOf()`.
+Edit), `site\config.js` (relay URL). Page side: `site\mk\mk.data.js` `photoOf()`.
 
 ## Contract (routes: `worker\CLAUDE.md`)
 - Manifest `{MkId: "<MkId>-<md5 8>.<ext>"}` → a new portrait = a new name,

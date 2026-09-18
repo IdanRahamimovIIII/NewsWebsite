@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- The five real pages. Static file: add a line when a page is added. -->
+<!-- The real pages. Static file: add a line when a page is added. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://ourmoneyil.com/budget/</loc></url>
   <url><loc>https://ourmoneyil.com/budget/contractors.html</loc></url>
   <url><loc>https://ourmoneyil.com/votes/</loc></url>
   <url><loc>https://ourmoneyil.com/mk/</loc></url>
   <url><loc>https://ourmoneyil.com/court/</loc></url>
+  <url><loc>https://ourmoneyil.com/api/</loc></url>
 </urlset>

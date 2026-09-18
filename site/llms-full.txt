@@ -1,0 +1,138 @@
+# הכסף שלנו — Our Money — full reference for AI systems
+
+https://ourmoneyil.com · contact@ourmoneyil.com
+
+## What this site is
+
+"הכסף שלנו" (Our Money) is an independent Israeli transparency site with no
+ties to any government body, party, or organization. It gives citizens a
+clean, ordered view of what the State of Israel does and how it uses public
+money. It is an explanation machine, not a data dump: it holds no opinions,
+phrases its sections as the reader's own questions, and lets the reader
+judge. All data comes directly from official sources and every fact links
+to its source document; the site re-hosts none of the state's documents.
+
+Languages: Hebrew is the primary language; every page has an English
+toggle. The full Hebrew content of each page is baked into the raw HTML,
+so crawlers and AI systems that do not execute JavaScript still see the
+complete text.
+
+Errors: if you find a wrong or missing figure, write to
+contact@ourmoneyil.com and it will be fixed.
+
+## The pages
+
+### https://ourmoneyil.com/budget/ — התקציב (the state budget)
+Where the money comes from — tax revenue and borrowing — what the debt
+costs (interest as a share of tax collection), and where the money goes,
+by ministry and budget line, for every budget year. Original vs. revised
+vs. executed amounts are distinguished and explained. Amounts are net
+government spending from tax money. Source: the "מפתח התקציב" (BudgetKey)
+open database, built on Israeli Ministry of Finance files.
+
+### https://ourmoneyil.com/budget/contractors.html — ספקים והתקשרויות (suppliers & contracts)
+Who receives government money: the largest suppliers, search over
+government contracts, and the full contract list of any supplier. Built
+from the procurement/engagement reports the ministries themselves publish,
+from BudgetKey, and from the tenders and exemptions registries — every
+contract lists its sources.
+
+### https://ourmoneyil.com/votes/ — הצבעות וחקיקה (Knesset votes & legislation)
+Every Knesset plenum vote from 2003 to today (tens of thousands),
+searchable by free text and date range, with totals and — per vote — how
+each Knesset member voted. Bills and their legislative stages. Source: the
+Knesset's official APIs.
+
+### https://ourmoneyil.com/mk/ — חברי הכנסת (Knesset members)
+A file per member of Knesset: the bills they proposed (those that passed
+and those that failed), the positions they have held over the years
+(minister, committee chair, faction), and their voting record. Source: the
+Knesset's official APIs.
+
+### https://ourmoneyil.com/court/ — בית המשפט העליון (the Supreme Court)
+Recent rulings and decisions of Israel's Supreme Court, from the court
+administration's official public database, presented plainly. The page
+gives understanding, never legal advice.
+
+## The data API (for agents)
+
+Human-readable copy of this reference: https://ourmoneyil.com/api/
+
+Base URL: https://our-money.idannhhb.workers.dev
+
+General rules:
+- All endpoints are GET, JSON, no authentication, CORS open
+  (Access-Control-Allow-Origin: *). Text content is Hebrew.
+- Responses are cached (roughly 6 hours; budget 12). Data freshness is in
+  the envelope where present.
+- Snapshot endpoints (/data/*) return an envelope
+  {"t": <epoch ms of the snapshot>, "stale": <bool, optional>, "data": …}.
+- Be gentle: this is a small nonprofit relay with shared rate limits. For
+  bulk research use the official sources directly: next.obudget.org,
+  data.gov.il, and the Knesset OData service
+  (https://knesset.gov.il/Odata/ParliamentInfo.svc/).
+- Attribution appreciated: "הכסף שלנו (ourmoneyil.com)".
+
+### Snapshots — /data/*
+
+- /data/budget — the state budget by top-level budget line, all years
+  (allocated / revised / executed, net amounts). Refreshed twice a day.
+- /data/votes — recent Knesset plenum votes.
+- /data/bills — Knesset bills (הצעות חוק).
+- /data/verdicts — Supreme Court decisions from the last 90 days (up to 50
+  rows). Row fields include: Id, CaseId, CaseNum, CaseDesc (e.g. "עע״מ
+  38750-12-25"), CaseName (the parties), Type (פסק דין / החלטה),
+  VerdictsDtString (DD/MM/YYYY), Pages, PathForWeb, DocName.
+- /data/persons — master list of Knesset members.
+- /data/votesmeta — lookup tables: members, factions, Knesset terms.
+- /data/billinfo/<id> — one bill's details, by Knesset BillID.
+
+### Government contracts — /contracts, /contract, /supplier
+
+- /contracts?code=<budget code>[&year=YYYY][&n=25]
+  Contracts whose live budget allocation falls under the given budget code
+  prefix (e.g. code=0020 for the education section), largest volume first.
+  Returns {"code", "year", "rows": […], "more": <bool>}. Row fields:
+  order_id, section, supplier, entity_id (ח"פ), entity_kind, ministry,
+  budget_code, budget_title, volume, paid, currency, first_year, and
+  reports[] — the official ministry reports the row was built from, with
+  URLs.
+- /contract?id=<order_id> — one contract in full: all fields, all its
+  budget allocations (historical ones labelled), and its source reports.
+- /supplier?hp=<company id (ח"פ)>[&n=50] — all contracts of one supplier,
+  with the total count.
+
+### Vote search — /search/votes
+
+- /search/votes?qs=<query>[&from=YYYY-MM-DD][&to=YYYY-MM-DD][&y0=YYYY][&y1=YYYY][&limit=N]
+  Free-text search over an index of every plenum vote from 2003 to today.
+  Within a quoted phrase, words are ANDed (order-free); separate phrases
+  are ORed. Returns {"rows": […], "truncated": <bool>, "keys", "indexRows"}.
+  Row fields: id (Knesset vote id), date, time, src ("m" modern / "a"
+  archive), passed (true/false/null), for, against, abstain, protocol,
+  title (Hebrew).
+
+### Presets — canned queries against official sources
+
+- /preset/votes?from=YYYY-MM-DD&to=YYYY-MM-DD[&type=1]
+  Plenum vote headers for a date range, straight from the Knesset API.
+  Returns {"Table": [{VoteId, VoteDate, VoteDateStr, VoteTimeStr, VoteType,
+  ItemTitle, KnessetId, SessionId, VoteProtocolNo}]}.
+- /preset/verdicts?from=YYYY-MM-DD&to=YYYY-MM-DD[&q=<text>][&judge=<name>][&lan=1]
+  Supreme Court verdict search for a date range, optionally filtered by
+  free text or judge name.
+- /preset/reports?sec=<budget section digits>
+  The published ministry procurement reports for one budget section.
+
+Endpoints outside this list are internal and may change or refuse
+requests; the ones above are the stable, documented surface. Changes to
+this surface are announced on https://ourmoneyil.com/api/.
+
+## Sources
+
+- מפתח התקציב (BudgetKey): https://next.obudget.org
+- Knesset OData: https://knesset.gov.il/Odata/ParliamentInfo.svc/
+- Knesset databases portal: https://main.knesset.gov.il/Activity/Info/Pages/databases.aspx
+- data.gov.il: https://data.gov.il
+- Supreme Court decisions: the court administration's public database
+  (linked per decision from https://ourmoneyil.com/court/)

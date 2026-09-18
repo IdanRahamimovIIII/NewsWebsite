@@ -18,7 +18,9 @@ discipline: 10ms CPU/request, 50 subrequests/invocation, KV 1 write/sec/key,
 New resource → name `our-money-<what>` + a row here. Don't rename existing
 ones. One relay worker on purpose (pages carry one PROXY URL; one file to paste).
 
-## Routes (page side: `site\shared\CLAUDE.md` — keep in sync)
+## Routes (page side: `site\shared\CLAUDE.md` — keep in sync). Read-only
+routes are publicly documented on site `api\` + `llms-full.txt` — changing a
+documented route must update both (`site\api\NOTES.md`).
 - `/b64/<base64url>` GET passthrough · `/postb64/<b64>` POST. `ALLOWED()`
   (~line 49): knesset.gov.il + subdomains (fs. for photos), court.gov.il +
   subdomains, next.obudget.org, data.gov.il, www.gov.il, gov.il, foi.gov.il.
@@ -93,6 +95,6 @@ re-derive a number here. Same discipline as v8, same CONTRACTS binding.
 - v10: store bill id (`sess_item_id` / FK_ItemID) on each vote-index row →
   "bills proposed by X" becomes one exact request (`site\votes\NOTES.md`).
 - `?reset=1` (wipes the vote index) is gated by the Worker secret `BUILD_KEY`
-  (dashboard → Settings → Variables and Secrets). No secret set → reset is
-  disabled. The word is never in the code (public repo).
+  (dashboard → Settings → Variables and Secrets; it IS set). Fail-closed: no
+  secret → reset disabled. The word is never in the code (public repo).
 - gov.il report .xlsx: WebFetch can't read binary; files arrive via the bridge.

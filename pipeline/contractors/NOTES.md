@@ -217,4 +217,4 @@ manual step · a fixed source updates dataset + history, old revision kept.
   never-shrink guard moves to the archive manifest. BEFORE retiring
   anything: Mercy still hasn't ruled on keeping only 2 budgetkey copies.
 - Confirm the State counts against the green run's dump block (note above).
-- Front-end swap is a site chat (`site\budget_page\` + `site\shared\`).
+- Front-end swap is a site chat (`site\budget\` + `site\shared\`).

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הכסף שלנו — גישה לנתונים (API) | Our Money — Data API</title>
+<meta name="description" content="גישה חופשית לנתונים של ״הכסף שלנו״ בפורמט JSON: תקציב המדינה, התקשרויות וספקים, הצבעות הכנסת ופסיקת בית המשפט העליון. Free JSON API for AI agents and developers.">
+<link rel="canonical" href="https://ourmoneyil.com/api/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="הכסף שלנו — Our Money">
+<meta property="og:title" content="הכסף שלנו — גישה לנתונים (API) | Our Money — Data API">
+<meta property="og:description" content="גישה חופשית לנתונים של ״הכסף שלנו״ בפורמט JSON — לסוכני AI ולמפתחים. Free JSON API over Israeli budget, contracts, votes and court data.">
+<meta property="og:url" content="https://ourmoneyil.com/api/">
+<meta property="og:image" content="https://ourmoneyil.com/shared/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="he_IL">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  /* ---- api page only (static page: no JS, no language toggle) ---- */
+  .api { direction: ltr; text-align: left; }
+  .api h2 { font-size: 17px; }
+  code, pre {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 13px; background: var(--page);
+    border: 1px solid var(--grid); border-radius: 6px;
+  }
+  code { padding: 1px 6px; white-space: nowrap; }
+  pre { padding: 10px 12px; overflow-x: auto; line-height: 1.5; }
+  pre code { border: 0; padding: 0; background: none; white-space: pre; }
+  .ep { margin: 18px 0 0; }
+  .ep code.route { color: var(--accent-ink); font-weight: 600; }
+  .ep p { font-size: 14px; color: var(--ink-2); margin: 6px 0 0; }
+  .humanlinks { list-style: none; padding: 0; margin: 10px 0 0; }
+  .humanlinks li { margin: 7px 0; font-size: 15px; }
+  .humanlinks a { color: var(--accent-ink); font-weight: 600; text-decoration: none; }
+  .humanlinks a:hover { text-decoration: underline; }
+  .en { color: var(--ink-2); font-size: 14px; direction: ltr; text-align: left; }
+</style>
+</head>
+<body>
+<!-- static topbar: same look as the site, no JS (this page has none) -->
+<header class="topbar"><div class="tbwrap">
+      <a class="brand" href="../budget/">הכסף שלנו</a>
+      <nav class="tabs"><a href="../budget/">התקציב</a><a href="../votes/">הצבעות וחקיקה</a><a href="../mk/">חברי הכנסת</a><a href="../court/">בית המשפט העליון</a></nav>
+    </div></header>
+
+<div class="wrap">
+  <p class="tagline">גישה לנתונים — Data API</p>
+
+  <!-- humans first: whoever lands here from an AI answer gets a way in -->
+  <div class="card">
+    <h2>הגעתם לכאן כבני אדם? כל הנתונים מוצגים באתר עצמו</h2>
+    <p class="hint">הדף הזה מתעד את ממשק הנתונים (API) של ״הכסף שלנו״ — הוא כתוב באנגלית ומיועד למחשבים, לסוכני AI ולמפתחים. את אותם נתונים בדיוק אפשר לראות, לחפש ולהבין בדפי האתר:</p>
+    <ul class="humanlinks">
+      <li><a href="../budget/">התקציב</a> — מאיפה הכסף מגיע ולאן הוא הולך, שנה אחרי שנה</li>
+      <li><a href="../budget/contractors.html">ספקים והתקשרויות</a> — מי מקבל כסף מהממשלה</li>
+      <li><a href="../votes/">הצבעות וחקיקה</a> — מי הצביע על מה בכנסת, מ־2003 ועד היום</li>
+      <li><a href="../mk/">חברי הכנסת</a> — תיק לכל חבר/ת כנסת</li>
+      <li><a href="../court/">בית המשפט העליון</a> — פסקי הדין וההחלטות האחרונים</li>
+    </ul>
+    <p class="en" style="margin-top:14px">This page documents the machine-readable JSON API behind Our Money, an independent transparency site about Israeli government spending and actions. If you are a person, the same data is presented readably on the pages linked above (Hebrew, with an English toggle on every page).</p>
+  </div>
+
+  <div class="api">
+
+  <div class="card">
+    <h2>General</h2>
+    <div class="ep">
+      <pre><code>Base URL:  https://our-money.idannhhb.workers.dev</code></pre>
+      <p>All documented endpoints are <b>GET</b>, return <b>JSON</b>, need <b>no authentication</b>, and send <code>Access-Control-Allow-Origin: *</code>. Text content is Hebrew. Responses are cached (roughly 6 hours; the budget snapshot 12).</p>
+      <p>Snapshot endpoints (<code>/data/*</code>) wrap their payload in an envelope: <code>{"t": &lt;epoch ms of the snapshot&gt;, "stale": &lt;bool, optional&gt;, "data": …}</code>. If <code>stale</code> is true, the upstream source was unreachable and you are seeing the last good snapshot.</p>
+      <p><b>Fair use:</b> this is a small nonprofit relay with shared rate limits — cache what you fetch, keep request volume modest. For bulk research go to the official sources directly (listed at the bottom). Attribution appreciated: <b>הכסף שלנו (ourmoneyil.com)</b>.</p>
+      <p><b>Stability:</b> the endpoints on this page are the documented, stable surface; changes are announced here. Anything not listed here is internal and may change without notice.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Snapshots — /data/*</h2>
+    <div class="ep">
+      <code class="route">GET /data/budget</code>
+      <p>The state budget by top-level budget line, all years — allocated, revised and executed net amounts. Refreshed twice a day.</p>
+    </div>
+    <div class="ep">
+      <code class="route">GET /data/votes</code>
+      <p>Recent Knesset plenum votes.</p>
+    </div>
+    <div class="ep">
+      <code class="route">GET /data/bills</code>
+      <p>Knesset bills (הצעות חוק).</p>
+    </div>
+    <div class="ep">
+      <code class="route">GET /data/verdicts</code>
+      <p>Supreme Court decisions from the last 90 days, up to 50 rows. Row fields include <code>Id</code>, <code>CaseId</code>, <code>CaseNum</code>, <code>CaseDesc</code> (e.g. <span dir="rtl">״עע״מ 38750-12-25״</span>), <code>CaseName</code> (the parties), <code>Type</code> (פסק דין / החלטה), <code>VerdictsDtString</code> (DD/MM/YYYY), <code>Pages</code>, <code>PathForWeb</code>, <code>DocName</code>.</p>
+    </div>
+    <div class="ep">
+      <code class="route">GET /data/persons</code>
+      <p>Master list of Knesset members.</p>
+    </div>
+    <div class="ep">
+      <code class="route">GET /data/votesmeta</code>
+      <p>Lookup tables: members, factions and Knesset terms.</p>
+    </div>
+    <div class="ep">
+      <code class="route">GET /data/billinfo/&lt;id&gt;</code>
+      <p>One bill's details, by its Knesset BillID.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Government contracts — /contracts, /contract, /supplier</h2>
+    <p class="hint">A database built from the procurement reports the ministries themselves publish; every row lists its source reports.</p>
+    <div class="ep">
+      <code class="route">GET /contracts?code=&lt;budget code&gt;[&amp;year=YYYY][&amp;n=25]</code>
+      <p>Contracts whose live budget allocation falls under the given budget-code prefix (e.g. <code>code=0020</code> for the education section), largest volume first. Returns <code>{"code", "year", "rows": […], "more": &lt;bool&gt;}</code>. Row fields: <code>order_id</code>, <code>section</code>, <code>supplier</code>, <code>entity_id</code> (ח״פ), <code>entity_kind</code>, <code>ministry</code>, <code>budget_code</code>, <code>budget_title</code>, <code>volume</code>, <code>paid</code>, <code>currency</code>, <code>first_year</code>, <code>reports[]</code> (the official reports the row was built from, with URLs).</p>
+    </div>
+    <div class="ep">
+      <code class="route">GET /contract?id=&lt;order_id&gt;</code>
+      <p>One contract in full: all fields, all of its budget allocations (historical ones labelled), and its source reports.</p>
+    </div>
+    <div class="ep">
+      <code class="route">GET /supplier?hp=&lt;company id (ח״פ)&gt;[&amp;n=50]</code>
+      <p>All contracts of one supplier, with the total count.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Vote search — /search/votes</h2>
+    <div class="ep">
+      <code class="route">GET /search/votes?qs=&lt;query&gt;[&amp;from=YYYY-MM-DD][&amp;to=YYYY-MM-DD][&amp;y0=YYYY][&amp;y1=YYYY][&amp;limit=N]</code>
+      <p>Free-text search over an index of <b>every Knesset plenum vote from 2003 to today</b>. Within a quoted phrase, words are ANDed (order-free); separate phrases are ORed. Returns <code>{"rows": […], "truncated": &lt;bool&gt;, "keys", "indexRows"}</code>. Row fields: <code>id</code> (Knesset vote id), <code>date</code>, <code>time</code>, <code>src</code> ("m" modern / "a" archive), <code>passed</code> (true / false / null), <code>for</code>, <code>against</code>, <code>abstain</code>, <code>protocol</code>, <code>title</code> (Hebrew).</p>
+      <pre><code>Example: /search/votes?qs=חינוך&amp;limit=10</code></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Presets — canned queries against official sources</h2>
+    <div class="ep">
+      <code class="route">GET /preset/votes?from=YYYY-MM-DD&amp;to=YYYY-MM-DD[&amp;type=1]</code>
+      <p>Plenum vote headers for a date range, straight from the Knesset API. Returns <code>{"Table": [{VoteId, VoteDate, VoteDateStr, VoteTimeStr, VoteType, ItemTitle, KnessetId, SessionId, VoteProtocolNo}]}</code>.</p>
+    </div>
+    <div class="ep">
+      <code class="route">GET /preset/verdicts?from=YYYY-MM-DD&amp;to=YYYY-MM-DD[&amp;q=&lt;text&gt;][&amp;judge=&lt;name&gt;][&amp;lan=1]</code>
+      <p>Supreme Court verdict search for a date range, optionally filtered by free text or judge name.</p>
+    </div>
+    <div class="ep">
+      <code class="route">GET /preset/reports?sec=&lt;budget section digits&gt;</code>
+      <p>The published ministry procurement reports for one budget section.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Sources &amp; more for machines</h2>
+    <div class="ep">
+      <p>Machine-readable site overview: <a href="../llms.txt">/llms.txt</a> · full reference in one text file: <a href="../llms-full.txt">/llms-full.txt</a> · <a href="../sitemap.xml">/sitemap.xml</a></p>
+      <p>The data originates from official public sources — for bulk work use them directly: <a href="https://next.obudget.org" target="_blank" rel="noopener">obudget.org (מפתח התקציב)</a> · <a href="https://knesset.gov.il/Odata/ParliamentInfo.svc/" target="_blank" rel="noopener">Knesset OData</a> · <a href="https://data.gov.il" target="_blank" rel="noopener">data.gov.il</a></p>
+      <p>Questions, wrong data, or a use case that needs more than this: <a href="mailto:contact@ourmoneyil.com">contact@ourmoneyil.com</a></p>
+    </div>
+  </div>
+
+  </div><!-- /.api -->
+
+  <footer>
+    <p class="aboutpara">״הכסף שלנו״ הוא אתר עצמאי, ללא קשר לגוף ממשלתי, למפלגה או לארגון, שנועד להעניק לאזרחי ישראל מבט נקי ומסודר על פעילות המדינה ועל האופן שבו היא משתמשת בכסף שלנו. כל הנתונים מגיעים ישירות מהמקורות הרשמיים ומוצגים כפי שהם, עם קישור למקור. מצאתם טעות או נתון חסר? כתבו לנו ונתקן:</p>
+    <p class="aboutmail"><span>אמצעי תקשורת - </span><a href="mailto:contact@ourmoneyil.com">contact@ourmoneyil.com</a></p>
+    <span>מקורות המידע: </span>
+    <a href="https://next.obudget.org" target="_blank" rel="noopener">obudget.org</a> ·
+    <a href="https://data.gov.il" target="_blank" rel="noopener">data.gov.il</a> ·
+    <a href="https://main.knesset.gov.il/Activity/Info/Pages/databases.aspx" target="_blank" rel="noopener">Knesset OData</a>
+  </footer>
+</div>
+</body>
+</html>

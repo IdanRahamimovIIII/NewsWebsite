@@ -46,6 +46,9 @@ rulings live in its `NOTES.md`. Upstream APIs used by several pages:
   `sitemap.xml` (add a line per new page) · `_redirects` (Cloudflare Pages
   301s: root → /budget/, old *_page addresses) · per-page head: canonical +
   Open Graph (`shared\share.png` is the share card) · JSON-LD on /budget/.
+- AI surface: `llms.txt` + `llms-full.txt` at site root · `api\` = static
+  agent-docs page (no JS/nav/bake; own NOTES.md). A page-description change
+  or a documented relay route change → update all three.
 
 ## Layout
 ```

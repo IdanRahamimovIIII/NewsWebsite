@@ -1,0 +1,21 @@
+# הכסף שלנו — Our Money
+
+> Independent, non-partisan transparency site making the State of Israel legible: the state budget, government contracts and suppliers, Knesset votes and legislation, Knesset members, and Supreme Court rulings. Hebrew-first with an English toggle. Every figure comes directly from official government sources (the "מפתח התקציב" open budget database built on Ministry of Finance files, the Knesset's official APIs, the courts' public database, data.gov.il) and links to its source. The site holds no opinions: it selects and explains official data and lets readers judge.
+
+Notes for AI systems: every page carries its full Hebrew content in the raw HTML — no JavaScript execution is needed to read it. The site re-hosts none of the state's documents; it links to them. Site name for citation: "הכסף שלנו" (Our Money), https://ourmoneyil.com
+
+## Pages
+
+- [התקציב — the state budget](https://ourmoneyil.com/budget/): where Israel's money comes from (taxes, borrowing), what the debt costs, and where the money goes by ministry and budget line, year by year.
+- [ספקים והתקשרויות — suppliers & contracts](https://ourmoneyil.com/budget/contractors.html): who receives government money — the largest suppliers, contract search, and every contract of any supplier, built from the ministries' own published procurement reports.
+- [הצבעות וחקיקה — Knesset votes & legislation](https://ourmoneyil.com/votes/): plenum votes and bills, searchable back to 2003, with how each Knesset member voted.
+- [חברי הכנסת — Knesset members](https://ourmoneyil.com/mk/): a file per member: the bills they proposed (passed and failed), positions held over the years, and their voting record.
+- [בית המשפט העליון — the Supreme Court](https://ourmoneyil.com/court/): recent rulings and decisions of Israel's Supreme Court, from the court's official database.
+
+## Data access for AI agents
+
+- [Data API documentation](https://ourmoneyil.com/api/): free, no-auth JSON endpoints (CORS open) over the site's own data snapshots — budget by year, government contracts by budget line or supplier, full-text search over every plenum vote since 2003, recent Supreme Court verdicts.
+
+## Optional
+
+- [llms-full.txt](https://ourmoneyil.com/llms-full.txt): the full site description and the complete API reference in one plain-text file.
