@@ -83,7 +83,11 @@ defined · `esc(s)` · `isoDaysAgo(n)` · `dateOf(v)` / `fmtDate(v,"long"?)` ·
 204→null) · `preset(name, params)` · `dataset(name)` (KV snapshot, unwraps
 `{t,data}`, footer freshness) · `fetchJson(url)` · `friendly(err)` ·
 `debug(msg)` (→ `#debug`). Common strings: title, navBudget, navVotes, navMk,
-navCourt, loading, searchBtn, empty, credit, err, updatedAt, errCors, errProxy.
+navCourt, loading, searchBtn, empty, credit, err, updatedAt, errCors, errProxy,
+aboutBody, contactLabel (footer about block — static markup in every page
+footer above the credit line: `p.aboutpara` + `p.aboutmail` with mailto
+contact@ourmoneyil.com; styles in style.css; copy it when adding a page;
+wording is Mercy's).
 Change this surface → update this block.
 
 ## Relay routes the pages call (owner: `worker\CLAUDE.md`)
