@@ -1,0 +1,20 @@
+# Cloudflare Pages server-side redirects (real 301s, evaluated before files).
+# The domain root goes to the budget page — the site's effective homepage.
+/ /budget/ 301
+
+# Old page addresses (pre-rename + the old flat files) keep working.
+# Query strings (mk/?name=…) survive automatically.
+/budget_page/* /budget/:splat 301
+/votes_page/* /votes/:splat 301
+/mk_page/* /mk/:splat 301
+/court_page/* /court/:splat 301
+/votes.html /votes/ 301
+/mk.html /mk/ 301
+/court.html /court/ 301
+
+# Slashless folder URLs: without these, Pages serves the old votes/mk/court
+# .html forwarder stubs at /votes /mk /court — crawlers then see an empty
+# stub instead of the baked page.
+/votes /votes/ 301
+/mk /mk/ 301
+/court /court/ 301
