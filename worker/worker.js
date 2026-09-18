@@ -34,7 +34,8 @@
  *   GET  /contractors/exemptions?year=[&n=]    — exemption regulations ranking (D1, v9)
  *   GET  /contractors/supplier?sid=…           — one supplier profile (D1, v9)
  *   GET  /contractors/search?q=…               — free-text FTS search (D1, v9)
- *   GET  /build/votes[?reset=1&key=<secret>]   — one step of the index harvest
+ *   GET  /build/votes?key=<secret>[&reset=1|finish=1|resume=archive]
+ *                                              — one step of the index harvest
  *   GET  /search/votes?q=…[&qs=a|b][&from=&to=][&y0=&y1=][&limit=]
  *   GET  /data/votesmeta                       — index manifest (years, rows)
  *   GET  /data/mkphotos                        — MK portrait manifest (pub:mkphotos)
@@ -65,11 +66,11 @@ const ALLOWED = (host) =>
   host === "foi.gov.il";
 
 const CACHE_SECONDS = 300;
-/* wiping the index and starting the harvest over (?reset=1&key=…) needs the
-   word stored in a Worker SECRET named BUILD_KEY (worker → Settings →
-   Variables and Secrets → Add → type: Secret). No secret set → reset stays
-   disabled, on purpose: the word must never sit in this file (the repo is
-   public). build.html asks for the word when you press rebuild. */
+/* every /build/votes call (step, finish, resume, reset) needs ?key=<the
+   word stored in the Worker SECRET named BUILD_KEY> (worker → Settings →
+   Variables and Secrets → Add → type: Secret). No secret set → the route
+   stays disabled, on purpose: the word must never sit in this file (the
+   repo is public). build.html asks for the word once per visit. */
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -891,14 +892,18 @@ export default {
     if (reqUrl.pathname === "/build/votes") {
       const headers = { ...CORS, "Content-Type": "application/json" };
       if (!env.DATA) return new Response('{"error":"KV binding DATA missing — see setup step B"}', { status: 501, headers });
+      // ANY build call can start, restart or advance a harvest against the
+      // Knesset (?resume=archive once restarted a finished sweep), so the key
+      // guards the whole route, not just reset. The cron calls buildStep()
+      // directly and needs no key. Fail closed: no secret → route disabled.
+      if (!env.BUILD_KEY)
+        return new Response('{"error":"build is disabled: add a Secret named BUILD_KEY in the worker\'s Settings → Variables and Secrets, then Deploy"}', { status: 403, headers });
+      if (reqUrl.searchParams.get("key") !== env.BUILD_KEY)
+        return new Response('{"error":"bad build key"}', { status: 403, headers });
       try {
-        // a rebuild wipes the manifest only (old year files are overwritten as
-        // the harvest walks past them); the key guards against random visitors
+        // a rebuild wipes the manifest only (old year files are overwritten
+        // as the harvest walks past them)
         if (reqUrl.searchParams.get("reset") === "1") {
-          if (!env.BUILD_KEY)  // no secret configured → reset disabled (fail closed)
-            return new Response('{"error":"reset is disabled: add a Secret named BUILD_KEY in the worker\'s Settings → Variables and Secrets, then Deploy"}', { status: 403, headers });
-          if (reqUrl.searchParams.get("key") !== env.BUILD_KEY)
-            return new Response('{"error":"bad build key"}', { status: 403, headers });
           await env.DATA.put(IDX_META, JSON.stringify(freshMeta()));
         }
         // the archive is already complete — skip straight to the tidy-up pass

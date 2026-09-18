@@ -54,6 +54,8 @@
     <h3 style="margin-top:22px">אם משהו לא עובד</h3>
     <ol class="steps">
       <li>ודאו ש‑worker.js העדכני (גרסה 7) הודבק ב‑Cloudflare ונלחץ <b>Deploy</b>.</li>
+      <li>כל פעולת בנייה מבקשת את מילת האישור — זה ה‑Secret בשם <code>BUILD_KEY</code>
+        מהגדרות ה‑Worker. ״bad build key״ = המילה שהוקלדה שגויה.</li>
       <li>ודאו שה‑KV מחובר: Settings → Bindings → שם המשתנה <code>DATA</code>.</li>
       <li>אם מופיעה שגיאה חוזרת — לחצו "התחלת הבנייה" שוב; התהליך ממשיך מהמקום שנעצר.</li>
       <li>בסיום, פתחו את דף ההצבעות וחפשו משהו ישן (למשל: חוק ההסדרים) — התוצאות אמורות
@@ -77,6 +79,17 @@ window.PAGE_STR = { he: {}, en: {} };
 let running = false, stopReq = false, meta = null;
 const $ = id => document.getElementById(id);
 const fmt = n => (+n || 0).toLocaleString("he-IL");
+
+/* every /build/votes call needs the BUILD_KEY secret (the worker refuses
+   without it). Asked once per visit, kept in memory only — never stored. */
+let buildKey = null;
+function getKey() {
+  if (!buildKey)
+    buildKey = prompt("פעולות הבנייה דורשות את מילת האישור\n(ה־Secret בשם BUILD_KEY מהגדרות ה־Worker ב־Cloudflare)", "") || null;
+  return buildKey;
+}
+/* a "bad build key" answer means re-ask next time instead of looping */
+function keyErr(msg) { if (/key/i.test(msg || "")) buildKey = null; }
 
 function log(msg, cls) {
   const d = document.createElement("div");
@@ -135,9 +148,10 @@ function missingYears(m) {
 }
 
 async function finishIndex() {
-  const r = await fetch(PROXY + "/build/votes?finish=1");
+  const key = getKey(); if (!key) return;
+  const r = await fetch(PROXY + "/build/votes?finish=1&key=" + encodeURIComponent(key));
   const j = await r.json().catch(() => ({}));
-  if (j.error) { log("שגיאה: " + j.error, "bad"); return; }
+  if (j.error) { keyErr(j.error); log("שגיאה: " + j.error, "bad"); return; }
   if (j.phase !== "compact") {
     log("ה‑Worker שמותקן עדיין ישן — הדביקו את worker.js ולחצו Deploy", "bad");
     return;
@@ -146,9 +160,10 @@ async function finishIndex() {
 }
 
 async function resumeArchive() {
-  const r = await fetch(PROXY + "/build/votes?resume=archive");
+  const key = getKey(); if (!key) return;
+  const r = await fetch(PROXY + "/build/votes?resume=archive&key=" + encodeURIComponent(key));
   const j = await r.json().catch(() => ({}));
-  if (j.error) { log("שגיאה: " + j.error, "bad"); return; }
+  if (j.error) { keyErr(j.error); log("שגיאה: " + j.error, "bad"); return; }
   meta = j; log("ממשיך את איסוף הארכיון מ‑2003", "ok"); paint(); run();
 }
 
@@ -172,14 +187,15 @@ async function refreshMeta() {
 }
 
 async function step() {
-  const r = await fetch(PROXY + "/build/votes");
+  const r = await fetch(PROXY + "/build/votes?key=" + encodeURIComponent(buildKey || ""));
   const j = await r.json().catch(() => ({ error: "HTTP " + r.status }));
-  if (j.error) throw new Error(j.error);
+  if (j.error) { keyErr(j.error); throw new Error(j.error); }
   meta = j;
   return j;
 }
 
 async function run() {
+  if (!getKey()) { log("נדרשת מילת האישור כדי להריץ בנייה", "bad"); return; }
   running = true; stopReq = false; paint();
   let fails = 0;
   while (running && !stopReq) {
@@ -204,11 +220,11 @@ async function run() {
 function toggleRun() { if (running) { stopReq = true; log("עוצר…"); } else run(); }
 
 async function rebuild() {
-  const key = prompt("בנייה מחדש מוחקת את המאגר הקיים ומתחילה מ‑2021.\nהקלידו את מילת האישור (ה־Secret בשם BUILD_KEY מהגדרות ה־Worker)", "");
-  if (!key) return;
+  if (!confirm("בנייה מחדש מוחקת את המאגר הקיים ומתחילה מ‑2021. להמשיך?")) return;
+  const key = getKey(); if (!key) return;
   const r = await fetch(PROXY + "/build/votes?reset=1&key=" + encodeURIComponent(key));
   const j = await r.json().catch(() => ({}));
-  if (j.error) { log("שגיאה: " + j.error, "bad"); return; }
+  if (j.error) { keyErr(j.error); log("שגיאה: " + j.error, "bad"); return; }
   meta = j; log("אופס ואותחל מחדש", "ok"); paint(); run();
 }
 

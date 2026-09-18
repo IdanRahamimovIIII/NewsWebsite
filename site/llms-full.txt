@@ -58,7 +58,7 @@ gives understanding, never legal advice.
 
 Human-readable copy of this reference: https://ourmoneyil.com/api/
 
-Base URL: https://our-money.idannhhb.workers.dev
+Base URL: https://api.ourmoneyil.com
 
 General rules:
 - All endpoints are GET, JSON, no authentication, CORS open
@@ -84,7 +84,9 @@ General rules:
   38750-12-25"), CaseName (the parties), Type (פסק דין / החלטה),
   VerdictsDtString (DD/MM/YYYY), Pages, PathForWeb, DocName.
 - /data/persons — master list of Knesset members.
-- /data/votesmeta — lookup tables: members, factions, Knesset terms.
+- /data/votesmeta — status of the plenum-vote index behind /search/votes:
+  years covered with per-year vote counts, total rows, last update time.
+  For judging coverage and freshness, not a data endpoint.
 - /data/billinfo/<id> — one bill's details, by Knesset BillID.
 
 ### Government contracts — /contracts, /contract, /supplier
@@ -110,7 +112,12 @@ General rules:
   are ORed. Returns {"rows": […], "truncated": <bool>, "keys", "indexRows"}.
   Row fields: id (Knesset vote id), date, time, src ("m" modern / "a"
   archive), passed (true/false/null), for, against, abstain, protocol,
-  title (Hebrew).
+  title (Hebrew). Outcome caveat: archive rows (src "a", 2003 – mid-2021)
+  carry the outcome; modern rows (src "m") have passed: null and zero
+  counts — the index knows the vote happened, not how it ended. For a
+  modern vote's outcome, look it up by id in the official Knesset API
+  (knesset.gov.il/WebSiteApi/knessetapi/Votes/GetVoteDetails/<id>) or on
+  https://ourmoneyil.com/votes/ which fills outcomes in.
 
 ### Presets — canned queries against official sources
 

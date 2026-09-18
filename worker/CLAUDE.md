@@ -10,7 +10,7 @@ discipline: 10ms CPU/request, 50 subrequests/invocation, KV 1 write/sec/key,
 ## Cloudflare resources
 | resource | role |
 |---|---|
-| Worker `our-money` | this relay + data API. URL baked into `site\shared\config.js` → NEVER rename. Bindings `DATA` (KV), `CONTRACTS` (D1). Cron `0 */6 * * *` |
+| Worker `our-money` | this relay + data API. Custom domain `api.ourmoneyil.com` = the public/baked URL (`site\shared\config.js`, `/api/` docs); the workers.dev URL stays live for cached HTML → NEVER rename either. Bindings `DATA` (KV), `CONTRACTS` (D1). Cron `0 */6 * * *` |
 | Worker `our-money-site` | serves `site\`; no bindings, no data |
 | KV namespace titled `DATA` | `ds:<name>` snapshots · `pub:<name>` pipeline-published · `photo:mk/<file>` · `vi:<year>` `vi:meta` `vi:live` vote index · `bi:<id>` bill info · `qa:last` |
 | D1 (id in `pipeline\d1-config.json`) | contracts db, uploaded by the pipeline |
@@ -40,8 +40,11 @@ documented route must update both (`site\api\NOTES.md`).
 - `/data/mkphotos` + `/photos/mk/<digits>-<8hex>.<jpg|png|gif|webp>`
   (servePhoto: other names → 400; type by extension; `max-age=31536000,
   immutable`; KV cacheTtl 1 day). Contract: `pipeline\photos\NOTES.md`.
-- `/search/votes?qs=&from=&to=&y0=&y1=&limit=` · `/build/votes[?resume=archive|finish=1]`
-  (MUTATING) · `/qa/report` (POST from selftest.html; Claude GETs with `?fresh=N`).
+- `/search/votes?qs=&from=&to=&y0=&y1=&limit=` ·
+  `/build/votes?key=<BUILD_KEY>[&resume=archive|finish=1|reset=1]` (MUTATING;
+  the WHOLE route needs the key, fail-closed; cron calls buildStep()
+  directly, keyless; build.html prompts once per visit) ·
+  `/qa/report` (POST from selftest.html; Claude GETs with `?fresh=N`).
 
 ## v8 — D1 contracts (live)
 - `/contracts?code=<budget line>[&year=][&n=25]` (budget page): contracts
@@ -94,7 +97,7 @@ re-derive a number here. Same discipline as v8, same CONTRACTS binding.
 ## Open
 - v10: store bill id (`sess_item_id` / FK_ItemID) on each vote-index row →
   "bills proposed by X" becomes one exact request (`site\votes\NOTES.md`).
-- `?reset=1` (wipes the vote index) is gated by the Worker secret `BUILD_KEY`
+- All of `/build/votes` is gated by the Worker secret `BUILD_KEY`
   (dashboard → Settings → Variables and Secrets; it IS set). Fail-closed: no
-  secret → reset disabled. The word is never in the code (public repo).
+  secret → route disabled. The word is never in the code (public repo).
 - gov.il report .xlsx: WebFetch can't read binary; files arrive via the bridge.

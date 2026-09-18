@@ -11,3 +11,10 @@
 /votes.html /votes/ 301
 /mk.html /mk/ 301
 /court.html /court/ 301
+
+# Slashless folder URLs: without these, Pages serves the old votes/mk/court
+# .html forwarder stubs at /votes /mk /court — crawlers then see an empty
+# stub instead of the baked page.
+/votes /votes/ 301
+/mk /mk/ 301
+/court /court/ 301

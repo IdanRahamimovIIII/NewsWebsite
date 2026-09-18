@@ -69,7 +69,7 @@
   <div class="card">
     <h2>General</h2>
     <div class="ep">
-      <pre><code>Base URL:  https://our-money.idannhhb.workers.dev</code></pre>
+      <pre><code>Base URL:  https://api.ourmoneyil.com</code></pre>
       <p>All documented endpoints are <b>GET</b>, return <b>JSON</b>, need <b>no authentication</b>, and send <code>Access-Control-Allow-Origin: *</code>. Text content is Hebrew. Responses are cached (roughly 6 hours; the budget snapshot 12).</p>
       <p>Snapshot endpoints (<code>/data/*</code>) wrap their payload in an envelope: <code>{"t": &lt;epoch ms of the snapshot&gt;, "stale": &lt;bool, optional&gt;, "data": …}</code>. If <code>stale</code> is true, the upstream source was unreachable and you are seeing the last good snapshot.</p>
       <p><b>Fair use:</b> this is a small nonprofit relay with shared rate limits — cache what you fetch, keep request volume modest. For bulk research go to the official sources directly (listed at the bottom). Attribution appreciated: <b>הכסף שלנו (ourmoneyil.com)</b>.</p>
@@ -101,7 +101,7 @@
     </div>
     <div class="ep">
       <code class="route">GET /data/votesmeta</code>
-      <p>Lookup tables: members, factions and Knesset terms.</p>
+      <p>Status of the plenum-vote index behind <code>/search/votes</code>: which years are covered and how many votes each holds, the total row count, and when it last updated. Use it to judge coverage and freshness, not as a data endpoint.</p>
     </div>
     <div class="ep">
       <code class="route">GET /data/billinfo/&lt;id&gt;</code>
@@ -131,6 +131,7 @@
     <div class="ep">
       <code class="route">GET /search/votes?qs=&lt;query&gt;[&amp;from=YYYY-MM-DD][&amp;to=YYYY-MM-DD][&amp;y0=YYYY][&amp;y1=YYYY][&amp;limit=N]</code>
       <p>Free-text search over an index of <b>every Knesset plenum vote from 2003 to today</b>. Within a quoted phrase, words are ANDed (order-free); separate phrases are ORed. Returns <code>{"rows": […], "truncated": &lt;bool&gt;, "keys", "indexRows"}</code>. Row fields: <code>id</code> (Knesset vote id), <code>date</code>, <code>time</code>, <code>src</code> ("m" modern / "a" archive), <code>passed</code> (true / false / null), <code>for</code>, <code>against</code>, <code>abstain</code>, <code>protocol</code>, <code>title</code> (Hebrew).</p>
+      <p><b>Outcome caveat:</b> archive rows (<code>src: "a"</code>, 2003 – mid‑2021) carry the outcome; modern rows (<code>src: "m"</code>) have <code>passed: null</code> and zero counts — the index knows the vote happened, not how it ended. For a modern vote's outcome, look it up by <code>id</code> in the official Knesset API (<code>knesset.gov.il/WebSiteApi/knessetapi/Votes/GetVoteDetails/&lt;id&gt;</code>) or on the <a href="../votes/">votes page</a>, which fills outcomes in.</p>
       <pre><code>Example: /search/votes?qs=חינוך&amp;limit=10</code></pre>
     </div>
   </div>

@@ -12,4 +12,6 @@
    window.PROXY_URL = "https://our-money.mercy.workers.dev";
    ========================================================================== */
 
-window.PROXY_URL = "https://our-money.idannhhb.workers.dev/";
+/* Custom domain on the same Worker (the workers.dev address still works,
+   so HTML cached before this change keeps functioning). */
+window.PROXY_URL = "https://api.ourmoneyil.com/";

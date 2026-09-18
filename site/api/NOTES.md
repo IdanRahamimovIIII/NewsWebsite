@@ -12,6 +12,11 @@ passthrough (invites third-party traffic through the worker), /contractors/*
 worker.js → update this page + llms-full.txt (interface note in
 worker\CLAUDE.md).
 
+Base URL on the page = api.ourmoneyil.com (custom domain on the worker;
+workers.dev kept live but not documented — Mercy: name out of public docs).
+/search/votes docs carry the modern-rows caveat (src "m" → passed null,
+0 counts); don't remove it while the index lacks modern outcomes.
+
 ## Open
 - Response shapes verified live 2026-09-18 (verdicts, search/votes,
   contracts, preset/votes). /preset/votes returned rows outside the asked
