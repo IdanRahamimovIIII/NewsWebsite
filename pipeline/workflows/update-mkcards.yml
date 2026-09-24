@@ -1,0 +1,47 @@
+# Rebuilds the mkcards snapshot (one baked card per K25 MK) monthly and
+# publishes KV pub:mkcards (served as /data/mkcards by the relay) — the
+# entity pages and the MK page read it. Same collector Mercy's
+# build-mkcards.bat runs; sanity gates refuse a partial or unresolved
+# snapshot loudly — nothing half-built is ever published.
+# Commits NOTHING to git. Credentials: repo secrets CF_API_TOKEN +
+# CF_ACCOUNT_ID (same as update-avgwage / update-btl).
+name: update mkcards
+
+on:
+  schedule:
+    - cron: "37 3 7 * *"      # the 7th monthly; roles/bills drift slowly
+  workflow_dispatch:          # and on demand (the first CI run is manual - Mercy)
+
+permissions:
+  contents: read              # commits nothing
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # zero-install: the collector is standard library only
+
+      - name: the ported page rules must still hold
+        run: python3 mkcards/test_mkcards.py
+        working-directory: pipeline
+
+      - name: build + publish the snapshot
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: python3 pipeline/mkcards/build_mkcards.py
+
+      - name: keep the built snapshot as an artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mkcards-snapshot
+          path: pipeline/mkcards/out/mkcards.json
+          retention-days: 90
+          if-no-files-found: warn
