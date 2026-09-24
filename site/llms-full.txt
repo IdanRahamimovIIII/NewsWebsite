@@ -48,6 +48,10 @@ A file per member of Knesset: the bills they proposed (those that passed
 and those that failed), the positions they have held over the years
 (minister, committee chair, faction), and their voting record. Source: the
 Knesset's official APIs.
+Every member of the current Knesset also has their own address, in Hebrew
+and English, with the key facts in the raw HTML — e.g.
+https://ourmoneyil.com/mk/1096-amichay-eliyahu/ . The full list:
+https://ourmoneyil.com/mk/sitemap.xml
 
 ### https://ourmoneyil.com/court/ — בית המשפט העליון (the Supreme Court)
 Recent rulings and decisions of Israel's Supreme Court, from the court

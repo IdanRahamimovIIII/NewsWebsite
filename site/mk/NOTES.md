@@ -117,6 +117,11 @@ Enter opens a lone card; `openByName` with namesakes filters to them.
   `popstate` shows whoever the address names; "→ חזרה לרשימה" =
   `history.back()` when possible. `openByName()` = the door for `?name=`.
   Search card + tagline hidden while open. `state.seq` cancels older loads.
+- Entity address `/mk/<MkId>-<slug>/` (worker `pages.js`, `worker\CLAUDE.md`):
+  same shell, facts pre-baked, `window.MK_ENTITY` → `openByMkId` (directory
+  entry by cmb Id, else by name); `atEntity` = no `?name=` push; language
+  toggle swaps he/en address; Back to list → `/mk/`. Shell ids/classes are
+  the worker's anchors — change them → run `worker/wtest_pages.mjs`.
 - Hero (Mercy: guide the eyes, don't throw data): portrait 128px (104 phones)
   · "<name> · <current role>" (role only if `inLatestKnesset`) · faction
   (tooltip `factionTip`) · `tenureLine` ("בכנסת מאז 1988 (38 שנה)" /
@@ -157,6 +162,8 @@ photo manifest, the build race, Back/Forward, the caret.
 ## Open
 - `/data/mkcards` is live (`pipeline\mkcards\NOTES.md`): directory cards
   read it + link to the entity URLs (phase 4).
+- English entity page: the baked hero says "Roni Malkai", then the live
+  profile redraws the Hebrew name (cards carry `en` — use it on toggle?).
 - Coalition/opposition: a DevTools capture or a curated per-Knesset file.
 - Tooltips are hover-only (tap-to-reveal if Mercy wants).
 - Attendance score · ministry budget under a minister's term · שאילתות ·

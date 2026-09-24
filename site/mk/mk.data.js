@@ -52,7 +52,7 @@ const state = {
   seq: 0,               // a newer selection cancels older loads
 };
 
-window.onLangChange = () => { renderAll(); };
+window.onLangChange = () => { syncEntityLang(); renderAll(); };
 
 /* =====================================================================
    2. DIRECTORIES + NAMES
@@ -1030,6 +1030,13 @@ async function loadBio(sel, seq) {
    9. OPENING A PERSON
    ===================================================================== */
 
+/* an entity address (/mk/<id>-<name>/, built by worker\pages.js) already
+   names this person — nothing to push. window.MK_ENTITY = {id, lang, he,
+   dir, url:{he,en}, title:{he,en}}; absent on the plain /mk/ page. */
+const ENTITY = window.MK_ENTITY || null;
+const atEntity = c => !!ENTITY && location.pathname !== ENTITY.dir &&
+  !!c && (c.cmb || []).some(r => +r.Id === +ENTITY.id);
+
 async function openPerson(c) {
   const seq = ++state.seq;
   state.sel = c;
@@ -1046,7 +1053,7 @@ async function openPerson(c) {
   // nothing to push.
   try {
     const u = new URL(location.href);
-    if (u.searchParams.get("name") !== c.name) {
+    if (u.searchParams.get("name") !== c.name && !atEntity(c)) {
       u.searchParams.set("name", c.name);
       history.pushState({ name: c.name }, "", u);
     }

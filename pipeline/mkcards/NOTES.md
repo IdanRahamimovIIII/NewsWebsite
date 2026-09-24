@@ -36,7 +36,5 @@ CF_ACCOUNT_ID (CI: `workflows\update-mkcards.yml`, monthly), relay URL from
   lambdas — navigation paths only). Pages cap at 100 rows whatever `$top`.
 
 ## Open
-- Live: 152 cards (120 serving). Monthly workflow installed — commit it +
-  one green manual dispatch, then drop this line.
 - Point the MK page's directory cards at the snapshot (frees ~300 live
   requests) — phase 4, with the entity-URL links.

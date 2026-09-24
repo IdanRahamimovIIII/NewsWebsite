@@ -85,6 +85,13 @@ window.PAGE_STR = {
     sessionNo: "ישיבה",
     votesInGroup: "הצבעות",
 
+    /* the entity address /mk/<id>-<name>/ — the pages worker (worker\pages.js)
+       bakes these via mk.i18n.json (written by scripts/bake_i18n.mjs) */
+    entityTitle: "{name} — תיק חבר/ת כנסת | הכסף שלנו",
+    entityDesc: "תפקידים, הצעות חוק והצבעות — מנתונים רשמיים של הכנסת.",
+    entityNotFound: "לא מצאנו חבר/ת כנסת בכתובת הזו.",
+    entityToList: "לרשימת חברי הכנסת",
+
     /* no longer in index.html (the bio card and the four hint lines under the
        section titles) — kept so a browser holding a cached older index.html
        never shows a raw key. Safe to delete after a few weeks. */
@@ -164,6 +171,11 @@ window.PAGE_STR = {
     knesset: "Knesset",
     sessionNo: "sitting",
     votesInGroup: "votes",
+
+    entityTitle: "{name} — Knesset member portfolio | Our Money",
+    entityDesc: "Positions, bills and votes — from official Knesset data.",
+    entityNotFound: "We couldn't find a Knesset member at this address.",
+    entityToList: "All Knesset members",
 
     secBio: "Personal background",
     bioHint: "As reported to the Knesset and published on its official site.",

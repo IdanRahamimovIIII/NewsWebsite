@@ -51,3 +51,4 @@ Disallow: /tools/
 Disallow: /votes/selftest.html
 
 Sitemap: https://ourmoneyil.com/sitemap.xml
+Sitemap: https://ourmoneyil.com/mk/sitemap.xml

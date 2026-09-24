@@ -46,6 +46,9 @@ rulings live in its `NOTES.md`. Upstream APIs used by several pages:
   `sitemap.xml` (add a line per new page) · `_redirects` (Cloudflare Pages
   301s: root → /budget/, old *_page addresses) · per-page head: canonical +
   Open Graph (`shared\share.png` is the share card) · JSON-LD on /budget/.
+- Per-MK addresses `/mk/<id>-<name>/` (he+en, JSON-LD Person, own sitemap
+  `/mk/sitemap.xml` in robots.txt) come from worker `our-money-pages`, not
+  from files here (`mk\NOTES.md`). The bake also writes `mk\mk.i18n.json`.
 - AI surface: `llms.txt` + `llms-full.txt` at site root · `api\` = static
   agent-docs page (no JS/nav/bake; own NOTES.md). A page-description change
   or a documented relay route change → update all three.
@@ -110,6 +113,8 @@ enough; otherwise write stand-ins in scratch, never in the folder. Mocks
 prove logic; Mercy's live page proves integration (`tools\qa.html`).
 
 ## Open (cross-page)
+- Unknown addresses return 200 + the root forwarder (Pages SPA fallback)
+  → relative redirect loops /x/budget/budget/…; a `404.html` likely fixes it.
 - Laws registry by topic: KNS_IsraelLaw + classifications + validity +
   IsBasicLaw + ministry, via KNS_LawBinding to bills/votes/PDF; דברי הסבר
   per law; בג"ץ struck-down laws (curated, ~20 full + partial) as a badge.

@@ -30,13 +30,16 @@ import vm from "node:vm";
 
 const SITE = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "site");
 const CHECK = process.argv.includes("--check");
+// compare and bake in LF: a Windows checkout (autocrlf) must not read as drift;
+// a written file keeps the line endings it had
+const lf = s => s.replace(/\r\n/g, "\n");
 
 /* ---------- the five pages ---------- */
 const PAGES = [
   { html: "budget/index.html",      strings: "budget/budget.strings.js" },
   { html: "budget/contractors.html",strings: "budget/contractors.strings.js" },
   { html: "votes/index.html",       strings: "votes/votes.strings.js" },
-  { html: "mk/index.html",          strings: "mk/mk.strings.js" },
+  { html: "mk/index.html",          strings: "mk/mk.strings.js", json: "mk/mk.i18n.json" },
   { html: "court/index.html",       strings: null /* inline in the HTML */ },
 ];
 
@@ -105,7 +108,7 @@ function chromeHtml(activePage, t) {
 /* ---------- bake one file ---------- */
 function bake(p) {
   const file = path.join(SITE, p.html);
-  let html = fs.readFileSync(file, "utf8");
+  let html = lf(fs.readFileSync(file, "utf8"));
   const { PAGE, STR } = loadPage(p);
   const t = makeT(STR, p.html);
 
@@ -139,21 +142,37 @@ function bake(p) {
   return { file, html };
 }
 
+/* ---------- merged strings as JSON (p.json) ----------
+   For code that can't run the strings file — the pages worker
+   (worker/pages.js) reads mk.i18n.json to bake /mk/<id>-<name>/ in he/en.
+   Same merge as t(): page strings over COMMON_STR, per language. */
+function i18nJson(p) {
+  const { STR } = loadPage(p);
+  const out = {};
+  for (const l of ["he", "en"]) out[l] = { ...COMMON_STR[l], ...((STR && STR[l]) || {}) };
+  return { file: path.join(SITE, p.json), html: JSON.stringify(out, null, 1) + "\n", name: p.json };
+}
+
 /* ---------- run ---------- */
 let drift = 0;
+const JOBS = [];
 for (const p of PAGES) {
-  const { file, html } = bake(p);
-  const current = fs.readFileSync(file, "utf8");
+  JOBS.push({ ...bake(p), name: p.html });
+  if (p.json) JOBS.push(i18nJson(p));
+}
+for (const { file, html, name } of JOBS) {
+  const raw = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
+  const current = lf(raw);
   if (CHECK) {
     if (current !== html) {
-      console.error(`DRIFT: ${p.html} — strings and HTML disagree; run: node scripts/bake_i18n.mjs`);
+      console.error(`DRIFT: ${name} — strings and HTML disagree; run: node scripts/bake_i18n.mjs`);
       drift++;
     }
   } else if (current !== html) {
-    fs.writeFileSync(file, html);
-    console.log(`baked: ${p.html}`);
+    fs.writeFileSync(file, raw.includes("\r\n") ? html.replace(/\n/g, "\r\n") : html);
+    console.log(`baked: ${name}`);
   } else {
-    console.log(`ok (unchanged): ${p.html}`);
+    console.log(`ok (unchanged): ${name}`);
   }
 }
 if (CHECK) {

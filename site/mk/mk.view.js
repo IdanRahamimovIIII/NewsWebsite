@@ -206,8 +206,30 @@ function backToDir() {
   try {
     const u = new URL(location.href);
     u.searchParams.delete("name");
+    if (ENTITY) {                           // leaving an entity address → the list's own
+      u.pathname = ENTITY.dir;
+      if (ENTITY.title.list) document.title = ENTITY.title.list;
+    }
     history.replaceState(null, "", u);
   } catch (e) { /* never fatal */ }
+}
+/* a language switch on an entity address moves to that language's address */
+function syncEntityLang() {
+  if (!ENTITY || !atEntity(state.sel)) return;
+  try {
+    const u = new URL(location.href);
+    u.pathname = ENTITY.url[lang];
+    history.replaceState(history.state, "", u);
+    document.title = ENTITY.title[lang];
+  } catch (e) { /* never fatal */ }
+}
+/* the entity address names an MkId: open the directory's entry for it
+   (namesakes resolved there), else fall back to the name */
+async function openByMkId(id, nm) {
+  await buildDirectory().catch(() => null);
+  const e = (state._dir || []).find(x => (x.cmb || []).some(r => +r.Id === +id));
+  if (e) return openPerson(e);
+  return openByName(nm);
 }
 function showDirectory() {
   state.sel = null; state.seq++;
@@ -579,8 +601,9 @@ function votePage(d) {
 /* =====================================================================
    8. INIT
    ===================================================================== */
-const PAGE_VER = "26.09aa · סדר בקבצים"; // bumped on every update — an older stamp in the footer means a cached/old copy
+const PAGE_VER = "26.09ab · כתובת לכל ח״כ"; // bumped on every update — an older stamp in the footer means a cached/old copy
 document.getElementById("pagever").textContent = "גרסה " + PAGE_VER;
+if (ENTITY && ENTITY.lang === "en") lang = "en";   // the English entity address
 applyLang();
 // the results ARE the suggestions: they update with every letter typed
 document.getElementById("mkq").addEventListener("input", liveSearchInput);
@@ -593,7 +616,9 @@ photosReady.then(() => {
   else loadDirectory();
 });
 // arriving with ?name= (a link from the votes page, or a share) → open them
+// …or with an entity address (/mk/<id>-<name>/) → open that MK
 (function () {
+  if (ENTITY && location.pathname !== ENTITY.dir) { openByMkId(ENTITY.id, ENTITY.he); return; }
   let nm = "";
   try { nm = new URL(location.href).searchParams.get("name") || ""; } catch (e) { /* ignore */ }
   if (nm) openByName(nm);

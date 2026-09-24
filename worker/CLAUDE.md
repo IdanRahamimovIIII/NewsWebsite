@@ -12,6 +12,7 @@ discipline: 10ms CPU/request, 50 subrequests/invocation, KV 1 write/sec/key,
 |---|---|
 | Worker `our-money` | this relay + data API. Custom domain `api.ourmoneyil.com` = the public/baked URL (`site\shared\config.js`, `/api/` docs); the workers.dev URL stays live for cached HTML → NEVER rename either. Bindings `DATA` (KV), `CONTRACTS` (D1). Cron `0 */6 * * *` |
 | Worker `our-money-site` | serves `site\`; no bindings, no data |
+| Worker `our-money-pages` | `pages.js` — entity pages; route `ourmoneyil.com/mk/*`; no bindings (section below) |
 | KV namespace titled `DATA` | `ds:<name>` snapshots · `pub:<name>` pipeline-published · `photo:mk/<file>` · `vi:<year>` `vi:meta` `vi:live` vote index · `bi:<id>` bill info · `qa:last` |
 | D1 (id in `pipeline\d1-config.json`) | contracts db, uploaded by the pipeline |
 
@@ -93,6 +94,17 @@ re-derive a number here. Same discipline as v8, same CONTRACTS binding.
   keep `realFetch`. D1 tests: `wtest_d1.mjs`, `wtest_contractors.mjs` (27) —
   Claude runs in cloud: node --experimental-sqlite + python3, real
   build_sqlite/build_contractors fixtures, fake D1 over node:sqlite.
+
+## our-money-pages (`pages.js`) — /mk/<MkId>-<slug>/ for crawlers + people
+- A route runs before the site; anything not `/mk/<digits>…` or
+  `/mk/sitemap.xml` is `fetch(request)` → the site untouched.
+- Page = the site's `/mk/` shell + facts from `/data/mkcards` (contract:
+  `pipeline\mkcards\NOTES.md`) + words from `/mk/mk.i18n.json` (baked by
+  `scripts/bake_i18n.mjs` — never hand-edit) + `window.MK_ENTITY` (read by
+  mk.data/view.js). Anchors are regexes on the real index.html: shell change
+  → `node worker/wtest_pages.mjs` (also renders every local out\ card).
+- slugHe → he, slugEn → en; any other spelling 301s; unknown id → 404
+  noindex; inputs down → 503 (never the site's catch-all). Memo 10 min.
 
 ## Open
 - v10: store bill id (`sess_item_id` / FK_ItemID) on each vote-index row →
