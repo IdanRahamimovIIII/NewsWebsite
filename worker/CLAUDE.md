@@ -10,7 +10,7 @@ discipline: 10ms CPU/request, 50 subrequests/invocation, KV 1 write/sec/key,
 ## Cloudflare resources
 | resource | role |
 |---|---|
-| Worker `our-money` | this relay + data API. Custom domain `api.ourmoneyil.com` = the public/baked URL (`site\shared\config.js`, `/api/` docs); the workers.dev URL stays live for cached HTML → NEVER rename either. Bindings `DATA` (KV), `CONTRACTS` (D1). Cron `0 */6 * * *` |
+| Worker `our-money` | this relay + data API. Custom domain `api.ourmoneyil.com` = its ONLY address in any file — site, docs, tests, notes (Mercy) (`site\shared\config.js`, `/api/` docs). NEVER rename the worker. Bindings `DATA` (KV), `CONTRACTS` (D1). Cron `0 */6 * * *` |
 | Worker `our-money-site` | serves `site\`; no bindings, no data |
 | Worker `our-money-pages` | `pages.js` — entity pages; route `ourmoneyil.com/mk/*`; no bindings (section below) |
 | KV namespace titled `DATA` | `ds:<name>` snapshots · `pub:<name>` pipeline-published · `photo:mk/<file>` · `vi:<year>` `vi:meta` `vi:live` vote index · `bi:<id>` bill info · `qa:last` |
@@ -104,7 +104,8 @@ re-derive a number here. Same discipline as v8, same CONTRACTS binding.
   mk.data/view.js). Anchors are regexes on the real index.html: shell change
   → `node worker/wtest_pages.mjs` (also renders every local out\ card).
 - slugHe → he, slugEn → en; any other spelling 301s; unknown id → 404
-  noindex; inputs down → 503 (never the site's catch-all). Memo 10 min.
+  noindex; inputs down → 503 (never the site's catch-all). Memo 10 min +
+  edge cache 5 min → after a site deploy, /mk/ pages show the old shell ≤15 min.
 - `/mk/` (any query): `#dir` pre-filled with every card as `<a>` to its
   page, order ≈ dirRank; any failure → the site's page as is. Today's role
   = `nowRole` (a minister outside the Knesset has an ongoing position only).

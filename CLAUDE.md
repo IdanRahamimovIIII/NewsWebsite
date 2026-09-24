@@ -62,7 +62,7 @@ The roadmap lives in each notes file's "Open" section.
   what it did.
 - Claude runs node/Playwright in the cloud workspace
   (`/opt/pw-browsers/chromium`); the cloud can't reach gov APIs, the
-  Cloudflare API, or workers.dev directly.
+  Cloudflare API, or the worker directly.
 - Live probes: WebFetch on Mercy's relay `/b64/<base64url-of-upstream-url>`.
   URL ceiling ~248 chars (keep SQL tiny or add a worker preset). WebFetch
   caches ~15 min → add `?fresh=N`. Robots blocks WebFetch on

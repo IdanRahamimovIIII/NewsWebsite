@@ -302,7 +302,7 @@ async function openPage(hash = '') {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
   /* this page reads BudgetKey directly — it has no business at the relay */
-  await page.route('**/our-money.idannhhb.workers.dev/**', route => {
+  await page.route('**/api.ourmoneyil.com/**', route => {
     relayCalls++;
     console.log('    [unexpected relay request]', route.request().url());
     route.fulfill({ status: 404, body: '{"error":"unmocked route"}' });

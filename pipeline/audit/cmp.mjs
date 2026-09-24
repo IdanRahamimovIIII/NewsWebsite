@@ -25,7 +25,7 @@ const p=await br.newPage({viewport:{width:980,height:1000}});
 p.on('pageerror',e=>console.log('PAGEERROR:',e.message));
 
 /* the real BudgetKey rows for order 4502539235, captured live earlier today */
-await p.route('**/*.workers.dev/**', route => route.fulfill({status:404,body:'not published'}));   // the relay: never reached from a test
+await p.route('**/api.ourmoneyil.com/**', route => route.fulfill({status:404,body:'not published'}));   // the relay: never reached from a test
 await p.route('**/next.obudget.org/api/query*', route => {
   const sql=decodeURIComponent(new URL(route.request().url()).searchParams.get('query')||'');
   let rows=[];

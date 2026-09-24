@@ -254,13 +254,13 @@ async function openPage({ snapshot, noDebt }) {
 
   /* anything the page asks the relay for that this test does not model is a
      bug — 404 it loudly rather than let it fall through to the live worker */
-  await page.route('**/our-money.idannhhb.workers.dev/**', route => {
+  await page.route('**/api.ourmoneyil.com/**', route => {
     console.log('    [unmocked relay request]', route.request().url());
     route.fulfill({ status: 404, body: '{"error":"unmocked route"}' });
   });
 
   /* the contracts database, as the worker serves it from D1 (v8) */
-  await page.route('**/our-money.idannhhb.workers.dev/contracts**', route => {
+  await page.route('**/api.ourmoneyil.com/contracts**', route => {
     const u = new URL(route.request().url());
     lastContractsReq = u.pathname + u.search;
     const r = contractsEndpoint(u);
@@ -268,7 +268,7 @@ async function openPage({ snapshot, noDebt }) {
                     body: JSON.stringify(r.body) });
   });
 
-  await page.route('**/our-money.idannhhb.workers.dev/data/budget', route => {
+  await page.route('**/api.ourmoneyil.com/data/budget', route => {
     if (!snapshot) return route.fulfill({ status: 404, body: 'no snapshot' });
     // deliberately the OLD mixed query: every length-4 row, both trees + '0000'
     const sections = T.filter(r => r.year === 2026 && r.code.length === 4);
