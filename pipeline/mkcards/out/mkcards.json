@@ -1,0 +1,5939 @@
+{
+ "knesset": 25,
+ "stats": {
+  "count": 152,
+  "avgProposed": 350.4,
+  "avgPassed": 25.3
+ },
+ "members": {
+  "1132": {
+   "id": 1132,
+   "pids": [
+    30917
+   ],
+   "he": "מוחמד אבו אל היג'א",
+   "en": "Mohammad Abu El Higa",
+   "slugHe": "מוחמד-אבו-אל-היגא",
+   "slugEn": "mohammad-abu-el-higa",
+   "photo": "1132-ce1307cf.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 0,
+    "passed": 0
+   },
+   "positions": []
+  },
+  "1029": {
+   "id": 1029,
+   "pids": [
+    30749
+   ],
+   "he": "משה אבוטבול",
+   "en": "Moshe Abutbul",
+   "slugHe": "משה-אבוטבול",
+   "slugEn": "moshe-abutbul",
+   "photo": "1029-405fb247.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ש\"ס",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 362,
+    "passed": 11
+   },
+   "positions": [
+    {
+     "role": "סגן שר במשרד החקלאות וביטחון המזון",
+     "y0": 2023,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1": {
+   "id": 1,
+   "pids": [
+    532
+   ],
+   "he": "יולי יואל אדלשטיין",
+   "en": "Yuli Yoel Edelstein",
+   "slugHe": "יולי-יואל-אדלשטיין",
+   "slugEn": "yuli-yoel-edelstein",
+   "photo": "1-11ac2145.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 1996,
+   "until": null,
+   "knessets": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 348,
+    "passed": 31
+   },
+   "positions": [
+    {
+     "role": "שר הבריאות",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "שר הבריאות",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    },
+    {
+     "role": "יושב–ראש הכנסת",
+     "y0": 2020,
+     "y1": 2020,
+     "k": 23,
+     "now": false
+    },
+    {
+     "role": "יושב–ראש הכנסת",
+     "y0": 2019,
+     "y1": 2020,
+     "k": 22,
+     "now": false
+    }
+   ]
+  },
+  "953": {
+   "id": 953,
+   "pids": [
+    30300
+   ],
+   "he": "אמיר אוחנה",
+   "en": "Amir Ohana",
+   "slugHe": "אמיר-אוחנה",
+   "slugEn": "amir-ohana",
+   "photo": "953-10cf39d2.jpg",
+   "current": true,
+   "role": "יושב–ראש הכנסת",
+   "faction": "הליכוד",
+   "since": 2015,
+   "until": null,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 213,
+    "passed": 22
+   },
+   "positions": [
+    {
+     "role": "יושב–ראש הכנסת",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "השר לביטחון הפנים",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "השר לביטחון הפנים",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    },
+    {
+     "role": "שר המשפטים",
+     "y0": 2020,
+     "y1": 2020,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "970": {
+   "id": 970,
+   "pids": [
+    30601
+   ],
+   "he": "ינון אזולאי",
+   "en": "Yinon Azoulay",
+   "slugHe": "ינון-אזולאי",
+   "slugEn": "yinon-azoulay",
+   "photo": "970-ec1c02e2.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ש\"ס",
+   "since": 2015,
+   "until": null,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 831,
+    "passed": 41
+   },
+   "positions": []
+  },
+  "1092": {
+   "id": 1092,
+   "pids": [
+    30836
+   ],
+   "he": "גדי איזנקוט",
+   "en": "Gadi Eisenkot",
+   "slugHe": "גדי-איזנקוט",
+   "slugEn": "gadi-eisenkot",
+   "photo": "1092-461fe2b9.jpg",
+   "current": false,
+   "role": "",
+   "faction": "המחנה הממלכתי",
+   "since": 2022,
+   "until": 2025,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 5,
+    "passed": 1
+   },
+   "positions": [
+    {
+     "role": "שר",
+     "y0": 2023,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "754": {
+   "id": 754,
+   "pids": [
+    1057
+   ],
+   "he": "ישראל אייכלר",
+   "en": "Israel Eichler",
+   "slugHe": "ישראל-אייכלר",
+   "slugEn": "israel-eichler",
+   "photo": "754-2040a0ed.jpg",
+   "current": false,
+   "role": "סגן שר במשרד התקשורת",
+   "faction": "יהדות התורה",
+   "since": 2003,
+   "until": 2026,
+   "knessets": [
+    16,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 624,
+    "passed": 48
+   },
+   "positions": [
+    {
+     "role": "סגן שר במשרד התקשורת",
+     "y0": 2026,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2022,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2019,
+     "y1": 2019,
+     "k": 21,
+     "now": false
+    }
+   ]
+  },
+  "1116": {
+   "id": 1116,
+   "pids": [
+    30839
+   ],
+   "he": "דן אילוז",
+   "en": "Dan Illouz",
+   "slugHe": "דן-אילוז",
+   "slugEn": "dan-illouz",
+   "photo": "1116-bb85a1e5.jpg",
+   "current": false,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": 2026,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 176,
+    "passed": 21
+   },
+   "positions": []
+  },
+  "1093": {
+   "id": 1093,
+   "pids": [
+    30840
+   ],
+   "he": "ואליד אלהואשלה",
+   "en": "Waleed Alhwashla",
+   "slugHe": "ואליד-אלהואשלה",
+   "slugEn": "waleed-alhwashla",
+   "photo": "1093-23b29cc5.jpg",
+   "current": true,
+   "role": "",
+   "faction": "רע\"ם",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 400,
+    "passed": 7
+   },
+   "positions": []
+  },
+  "860": {
+   "id": 860,
+   "pids": [
+    23631
+   ],
+   "he": "קארין אלהרר",
+   "en": "Karine Elharrar",
+   "slugHe": "קארין-אלהרר",
+   "slugEn": "karine-elharrar",
+   "photo": "860-72185996.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2013,
+   "until": null,
+   "knessets": [
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 977,
+    "passed": 75
+   },
+   "positions": [
+    {
+     "role": "שרת האנרגיה",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שרת משאבי המים",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שרת האנרגיה",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "שרת משאבי המים",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1096": {
+   "id": 1096,
+   "pids": [
+    30857
+   ],
+   "he": "עמיחי אליהו",
+   "en": "Amichay Eliyahu",
+   "slugHe": "עמיחי-אליהו",
+   "slugEn": "amichay-eliyahu",
+   "photo": "1096-5b417625.jpg",
+   "current": true,
+   "role": "שר המורשת",
+   "faction": "עוצמה יהודית",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 0,
+    "passed": 0
+   },
+   "positions": [
+    {
+     "role": "שר המורשת",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר המורשת",
+     "y0": 2022,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "768": {
+   "id": 768,
+   "pids": [
+    4397
+   ],
+   "he": "זאב אלקין",
+   "en": "Zeev Elkin",
+   "slugHe": "זאב-אלקין",
+   "slugEn": "zeev-elkin",
+   "photo": "768-fd00cd6c.jpg",
+   "current": true,
+   "role": "שר נוסף במשרד האוצר",
+   "faction": "הימין הממלכתי",
+   "since": 2006,
+   "until": null,
+   "knessets": [
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 363,
+    "passed": 54
+   },
+   "positions": [
+    {
+     "role": "שר נוסף במשרד האוצר",
+     "y0": 2024,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר הבינוי והשיכון",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "השר לירושלים ומורשת",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "השר המקשר בין הממשלה לבין הכנסת",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "912": {
+   "id": 912,
+   "pids": [
+    23564
+   ],
+   "he": "דוד אמסלם",
+   "en": "David Amsalem",
+   "slugHe": "דוד-אמסלם",
+   "slugEn": "david-amsalem",
+   "photo": "912-ceb99be2.jpg",
+   "current": false,
+   "role": "שר נוסף במשרד המשפטים",
+   "faction": "הליכוד",
+   "since": 2015,
+   "until": 2023,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 383,
+    "passed": 46
+   },
+   "positions": [
+    {
+     "role": "שר נוסף במשרד המשפטים",
+     "y0": 2023,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "השר לשיתוף פעולה אזורי",
+     "y0": 2023,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "השר המקשר בין הממשלה לבין הכנסת",
+     "y0": 2023,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "השר המקשר בין הממשלה לבין הכנסת",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "830": {
+   "id": 830,
+   "pids": [
+    12937
+   ],
+   "he": "אופיר אקוניס",
+   "en": "Ofir Akunis",
+   "slugHe": "אופיר-אקוניס",
+   "slugEn": "ofir-akunis",
+   "photo": "830-6f256787.jpg",
+   "current": false,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2009,
+   "until": 2024,
+   "knessets": [
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 163,
+    "passed": 20
+   },
+   "positions": [
+    {
+     "role": "שר החדשנות, המדע והטכנולוגיה",
+     "y0": 2022,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "השר לשיתוף פעולה אזורי",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "השר לשיתוף פעולה אזורי",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    },
+    {
+     "role": "שר העבודה, הרווחה והשירותים החברתיים",
+     "y0": 2020,
+     "y1": 2020,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "1008": {
+   "id": 1008,
+   "pids": [
+    30660
+   ],
+   "he": "משה ארבל",
+   "en": "Moshe Arbel",
+   "slugHe": "משה-ארבל",
+   "slugEn": "moshe-arbel",
+   "photo": "1008-48610d5a.jpg",
+   "current": false,
+   "role": "",
+   "faction": "ש\"ס",
+   "since": 2019,
+   "until": 2026,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 438,
+    "passed": 8
+   },
+   "positions": [
+    {
+     "role": "שר הפנים",
+     "y0": 2023,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר משרד הבריאות",
+     "y0": 2023,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן שר במשרד הבריאות",
+     "y0": 2023,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן שר במשרד הפנים",
+     "y0": 2023,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "861": {
+   "id": 861,
+   "pids": [
+    23641
+   ],
+   "he": "יעקב אשר",
+   "en": "Yaakov Asher",
+   "slugHe": "יעקב-אשר",
+   "slugEn": "yaakov-asher",
+   "photo": "861-e2d0c895.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יהדות התורה",
+   "since": 2013,
+   "until": null,
+   "knessets": [
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 1261,
+    "passed": 77
+   },
+   "positions": [
+    {
+     "role": "סגן יושב ראש הכנסת",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1126": {
+   "id": 1126,
+   "pids": [
+    30880
+   ],
+   "he": "אביחי אברהם בוארון",
+   "en": "Avichay Avraham Buaron",
+   "slugHe": "אביחי-אברהם-בוארון",
+   "slugEn": "avichay-avraham-buaron",
+   "photo": "1126-2ceedb33.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 149,
+    "passed": 8
+   },
+   "positions": []
+  },
+  "1039": {
+   "id": 1039,
+   "pids": [
+    30765
+   ],
+   "he": "אוריאל בוסו",
+   "en": "Uriel Busso",
+   "slugHe": "אוריאל-בוסו",
+   "slugEn": "uriel-busso",
+   "photo": "1039-43bdab84.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ש\"ס",
+   "since": 2020,
+   "until": null,
+   "knessets": [
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 206,
+    "passed": 7
+   },
+   "positions": [
+    {
+     "role": "שר הבריאות",
+     "y0": 2023,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2022,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1088": {
+   "id": 1088,
+   "pids": [
+    30799
+   ],
+   "he": "מישל בוסקילה",
+   "en": "Mishel Buskila",
+   "slugHe": "מישל-בוסקילה",
+   "slugEn": "mishel-buskila",
+   "photo": "1088-d5789d32.jpg",
+   "current": true,
+   "role": "סגן שר החוץ",
+   "faction": "הימין הממלכתי",
+   "since": 2021,
+   "until": null,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 153,
+    "passed": 5
+   },
+   "positions": [
+    {
+     "role": "סגן שר החוץ",
+     "y0": 2026,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2026,
+     "y1": 2026,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1094": {
+   "id": 1094,
+   "pids": [
+    30837
+   ],
+   "he": "דבי ביטון",
+   "en": "Debbie Biton",
+   "slugHe": "דבי-ביטון",
+   "slugEn": "debbie-biton",
+   "photo": "1094-c137e239.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 164,
+    "passed": 8
+   },
+   "positions": []
+  },
+  "1055": {
+   "id": 1055,
+   "pids": [
+    30804
+   ],
+   "he": "חיים ביטון",
+   "en": "Haim Biton",
+   "slugHe": "חיים-ביטון",
+   "slugEn": "haim-biton",
+   "photo": "1055-8a9cbdf8.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ש\"ס",
+   "since": 2021,
+   "until": null,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 107,
+    "passed": 2
+   },
+   "positions": [
+    {
+     "role": "שר בלי תיק במשרד החינוך",
+     "y0": 2022,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1003": {
+   "id": 1003,
+   "pids": [
+    30682
+   ],
+   "he": "מיכאל מרדכי ביטון",
+   "en": "Michael Mordechai Biton",
+   "slugHe": "מיכאל-מרדכי-ביטון",
+   "slugEn": "michael-mordechai-biton",
+   "photo": "1003-6fc79974.jpg",
+   "current": true,
+   "role": "סגן יושב-ראש הכנסת",
+   "faction": "כחול לבן - המחנה הממלכתי",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 386,
+    "passed": 22
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "השר לשוויון חברתי",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "שר במשרד הביטחון לנושאים אזרחים וחברתיים",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "השר לנושאים אסטרטגיים",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "914": {
+   "id": 914,
+   "pids": [
+    23558
+   ],
+   "he": "דוד ביטן",
+   "en": "David Bitan",
+   "slugHe": "דוד-ביטן",
+   "slugEn": "david-bitan",
+   "photo": "914-e5f0ee85.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2015,
+   "until": null,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 587,
+    "passed": 93
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2019,
+     "y1": 2020,
+     "k": 22,
+     "now": false
+    },
+    {
+     "role": "יושב–ראש הקואליציה",
+     "y0": 2016,
+     "y1": 2017,
+     "k": 20,
+     "now": false
+    }
+   ]
+  },
+  "1095": {
+   "id": 1095,
+   "pids": [
+    30835
+   ],
+   "he": "בועז ביסמוט",
+   "en": "Boaz Bismuth",
+   "slugHe": "בועז-ביסמוט",
+   "slugEn": "boaz-bismuth",
+   "photo": "1095-e69b0284.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 111,
+    "passed": 19
+   },
+   "positions": []
+  },
+  "1049": {
+   "id": 1049,
+   "pids": [
+    30776
+   ],
+   "he": "ולדימיר בליאק",
+   "en": "Vladimir Beliak",
+   "slugHe": "ולדימיר-בליאק",
+   "slugEn": "vladimir-beliak",
+   "photo": "1049-3d4c2961.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2020,
+   "until": null,
+   "knessets": [
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 246,
+    "passed": 11
+   },
+   "positions": []
+  },
+  "915": {
+   "id": 915,
+   "pids": [
+    30102
+   ],
+   "he": "מירב בן ארי",
+   "en": "Merav Ben Ari",
+   "slugHe": "מירב-בן-ארי",
+   "slugEn": "merav-ben-ari",
+   "photo": "915-54e5bd3a.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2015,
+   "until": null,
+   "knessets": [
+    20,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 1082,
+    "passed": 117
+   },
+   "positions": []
+  },
+  "1022": {
+   "id": 1022,
+   "pids": [
+    30691
+   ],
+   "he": "רם בן ברק",
+   "en": "Ram Ben Barak",
+   "slugHe": "רם-בן-ברק",
+   "slugEn": "ram-ben-barak",
+   "photo": "1022-6c4a46c7.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 245,
+    "passed": 7
+   },
+   "positions": []
+  },
+  "1056": {
+   "id": 1056,
+   "pids": [
+    30811
+   ],
+   "he": "איתמר בן גביר",
+   "en": "Itamar Ben Gvir",
+   "slugHe": "איתמר-בן-גביר",
+   "slugEn": "itamar-ben-gvir",
+   "photo": "1056-3a6c618f.jpg",
+   "current": true,
+   "role": "השר לביטחון לאומי",
+   "faction": "עוצמה יהודית",
+   "since": 2021,
+   "until": null,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 82,
+    "passed": 3
+   },
+   "positions": [
+    {
+     "role": "השר לביטחון לאומי",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "השר לביטחון לאומי",
+     "y0": 2022,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1129": {
+   "id": 1129,
+   "pids": [
+    30894
+   ],
+   "he": "סמיר בן סעיד",
+   "en": "Samir Bin Said",
+   "slugHe": "סמיר-בן-סעיד",
+   "slugEn": "samir-bin-said",
+   "photo": "1129-436863ee.jpg",
+   "current": true,
+   "role": "",
+   "faction": "חד\"ש-תע\"ל",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 13,
+    "passed": 0
+   },
+   "positions": []
+  },
+  "906": {
+   "id": 906,
+   "pids": [
+    28513
+   ],
+   "he": "יואב בן צור",
+   "en": "Yoav Ben Tzur",
+   "slugHe": "יואב-בן-צור",
+   "slugEn": "yoav-ben-tzur",
+   "photo": "906-ff7f70f3.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ש\"ס",
+   "since": 2013,
+   "until": null,
+   "knessets": [
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 508,
+    "passed": 53
+   },
+   "positions": [
+    {
+     "role": "שר העבודה",
+     "y0": 2023,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "ממלא מקום שר הבריאות",
+     "y0": 2023,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר במשרד העבודה והביטחון החברתי",
+     "y0": 2022,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן שר הפנים",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1097": {
+   "id": 1097,
+   "pids": [
+    30480
+   ],
+   "he": "אברהם בצלאל",
+   "en": "Avraham Bezalel",
+   "slugHe": "אברהם-בצלאל",
+   "slugEn": "avraham-bezalel",
+   "photo": "1097-b37ea357.jpg",
+   "current": false,
+   "role": "",
+   "faction": "ש\"ס",
+   "since": 2022,
+   "until": 2025,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 87,
+    "passed": 22
+   },
+   "positions": []
+  },
+  "980": {
+   "id": 980,
+   "pids": [
+    30681
+   ],
+   "he": "אורנה ברביבאי",
+   "en": "Orna Barbivay",
+   "slugHe": "אורנה-ברביבאי",
+   "slugEn": "orna-barbivay",
+   "photo": "980-66f162d0.jpg",
+   "current": false,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2019,
+   "until": 2023,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 80,
+    "passed": 2
+   },
+   "positions": [
+    {
+     "role": "שרת הכלכלה והתעשייה",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שרת הכלכלה והתעשייה",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "סגנית יושב-ראש הכנסת",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "1042": {
+   "id": 1042,
+   "pids": [
+    30768
+   ],
+   "he": "אליהו ברוכי",
+   "en": "Eliyahu Baruchi",
+   "slugHe": "אליהו-ברוכי",
+   "slugEn": "eliyahu-baruchi",
+   "photo": "1042-230c6ef7.jpg",
+   "current": false,
+   "role": "",
+   "faction": "יהדות התורה",
+   "since": 2020,
+   "until": 2025,
+   "knessets": [
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 50,
+    "passed": 11
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2020,
+     "y1": 2020,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "974": {
+   "id": 974,
+   "pids": [
+    30700
+   ],
+   "he": "ניר ברקת",
+   "en": "Nir Barkat",
+   "slugHe": "ניר-ברקת",
+   "slugEn": "nir-barkat",
+   "photo": "974-15b77ae7.jpg",
+   "current": true,
+   "role": "שר הכלכלה והתעשייה",
+   "faction": "הליכוד",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 68,
+    "passed": 2
+   },
+   "positions": [
+    {
+     "role": "שר הכלכלה והתעשייה",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    }
+   ]
+  },
+  "1125": {
+   "id": 1125,
+   "pids": [
+    30879
+   ],
+   "he": "ששון ששי גואטה",
+   "en": "Sasson Sassi Guetta",
+   "slugHe": "ששון-ששי-גואטה",
+   "slugEn": "sasson-sassi-guetta",
+   "photo": "1125-67238379.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 115,
+    "passed": 17
+   },
+   "positions": []
+  },
+  "1098": {
+   "id": 1098,
+   "pids": [
+    30860
+   ],
+   "he": "טלי גוטליב",
+   "en": "Tally Gotliv",
+   "slugHe": "טלי-גוטליב",
+   "slugEn": "tally-gotliv",
+   "photo": "1098-1dfe4137.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 120,
+    "passed": 16
+   },
+   "positions": []
+  },
+  "1099": {
+   "id": 1099,
+   "pids": [
+    30846
+   ],
+   "he": "יצחק גולדקנופ",
+   "en": "Yitshak Goldknop",
+   "slugHe": "יצחק-גולדקנופ",
+   "slugEn": "yitshak-goldknop",
+   "photo": "1099-ec3b0671.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יהדות התורה",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 1,
+    "passed": 0
+   },
+   "positions": [
+    {
+     "role": "שר הבינוי והשיכון",
+     "y0": 2022,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר במשרד ראש הממשלה",
+     "y0": 2022,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1002": {
+   "id": 1002,
+   "pids": [
+    30708
+   ],
+   "he": "מאי גולן",
+   "en": "May Golan",
+   "slugHe": "מאי-גולן",
+   "slugEn": "may-golan",
+   "photo": "1002-1edebcb0.jpg",
+   "current": true,
+   "role": "השרה לשוויון חברתי וקידום מעמד האישה",
+   "faction": "הליכוד",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 156,
+    "passed": 3
+   },
+   "positions": [
+    {
+     "role": "השרה לשוויון חברתי וקידום מעמד האישה",
+     "y0": 2024,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "השרה לקידום מעמד האישה",
+     "y0": 2023,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שרה בלי תיק במשרד ראש הממשלה",
+     "y0": 2023,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "981": {
+   "id": 981,
+   "pids": [
+    30693
+   ],
+   "he": "איתן גינזבורג",
+   "en": "Eitan Ginzburg",
+   "slugHe": "איתן-גינזבורג",
+   "slugEn": "eitan-ginzburg",
+   "photo": "981-72a8fa1c.jpg",
+   "current": true,
+   "role": "",
+   "faction": "כחול לבן - המחנה הממלכתי",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 253,
+    "passed": 10
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "שר התקשורת",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2020,
+     "y1": 2020,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "921": {
+   "id": 921,
+   "pids": [
+    30077
+   ],
+   "he": "יואב גלנט",
+   "en": "Yoav Gallant",
+   "slugHe": "יואב-גלנט",
+   "slugEn": "yoav-gallant",
+   "photo": "921-5bd044a3.jpg",
+   "current": false,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2015,
+   "until": 2025,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 25,
+    "passed": 1
+   },
+   "positions": [
+    {
+     "role": "שר הביטחון",
+     "y0": 2022,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר ההשכלה הגבוהה והמשלימה",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "שר החינוך",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "ממלא מקום שר ההשכלה הגבוהה והמשלימה",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "723": {
+   "id": 723,
+   "pids": [
+    1025
+   ],
+   "he": "גילה גמליאל",
+   "en": "Gila Gamliel",
+   "slugHe": "גילה-גמליאל",
+   "slugEn": "gila-gamliel",
+   "photo": "723-d77331b1.jpg",
+   "current": true,
+   "role": "שרת החדשנות, המדע והטכנולוגיה ",
+   "faction": "הליכוד",
+   "since": 2003,
+   "until": null,
+   "knessets": [
+    16,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 382,
+    "passed": 28
+   },
+   "positions": [
+    {
+     "role": "שרת החדשנות, המדע והטכנולוגיה ",
+     "y0": 2024,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שרת המודיעין",
+     "y0": 2023,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "השרה להגנת הסביבה",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "השרה להגנת הסביבה",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "988": {
+   "id": 988,
+   "pids": [
+    30657
+   ],
+   "he": "בנימין גנץ",
+   "en": "Benjamin Gantz",
+   "slugHe": "בנימין-גנץ",
+   "slugEn": "benjamin-gantz",
+   "photo": "988-965407e4.jpg",
+   "current": true,
+   "role": "",
+   "faction": "כחול לבן - המחנה הממלכתי",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 25,
+    "passed": 0
+   },
+   "positions": [
+    {
+     "role": "שר",
+     "y0": 2023,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר הביטחון",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן ראש הממשלה",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן ראש הממשלה",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "35": {
+   "id": 35,
+   "pids": [
+    526
+   ],
+   "he": "משה גפני",
+   "en": "Moshe Gafni",
+   "slugHe": "משה-גפני",
+   "slugEn": "moshe-gafni",
+   "photo": "35-1d01c3df.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יהדות התורה",
+   "since": 1988,
+   "until": null,
+   "knessets": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 2329,
+    "passed": 219
+   },
+   "positions": [
+    {
+     "role": "סגן השר לענייני דתות",
+     "y0": 1990,
+     "y1": 1992,
+     "k": 12,
+     "now": false
+    }
+   ]
+  },
+  "1085": {
+   "id": 1085,
+   "pids": [
+    30820
+   ],
+   "he": "סימון דוידסון",
+   "en": "Simon Davidson",
+   "slugHe": "סימון-דוידסון",
+   "slugEn": "simon-davidson",
+   "photo": "1085-0e11d56e.jpg",
+   "current": true,
+   "role": "סגן יושב-ראש הכנסת",
+   "faction": "יש עתיד",
+   "since": 2021,
+   "until": null,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 213,
+    "passed": 12
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    }
+   ]
+  },
+  "771": {
+   "id": 771,
+   "pids": [
+    4395
+   ],
+   "he": "אבי דיכטר",
+   "en": "Avi Dicter",
+   "slugHe": "אבי-דיכטר",
+   "slugEn": "avi-dicter",
+   "photo": "771-da3a5325.jpg",
+   "current": true,
+   "role": "שר החקלאות וביטחון המזון",
+   "faction": "הליכוד",
+   "since": 2006,
+   "until": null,
+   "knessets": [
+    17,
+    18,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 191,
+    "passed": 33
+   },
+   "positions": [
+    {
+     "role": "שר החקלאות וביטחון המזון",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "סגן שר הביטחון",
+     "y0": 2020,
+     "y1": 2020,
+     "k": 23,
+     "now": false
+    },
+    {
+     "role": "סגן שר הביטחון",
+     "y0": 2019,
+     "y1": 2020,
+     "k": 22,
+     "now": false
+    },
+    {
+     "role": "השר להגנת העורף",
+     "y0": 2013,
+     "y1": 2013,
+     "k": 19,
+     "now": false
+    }
+   ]
+  },
+  "1059": {
+   "id": 1059,
+   "pids": [
+    30809
+   ],
+   "he": "גלית דיסטל אטבריאן",
+   "en": "Galit Distel Atbaryan",
+   "slugHe": "גלית-דיסטל-אטבריאן",
+   "slugEn": "galit-distel-atbaryan",
+   "photo": "1059-86470c87.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2021,
+   "until": null,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 121,
+    "passed": 11
+   },
+   "positions": [
+    {
+     "role": "שרת ההסברה",
+     "y0": 2023,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שרה בלי תיק במשרד ראש הממשלה",
+     "y0": 2022,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1100": {
+   "id": 1100,
+   "pids": [
+    30831
+   ],
+   "he": "אלי דלל",
+   "en": "Eli Dallal",
+   "slugHe": "אלי-דלל",
+   "slugEn": "eli-dallal",
+   "photo": "1100-1f8069f3.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 190,
+    "passed": 28
+   },
+   "positions": []
+  },
+  "828": {
+   "id": 828,
+   "pids": [
+    12944
+   ],
+   "he": "דני דנון",
+   "en": "Danny Danon",
+   "slugHe": "דני-דנון",
+   "slugEn": "danny-danon",
+   "photo": "828-20c3b069.jpg",
+   "current": false,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2009,
+   "until": 2024,
+   "knessets": [
+    18,
+    19,
+    20,
+    25
+   ],
+   "bills": {
+    "proposed": 181,
+    "passed": 27
+   },
+   "positions": [
+    {
+     "role": "שר המדע, הטכנולוגיה והחלל",
+     "y0": 2015,
+     "y1": 2015,
+     "k": 20,
+     "now": false
+    },
+    {
+     "role": "סגן שר במשרד הביטחון ",
+     "y0": 2013,
+     "y1": 2014,
+     "k": 19,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2009,
+     "y1": 2013,
+     "k": 18,
+     "now": false
+    }
+   ]
+  },
+  "1101": {
+   "id": 1101,
+   "pids": [
+    30861
+   ],
+   "he": "שלום דנינו",
+   "en": "Shalom Danino",
+   "slugHe": "שלום-דנינו",
+   "slugEn": "shalom-danino",
+   "photo": "1101-12bfb36f.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 141,
+    "passed": 16
+   },
+   "positions": []
+  },
+  "41": {
+   "id": 41,
+   "pids": [
+    2291
+   ],
+   "he": "אריה מכלוף דרעי",
+   "en": "Aryeh Machluf Deri",
+   "slugHe": "אריה-מכלוף-דרעי",
+   "slugEn": "aryeh-machluf-deri",
+   "photo": "41-9c9b4b89.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ש\"ס",
+   "since": 1988,
+   "until": null,
+   "knessets": [
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 92,
+    "passed": 7
+   },
+   "positions": [
+    {
+     "role": "שר הפנים",
+     "y0": 2022,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר הבריאות",
+     "y0": 2022,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "המשנה לראש הממשלה",
+     "y0": 2022,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר הפנים",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1044": {
+   "id": 1044,
+   "pids": [
+    30711
+   ],
+   "he": "עמית הלוי",
+   "en": "Amit Halevi",
+   "slugHe": "עמית-הלוי",
+   "slugEn": "amit-halevi",
+   "photo": "1044-60bb8ef2.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2020,
+   "until": null,
+   "knessets": [
+    23,
+    25
+   ],
+   "bills": {
+    "proposed": 127,
+    "passed": 13
+   },
+   "positions": []
+  },
+  "950": {
+   "id": 950,
+   "pids": [
+    30118
+   ],
+   "he": "שרן מרים השכל",
+   "en": "Sharren Miriam Haskel",
+   "slugHe": "שרן-מרים-השכל",
+   "slugEn": "sharren-miriam-haskel",
+   "photo": "950-b17ca39b.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הימין הממלכתי",
+   "since": 2015,
+   "until": null,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 508,
+    "passed": 41
+   },
+   "positions": [
+    {
+     "role": "סגנית שר במשרד החוץ",
+     "y0": 2024,
+     "y1": 2026,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגנית יושב-ראש הכנסת",
+     "y0": 2020,
+     "y1": 2020,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "1045": {
+   "id": 1045,
+   "pids": [
+    30772
+   ],
+   "he": "ניסים ואטורי",
+   "en": "Nissim Vaturi",
+   "slugHe": "ניסים-ואטורי",
+   "slugEn": "nissim-vaturi",
+   "photo": "1045-3decd8af.jpg",
+   "current": true,
+   "role": "סגן יושב-ראש הכנסת",
+   "faction": "הליכוד",
+   "since": 2020,
+   "until": null,
+   "knessets": [
+    23,
+    25
+   ],
+   "bills": {
+    "proposed": 221,
+    "passed": 28
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2023,
+     "y1": null,
+     "k": 25,
+     "now": true
+    }
+   ]
+  },
+  "1060": {
+   "id": 1060,
+   "pids": [
+    30810
+   ],
+   "he": "מיכל מרים וולדיגר",
+   "en": "Michal Miriam Woldiger",
+   "slugHe": "מיכל-מרים-וולדיגר",
+   "slugEn": "michal-miriam-woldiger",
+   "photo": "1060-43214c17.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הציונות הדתית",
+   "since": 2021,
+   "until": null,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 297,
+    "passed": 21
+   },
+   "positions": [
+    {
+     "role": "סגנית שר במשרד האוצר",
+     "y0": 2023,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1102": {
+   "id": 1102,
+   "pids": [
+    30847
+   ],
+   "he": "יצחק שמעון וסרלאוף",
+   "en": "Issac Shimon Wasserlauf",
+   "slugHe": "יצחק-שמעון-וסרלאוף",
+   "slugEn": "issac-shimon-wasserlauf",
+   "photo": "1102-713f992b.jpg",
+   "current": true,
+   "role": "שר הנגב, הגליל והחוסן הלאומי",
+   "faction": "עוצמה יהודית",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 2,
+    "passed": 0
+   },
+   "positions": [
+    {
+     "role": "שר הנגב, הגליל והחוסן הלאומי",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר הנגב, הגליל והחוסן הלאומי",
+     "y0": 2022,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "922": {
+   "id": 922,
+   "pids": [
+    30058
+   ],
+   "he": "מכלוף מיקי זוהר",
+   "en": "Makhluf Miki Zohar",
+   "slugHe": "מכלוף-מיקי-זוהר",
+   "slugEn": "makhluf-miki-zohar",
+   "photo": "922-9f3eeecd.jpg",
+   "current": false,
+   "role": "שר התרבות והספורט",
+   "faction": "הליכוד",
+   "since": 2015,
+   "until": 2023,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 662,
+    "passed": 63
+   },
+   "positions": [
+    {
+     "role": "שר התרבות והספורט",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    },
+    {
+     "role": "יושב–ראש הקואליציה",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "1103": {
+   "id": 1103,
+   "pids": [
+    30843
+   ],
+   "he": "יאסר חוג'יראת",
+   "en": "Yasir Hujeirat",
+   "slugHe": "יאסר-חוגיראת",
+   "slugEn": "yasir-hujeirat",
+   "photo": "1103-d69e4097.jpg",
+   "current": true,
+   "role": "",
+   "faction": "רע\"ם",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 154,
+    "passed": 1
+   },
+   "positions": []
+  },
+  "1032": {
+   "id": 1032,
+   "pids": [
+    30758
+   ],
+   "he": "אימאן ח'טיב יאסין",
+   "en": "Iman Khatib Yassin",
+   "slugHe": "אימאן-חטיב-יאסין",
+   "slugEn": "iman-khatib-yassin",
+   "photo": "1032-f58f3ecf.jpg",
+   "current": true,
+   "role": "",
+   "faction": "רע\"ם",
+   "since": 2020,
+   "until": null,
+   "knessets": [
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 463,
+    "passed": 12
+   },
+   "positions": []
+  },
+  "1131": {
+   "id": 1131,
+   "pids": [
+    30916
+   ],
+   "he": "עוז חיים",
+   "en": "Oz Haim",
+   "slugHe": "עוז-חיים",
+   "slugEn": "oz-haim",
+   "photo": "1131-1011725a.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 1,
+    "passed": 0
+   },
+   "positions": []
+  },
+  "854": {
+   "id": 854,
+   "pids": [
+    22151
+   ],
+   "he": "אכרם חסון",
+   "en": "Akram Hasson",
+   "slugHe": "אכרם-חסון",
+   "slugEn": "akram-hasson",
+   "photo": "854-42c67d7b.jpg",
+   "current": true,
+   "role": "סגן יושב-ראש הכנסת",
+   "faction": "הימין הממלכתי",
+   "since": 2009,
+   "until": null,
+   "knessets": [
+    18,
+    20,
+    25
+   ],
+   "bills": {
+    "proposed": 272,
+    "passed": 21
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2026,
+     "y1": null,
+     "k": 25,
+     "now": true
+    }
+   ]
+  },
+  "1026": {
+   "id": 1026,
+   "pids": [
+    30752
+   ],
+   "he": "ווליד טאהא",
+   "en": "Waleed Taha",
+   "slugHe": "ווליד-טאהא",
+   "slugEn": "waleed-taha",
+   "photo": "1026-8bf9d816.jpg",
+   "current": true,
+   "role": "",
+   "faction": "רע\"ם",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 365,
+    "passed": 9
+   },
+   "positions": []
+  },
+  "872": {
+   "id": 872,
+   "pids": [
+    23639
+   ],
+   "he": "בועז טופורובסקי",
+   "en": "Boaz Toporovsky",
+   "slugHe": "בועז-טופורובסקי",
+   "slugEn": "boaz-toporovsky",
+   "photo": "872-d60ea83c.jpg",
+   "current": false,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2013,
+   "until": 2026,
+   "knessets": [
+    19,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 313,
+    "passed": 18
+   },
+   "positions": [
+    {
+     "role": "יושב–ראש הקואליציה",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1050": {
+   "id": 1050,
+   "pids": [
+    30777
+   ],
+   "he": "משה טור פז",
+   "en": "Moshe Turpaz",
+   "slugHe": "משה-טור-פז",
+   "slugEn": "moshe-turpaz",
+   "photo": "1050-125a252b.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2020,
+   "until": null,
+   "knessets": [
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 234,
+    "passed": 7
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2022,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "208": {
+   "id": 208,
+   "pids": [
+    560
+   ],
+   "he": "אחמד טיבי",
+   "en": "Ahmad Tibi",
+   "slugHe": "אחמד-טיבי",
+   "slugEn": "ahmad-tibi",
+   "photo": "208-c0492c33.jpg",
+   "current": true,
+   "role": "",
+   "faction": "חד\"ש-תע\"ל",
+   "since": 1999,
+   "until": null,
+   "knessets": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 1985,
+    "passed": 93
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2019,
+     "y1": 2020,
+     "k": 22,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2015,
+     "y1": 2019,
+     "k": 20,
+     "now": false
+    }
+   ]
+  },
+  "1043": {
+   "id": 1043,
+   "pids": [
+    30770
+   ],
+   "he": "יוסף טייב",
+   "en": "Yosef Taieb",
+   "slugHe": "יוסף-טייב",
+   "slugEn": "yosef-taieb",
+   "photo": "1043-a247f278.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ש\"ס",
+   "since": 2020,
+   "until": null,
+   "knessets": [
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 256,
+    "passed": 25
+   },
+   "positions": []
+  },
+  "1090": {
+   "id": 1090,
+   "pids": [
+    30830
+   ],
+   "he": "אוהד טל",
+   "en": "Ohad Tal",
+   "slugHe": "אוהד-טל",
+   "slugEn": "ohad-tal",
+   "photo": "1090-a5d43e81.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הציונות הדתית",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 183,
+    "passed": 19
+   },
+   "positions": []
+  },
+  "996": {
+   "id": 996,
+   "pids": [
+    30671
+   ],
+   "he": "יעקב טסלר",
+   "en": "Yaakov Tesler",
+   "slugHe": "יעקב-טסלר",
+   "slugEn": "yaakov-tesler",
+   "photo": "996-23173eb2.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יהדות התורה",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 73,
+    "passed": 3
+   },
+   "positions": [
+    {
+     "role": "סגן שר במשרד התרבות והספורט",
+     "y0": 2023,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1000": {
+   "id": 1000,
+   "pids": [
+    30683
+   ],
+   "he": "חילי טרופר",
+   "en": "Chili Tropper",
+   "slugHe": "חילי-טרופר",
+   "slugEn": "chili-tropper",
+   "photo": "1000-07c09712.jpg",
+   "current": true,
+   "role": "",
+   "faction": "כחול לבן - המחנה הממלכתי",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 54,
+    "passed": 4
+   },
+   "positions": [
+    {
+     "role": "שר",
+     "y0": 2023,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר התרבות והספורט",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר התרבות והספורט",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "שר המדע והטכנולוגיה",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "928": {
+   "id": 928,
+   "pids": [
+    30083
+   ],
+   "he": "אלי כהן",
+   "en": "Eli Cohen",
+   "slugHe": "אלי-כהן",
+   "slugEn": "eli-cohen",
+   "photo": "928-e0f800ec.jpg",
+   "current": false,
+   "role": "שר האנרגיה והתשתיות",
+   "faction": "הליכוד",
+   "since": 2015,
+   "until": 2024,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 138,
+    "passed": 19
+   },
+   "positions": [
+    {
+     "role": "שר האנרגיה והתשתיות",
+     "y0": 2024,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר החוץ",
+     "y0": 2022,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "השר לענייני מודיעין",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "השר לענייני מודיעין",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "1104": {
+   "id": 1104,
+   "pids": [
+    30833
+   ],
+   "he": "אלמוג כהן",
+   "en": "Almog Cohen",
+   "slugHe": "אלמוג-כהן",
+   "slugEn": "almog-cohen",
+   "photo": "1104-a414ebdf.jpg",
+   "current": false,
+   "role": "סגן שר במשרד ראש הממשלה",
+   "faction": "עוצמה יהודית",
+   "since": 2022,
+   "until": 2025,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 46,
+    "passed": 9
+   },
+   "positions": [
+    {
+     "role": "סגן שר במשרד ראש הממשלה",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    }
+   ]
+  },
+  "874": {
+   "id": 874,
+   "pids": [
+    23597
+   ],
+   "he": "מאיר כהן",
+   "en": "Meir Cohen",
+   "slugHe": "מאיר-כהן",
+   "slugEn": "meir-cohen",
+   "photo": "874-58512cde.jpg",
+   "current": true,
+   "role": "סגן יושב-ראש הכנסת",
+   "faction": "יש עתיד",
+   "since": 2013,
+   "until": null,
+   "knessets": [
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 718,
+    "passed": 51
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2023,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר הרווחה והביטחון החברתי",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר הרווחה והביטחון החברתי",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2020,
+     "y1": 2020,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "1006": {
+   "id": 1006,
+   "pids": [
+    30686
+   ],
+   "he": "מירב כהן",
+   "en": "Meirav Cohen",
+   "slugHe": "מירב-כהן",
+   "slugEn": "meirav-cohen",
+   "photo": "1006-22d8d88d.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 183,
+    "passed": 13
+   },
+   "positions": [
+    {
+     "role": "השרה לשוויון חברתי",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "השרה לשוויון חברתי",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "השרה לשוויון חברתי וגמלאים",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "1030": {
+   "id": 1030,
+   "pids": [
+    30662
+   ],
+   "he": "מתן כהנא",
+   "en": "Matan Kahana",
+   "slugHe": "מתן-כהנא",
+   "slugEn": "matan-kahana",
+   "photo": "1030-61673bfa.jpg",
+   "current": false,
+   "role": "",
+   "faction": "המחנה הממלכתי",
+   "since": 2019,
+   "until": 2025,
+   "knessets": [
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 74,
+    "passed": 10
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2022,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן השר לשירותי דת",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "השר לשירותי דת",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1013": {
+   "id": 1013,
+   "pids": [
+    30719
+   ],
+   "he": "עופר כסיף",
+   "en": "Ofer Cassif",
+   "slugHe": "עופר-כסיף",
+   "slugEn": "ofer-cassif",
+   "photo": "1013-becd0be7.jpg",
+   "current": true,
+   "role": "",
+   "faction": "חד\"ש-תע\"ל",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 703,
+    "passed": 7
+   },
+   "positions": []
+  },
+  "976": {
+   "id": 976,
+   "pids": [
+    30701
+   ],
+   "he": "אופיר כץ",
+   "en": "Ofir Katz",
+   "slugHe": "אופיר-כץ",
+   "slugEn": "ofir-katz",
+   "photo": "976-68cc41c0.jpg",
+   "current": true,
+   "role": "יושב-ראש הקואליציה",
+   "faction": "הליכוד",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 373,
+    "passed": 47
+   },
+   "positions": [
+    {
+     "role": "יושב-ראש הקואליציה",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2022,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "212": {
+   "id": 212,
+   "pids": [
+    556
+   ],
+   "he": "חיים כץ",
+   "en": "Haim Katz",
+   "slugHe": "חיים-כץ",
+   "slugEn": "haim-katz",
+   "photo": "212-af0f2329.jpg",
+   "current": false,
+   "role": "שר הבריאות",
+   "faction": "הליכוד",
+   "since": 1999,
+   "until": 2025,
+   "knessets": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 693,
+    "passed": 81
+   },
+   "positions": [
+    {
+     "role": "שר הבריאות",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר הרווחה והביטחון החברתי",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר הבינוי והשיכון",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר התיירות",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    }
+   ]
+  },
+  "69": {
+   "id": 69,
+   "pids": [
+    468
+   ],
+   "he": "ישראל כץ",
+   "en": "Israel Katz",
+   "slugHe": "ישראל-כץ",
+   "slugEn": "israel-katz",
+   "photo": "69-1a191fe8.jpg",
+   "current": true,
+   "role": "שר הביטחון",
+   "faction": "הליכוד",
+   "since": 1998,
+   "until": null,
+   "knessets": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 244,
+    "passed": 24
+   },
+   "positions": [
+    {
+     "role": "שר הביטחון",
+     "y0": 2024,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר החוץ",
+     "y0": 2024,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר האנרגיה והתשתיות",
+     "y0": 2022,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר האוצר",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1061": {
+   "id": 1061,
+   "pids": [
+    30780
+   ],
+   "he": "רון כץ",
+   "en": "Ron Katz",
+   "slugHe": "רון-כץ",
+   "slugEn": "ron-katz",
+   "photo": "1061-57091375.jpg",
+   "current": false,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2021,
+   "until": 2026,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 233,
+    "passed": 18
+   },
+   "positions": []
+  },
+  "998": {
+   "id": 998,
+   "pids": [
+    30720
+   ],
+   "he": "יוראי להב הרצנו",
+   "en": "Yorai Lahav Hertzanu",
+   "slugHe": "יוראי-להב-הרצנו",
+   "slugEn": "yorai-lahav-hertzanu",
+   "photo": "998-6dba239f.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 330,
+    "passed": 8
+   },
+   "positions": []
+  },
+  "1127": {
+   "id": 1127,
+   "pids": [
+    30881
+   ],
+   "he": "ירון לוי",
+   "en": "Yaron Levi",
+   "slugHe": "ירון-לוי",
+   "slugEn": "yaron-levi",
+   "photo": "1127-3be12806.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 70,
+    "passed": 5
+   },
+   "positions": []
+  },
+  "876": {
+   "id": 876,
+   "pids": [
+    23632
+   ],
+   "he": "מיקי לוי",
+   "en": "Mickey Levy",
+   "slugHe": "מיקי-לוי",
+   "slugEn": "mickey-levy",
+   "photo": "876-18cd4309.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2013,
+   "until": null,
+   "knessets": [
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 1106,
+    "passed": 71
+   },
+   "positions": [
+    {
+     "role": "יושב-ראש הכנסת",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "יושב-ראש הכנסת",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "סגן שר האוצר",
+     "y0": 2013,
+     "y1": 2014,
+     "k": 19,
+     "now": false
+    }
+   ]
+  },
+  "826": {
+   "id": 826,
+   "pids": [
+    12951
+   ],
+   "he": "יריב לוין",
+   "en": "Yariv Levin",
+   "slugHe": "יריב-לוין",
+   "slugEn": "yariv-levin",
+   "photo": "826-6d30b988.jpg",
+   "current": true,
+   "role": "סגן ראש הממשלה",
+   "faction": "הליכוד",
+   "since": 2009,
+   "until": null,
+   "knessets": [
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 653,
+    "passed": 94
+   },
+   "positions": [
+    {
+     "role": "סגן ראש הממשלה",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר העבודה",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר ירושלים ומסורת ישראל",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר המשפטים",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    }
+   ]
+  },
+  "1082": {
+   "id": 1082,
+   "pids": [
+    30106
+   ],
+   "he": "נעמה לזימי",
+   "en": "Naama Lazimi",
+   "slugHe": "נעמה-לזימי",
+   "slugEn": "naama-lazimi",
+   "photo": "1082-8a6526aa.jpg",
+   "current": true,
+   "role": "",
+   "faction": "העבודה",
+   "since": 2021,
+   "until": null,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 481,
+    "passed": 21
+   },
+   "positions": []
+  },
+  "214": {
+   "id": 214,
+   "pids": [
+    427
+   ],
+   "he": "אביגדור ליברמן",
+   "en": "Avigdor Liberman",
+   "slugHe": "אביגדור-ליברמן",
+   "slugEn": "avigdor-liberman",
+   "photo": "214-17f6dbb0.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ישראל ביתנו",
+   "since": 1999,
+   "until": null,
+   "knessets": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 532,
+    "passed": 36
+   },
+   "positions": [
+    {
+     "role": "שר האוצר",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר האוצר",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "שר הביטחון",
+     "y0": 2016,
+     "y1": 2018,
+     "k": 20,
+     "now": false
+    },
+    {
+     "role": "שר החוץ",
+     "y0": 2015,
+     "y1": 2015,
+     "k": 20,
+     "now": false
+    }
+   ]
+  },
+  "878": {
+   "id": 878,
+   "pids": [
+    23594
+   ],
+   "he": "יאיר לפיד",
+   "en": "Yair Lapid",
+   "slugHe": "יאיר-לפיד",
+   "slugEn": "yair-lapid",
+   "photo": "878-a800230c.jpg",
+   "current": true,
+   "role": "ראש האופוזיציה",
+   "faction": "יש עתיד",
+   "since": 2013,
+   "until": null,
+   "knessets": [
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 322,
+    "passed": 15
+   },
+   "positions": [
+    {
+     "role": "ראש האופוזיציה",
+     "y0": 2023,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר החוץ",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "השר לנושאים אסטרטגיים",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "ראש הממשלה",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1120": {
+   "id": 1120,
+   "pids": [
+    30872
+   ],
+   "he": "סימון מושיאשוילי",
+   "en": "Simon Moshiashvili",
+   "slugHe": "סימון-מושיאשוילי",
+   "slugEn": "simon-moshiashvili",
+   "photo": "1120-53f5982b.jpg",
+   "current": false,
+   "role": "",
+   "faction": "ש\"ס",
+   "since": 2022,
+   "until": 2025,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 15,
+    "passed": 9
+   },
+   "positions": []
+  },
+  "1076": {
+   "id": 1076,
+   "pids": [
+    30782
+   ],
+   "he": "טטיאנה מזרסקי",
+   "en": "Tatiana Mazarsky",
+   "slugHe": "טטיאנה-מזרסקי",
+   "slugEn": "tatiana-mazarsky",
+   "photo": "1076-9405ce56.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2021,
+   "until": null,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 211,
+    "passed": 8
+   },
+   "positions": []
+  },
+  "881": {
+   "id": 881,
+   "pids": [
+    23565
+   ],
+   "he": "מרב מיכאלי",
+   "en": "Merav Michaeli",
+   "slugHe": "מרב-מיכאלי",
+   "slugEn": "merav-michaeli",
+   "photo": "881-058b9b64.jpg",
+   "current": true,
+   "role": "",
+   "faction": "העבודה",
+   "since": 2013,
+   "until": null,
+   "knessets": [
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 1620,
+    "passed": 79
+   },
+   "positions": [
+    {
+     "role": "שרת התחבורה והבטיחות בדרכים",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שרת התחבורה והבטיחות בדרכים",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1118": {
+   "id": 1118,
+   "pids": [
+    30871
+   ],
+   "he": "שלי טל מירון",
+   "en": "Shelly Tal Meron",
+   "slugHe": "שלי-טל-מירון",
+   "slugEn": "shelly-tal-meron",
+   "photo": "1118-bb2642b6.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 148,
+    "passed": 10
+   },
+   "positions": []
+  },
+  "1115": {
+   "id": 1115,
+   "pids": [
+    30868
+   ],
+   "he": "יונתן מישרקי",
+   "en": "Yonatan Mashriki",
+   "slugHe": "יונתן-מישרקי",
+   "slugEn": "yonatan-mashriki",
+   "photo": "1115-28254a56.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ש\"ס",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 226,
+    "passed": 28
+   },
+   "positions": []
+  },
+  "1105": {
+   "id": 1105,
+   "pids": [
+    30842
+   ],
+   "he": "חנוך דב מלביצקי",
+   "en": "Hanoch Dov Milwidsky",
+   "slugHe": "חנוך-דב-מלביצקי",
+   "slugEn": "hanoch-dov-milwidsky",
+   "photo": "1105-35b26b4b.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 185,
+    "passed": 21
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2023,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1119": {
+   "id": 1119,
+   "pids": [
+    30873
+   ],
+   "he": "ארז מלול",
+   "en": "Erez Malul",
+   "slugHe": "ארז-מלול",
+   "slugEn": "erez-malul",
+   "photo": "1119-fafd8013.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ש\"ס",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 92,
+    "passed": 20
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2023,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "956": {
+   "id": 956,
+   "pids": [
+    23560
+   ],
+   "he": "יוליה מלינובסקי",
+   "en": "Yulia Malinovsky",
+   "slugHe": "יוליה-מלינובסקי",
+   "slugEn": "yulia-malinovsky",
+   "photo": "956-f1e48c5b.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ישראל ביתנו",
+   "since": 2015,
+   "until": null,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 871,
+    "passed": 51
+   },
+   "positions": []
+  },
+  "1135": {
+   "id": 1135,
+   "pids": [
+    30923
+   ],
+   "he": "רוני מלכאי",
+   "en": "Roni Malkai",
+   "slugHe": "רוני-מלכאי",
+   "slugEn": "roni-malkai",
+   "photo": null,
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 0,
+    "passed": 0
+   },
+   "positions": []
+  },
+  "957": {
+   "id": 957,
+   "pids": [
+    30470
+   ],
+   "he": "מיכאל מלכיאלי",
+   "en": "Michael Malkieli",
+   "slugHe": "מיכאל-מלכיאלי",
+   "slugEn": "michael-malkieli",
+   "photo": "957-cf6247f2.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ש\"ס",
+   "since": 2015,
+   "until": null,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 686,
+    "passed": 25
+   },
+   "positions": [
+    {
+     "role": "השר לשירותי דת",
+     "y0": 2022,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "ממלא מקום שר הפנים",
+     "y0": 2023,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2019,
+     "y1": 2019,
+     "k": 20,
+     "now": false
+    }
+   ]
+  },
+  "1122": {
+   "id": 1122,
+   "pids": [
+    30875
+   ],
+   "he": "צגה מלקו",
+   "en": "Tsega Melaku",
+   "slugHe": "צגה-מלקו",
+   "slugEn": "tsega-melaku",
+   "photo": "1122-3bb4b5cf.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 108,
+    "passed": 16
+   },
+   "positions": []
+  },
+  "1063": {
+   "id": 1063,
+   "pids": [
+    30814
+   ],
+   "he": "אבי מעוז",
+   "en": "Avi Maoz",
+   "slugHe": "אבי-מעוז",
+   "slugEn": "avi-maoz",
+   "photo": "1063-7acc6d23.jpg",
+   "current": true,
+   "role": "",
+   "faction": "נעם",
+   "since": 2021,
+   "until": null,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 101,
+    "passed": 3
+   },
+   "positions": [
+    {
+     "role": "סגן שר במשרד ראש הממשלה",
+     "y0": 2023,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן שר במשרד ראש הממשלה",
+     "y0": 2023,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "814": {
+   "id": 814,
+   "pids": [
+    11835
+   ],
+   "he": "אורי מקלב",
+   "en": "Uri Maklev",
+   "slugHe": "אורי-מקלב",
+   "slugEn": "uri-maklev",
+   "photo": "814-8e4c686f.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יהדות התורה",
+   "since": 2006,
+   "until": null,
+   "knessets": [
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 1386,
+    "passed": 119
+   },
+   "positions": [
+    {
+     "role": "סגן שר במשרד ראש הממשלה",
+     "y0": 2023,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן שר במשרד התחבורה והבטיחות בדרכים",
+     "y0": 2023,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן שר התחבורה והבטיחות בדרכים",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "סגן שר התחבורה והבטיחות בדרכים",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "751": {
+   "id": 751,
+   "pids": [
+    1056
+   ],
+   "he": "יעקב מרגי",
+   "en": "Yakov Margi",
+   "slugHe": "יעקב-מרגי",
+   "slugEn": "yakov-margi",
+   "photo": "751-7e23e7b9.jpg",
+   "current": true,
+   "role": "סגן יושב-ראש הכנסת",
+   "faction": "ש\"ס",
+   "since": 2003,
+   "until": null,
+   "knessets": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 1544,
+    "passed": 114
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר הרווחה והביטחון החברתי",
+     "y0": 2022,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1106": {
+   "id": 1106,
+   "pids": [
+    30863
+   ],
+   "he": "שרון ניר",
+   "en": "Sharon Nir",
+   "slugHe": "שרון-ניר",
+   "slugEn": "sharon-nir",
+   "photo": "1106-9810bc4e.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ישראל ביתנו",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 400,
+    "passed": 25
+   },
+   "positions": []
+  },
+  "90": {
+   "id": 90,
+   "pids": [
+    965
+   ],
+   "he": "בנימין נתניהו",
+   "en": "Benjamin Netanyahu",
+   "slugHe": "בנימין-נתניהו",
+   "slugEn": "benjamin-netanyahu",
+   "photo": "90-4c040898.jpg",
+   "current": true,
+   "role": "ראש הממשלה",
+   "faction": "הליכוד",
+   "since": 1988,
+   "until": null,
+   "knessets": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 31,
+    "passed": 6
+   },
+   "positions": [
+    {
+     "role": "ראש הממשלה",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "ראש האופוזיציה",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "ראש הממשלה",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "ראש הממשלה",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "995": {
+   "id": 995,
+   "pids": [
+    30695
+   ],
+   "he": "יואב סגלוביץ'",
+   "en": "Yoav Segalovitz",
+   "slugHe": "יואב-סגלוביץ",
+   "slugEn": "yoav-segalovitz",
+   "photo": "995-b0a4a226.jpg",
+   "current": false,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2019,
+   "until": 2026,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 156,
+    "passed": 7
+   },
+   "positions": [
+    {
+     "role": "סגן שר במשרד לביטחון הפנים",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן שר במשרד לביטחון הפנים",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "994": {
+   "id": 994,
+   "pids": [
+    30722
+   ],
+   "he": "יבגני סובה",
+   "en": "Evgeny Sova",
+   "slugHe": "יבגני-סובה",
+   "slugEn": "evgeny-sova",
+   "photo": "994-4f3047cd.jpg",
+   "current": true,
+   "role": "סגן יושב-ראש הכנסת",
+   "faction": "ישראל ביתנו",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 951,
+    "passed": 34
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2023,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "סגן יו\"ר זמני ",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1121": {
+   "id": 1121,
+   "pids": [
+    30874
+   ],
+   "he": "צבי ידידיה סוכות",
+   "en": "Tzvi Yedidia Sukkot",
+   "slugHe": "צבי-ידידיה-סוכות",
+   "slugEn": "tzvi-yedidia-sukkot",
+   "photo": "1121-b39733a0.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הציונות הדתית",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 67,
+    "passed": 7
+   },
+   "positions": []
+  },
+  "1107": {
+   "id": 1107,
+   "pids": [
+    30852
+   ],
+   "he": "משה סולומון",
+   "en": "Moshe Solomon",
+   "slugHe": "משה-סולומון",
+   "slugEn": "moshe-solomon",
+   "photo": "1107-b1544a49.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הציונות הדתית",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 163,
+    "passed": 17
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2023,
+     "y1": 2026,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1108": {
+   "id": 1108,
+   "pids": [
+    30849
+   ],
+   "he": "לימור סון הר מלך",
+   "en": "Limor Sonn Har Melech",
+   "slugHe": "לימור-סון-הר-מלך",
+   "slugEn": "limor-sonn-har-melech",
+   "photo": "1108-f222ba93.jpg",
+   "current": true,
+   "role": "סגנית יושב-ראש הכנסת",
+   "faction": "עוצמה יהודית",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 251,
+    "passed": 29
+   },
+   "positions": [
+    {
+     "role": "סגנית יושב-ראש הכנסת",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    }
+   ]
+  },
+  "977": {
+   "id": 977,
+   "pids": [
+    30717
+   ],
+   "he": "אופיר סופר",
+   "en": "Ofir Sofer",
+   "slugHe": "אופיר-סופר",
+   "slugEn": "ofir-sofer",
+   "photo": "977-85852ca8.jpg",
+   "current": true,
+   "role": "שר העלייה והקליטה",
+   "faction": "הציונות הדתית",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 182,
+    "passed": 4
+   },
+   "positions": [
+    {
+     "role": "שר העלייה והקליטה",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    }
+   ]
+  },
+  "884": {
+   "id": 884,
+   "pids": [
+    23551
+   ],
+   "he": "אורית מלכה סטרוק",
+   "en": "Orit Malka Strock",
+   "slugHe": "אורית-מלכה-סטרוק",
+   "slugEn": "orit-malka-strock",
+   "photo": "884-846d423f.jpg",
+   "current": true,
+   "role": "שרת ההתיישבות והמשימות הלאומיות",
+   "faction": "הציונות הדתית",
+   "since": 2013,
+   "until": null,
+   "knessets": [
+    19,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 268,
+    "passed": 15
+   },
+   "positions": [
+    {
+     "role": "שרת ההתיישבות והמשימות הלאומיות",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    }
+   ]
+  },
+  "1014": {
+   "id": 1014,
+   "pids": [
+    30718
+   ],
+   "he": "עידית סילמן",
+   "en": "Idit Silman",
+   "slugHe": "עידית-סילמן",
+   "slugEn": "idit-silman",
+   "photo": "1014-b29cbf80.jpg",
+   "current": false,
+   "role": "השרה להגנת הסביבה",
+   "faction": "הליכוד",
+   "since": 2019,
+   "until": 2023,
+   "knessets": [
+    21,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 54,
+    "passed": 2
+   },
+   "positions": [
+    {
+     "role": "השרה להגנת הסביבה",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "יושבת-ראש הקואליציה",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1133": {
+   "id": 1133,
+   "pids": [
+    30921
+   ],
+   "he": "מיכל סלבני כבביה",
+   "en": "Michal Slawny Cababia",
+   "slugHe": "מיכל-סלבני-כבביה",
+   "slugEn": "michal-slawny-cababia",
+   "photo": "1133-c9b1449c.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 0,
+    "passed": 0
+   },
+   "positions": []
+  },
+  "936": {
+   "id": 936,
+   "pids": [
+    30055
+   ],
+   "he": "בצלאל סמוטריץ'",
+   "en": "Bezalel Smotrich",
+   "slugHe": "בצלאל-סמוטריץ",
+   "slugEn": "bezalel-smotrich",
+   "photo": "936-0ca78a2b.jpg",
+   "current": false,
+   "role": "שר האוצר",
+   "faction": "הציונות הדתית",
+   "since": 2015,
+   "until": 2023,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 504,
+    "passed": 53
+   },
+   "positions": [
+    {
+     "role": "שר האוצר",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר נוסף במשרד הביטחון",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר התחבורה והבטיחות בדרכים",
+     "y0": 2020,
+     "y1": 2020,
+     "k": 23,
+     "now": false
+    },
+    {
+     "role": "שר התחבורה והבטיחות בדרכים",
+     "y0": 2019,
+     "y1": 2020,
+     "k": 22,
+     "now": false
+    }
+   ]
+  },
+  "1109": {
+   "id": 1109,
+   "pids": [
+    30853
+   ],
+   "he": "משה סעדה",
+   "en": "Moshe Saada",
+   "slugHe": "משה-סעדה",
+   "slugEn": "moshe-saada",
+   "photo": "1109-f27952c6.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 141,
+    "passed": 20
+   },
+   "positions": []
+  },
+  "725": {
+   "id": 725,
+   "pids": [
+    1027
+   ],
+   "he": "גדעון סער",
+   "en": "Gideon Sa'ar",
+   "slugHe": "גדעון-סער",
+   "slugEn": "gideon-saar",
+   "photo": "725-cd06a559.jpg",
+   "current": false,
+   "role": "שר החוץ",
+   "faction": "הימין הממלכתי",
+   "since": 2003,
+   "until": 2025,
+   "knessets": [
+    16,
+    17,
+    18,
+    19,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 287,
+    "passed": 45
+   },
+   "positions": [
+    {
+     "role": "שר החוץ",
+     "y0": 2024,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שר בלי תיק",
+     "y0": 2024,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר",
+     "y0": 2023,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר המשפטים",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1007": {
+   "id": 1007,
+   "pids": [
+    30713
+   ],
+   "he": "מנסור עבאס",
+   "en": "Mansour Abbas",
+   "slugHe": "מנסור-עבאס",
+   "slugEn": "mansour-abbas",
+   "photo": "1007-83768865.jpg",
+   "current": true,
+   "role": "",
+   "faction": "רע\"ם",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 359,
+    "passed": 11
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "1128": {
+   "id": 1128,
+   "pids": [
+    30893
+   ],
+   "he": "עפיף עבד",
+   "en": "Afef Abed",
+   "slugHe": "עפיף-עבד",
+   "slugEn": "afef-abed",
+   "photo": "1128-e288b4b4.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 25,
+    "passed": 2
+   },
+   "positions": []
+  },
+  "938": {
+   "id": 938,
+   "pids": [
+    30066
+   ],
+   "he": "איימן עודה",
+   "en": "Ayman Odeh",
+   "slugHe": "איימן-עודה",
+   "slugEn": "ayman-odeh",
+   "photo": "938-e8728b95.jpg",
+   "current": true,
+   "role": "",
+   "faction": "חד\"ש-תע\"ל",
+   "since": 2015,
+   "until": null,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 1319,
+    "passed": 24
+   },
+   "positions": []
+  },
+  "1130": {
+   "id": 1130,
+   "pids": [
+    30895
+   ],
+   "he": "עדי עזוז",
+   "en": "Adi Ezuz",
+   "slugHe": "עדי-עזוז",
+   "slugEn": "adi-ezuz",
+   "photo": "1130-bacf8d96.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 17,
+    "passed": 0
+   },
+   "positions": []
+  },
+  "964": {
+   "id": 964,
+   "pids": [
+    30558
+   ],
+   "he": "יוסף עטאונה",
+   "en": "Youssef Atauna",
+   "slugHe": "יוסף-עטאונה",
+   "slugEn": "youssef-atauna",
+   "photo": "964-bed9c6ab.jpg",
+   "current": false,
+   "role": "",
+   "faction": "חד\"ש-תע\"ל",
+   "since": 2015,
+   "until": 2025,
+   "knessets": [
+    20,
+    25
+   ],
+   "bills": {
+    "proposed": 83,
+    "passed": 5
+   },
+   "positions": []
+  },
+  "992": {
+   "id": 992,
+   "pids": [
+    30702
+   ],
+   "he": "חוה אתי עטייה",
+   "en": "Etty Hava Atia",
+   "slugHe": "חוה-אתי-עטייה",
+   "slugEn": "etty-hava-atia",
+   "photo": "992-05f40146.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 562,
+    "passed": 25
+   },
+   "positions": []
+  },
+  "837": {
+   "id": 837,
+   "pids": [
+    12938
+   ],
+   "he": "חמד עמאר",
+   "en": "Hamad Amar",
+   "slugHe": "חמד-עמאר",
+   "slugEn": "hamad-amar",
+   "photo": "837-99a4ce27.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ישראל ביתנו",
+   "since": 2009,
+   "until": null,
+   "knessets": [
+    18,
+    19,
+    20,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 1184,
+    "passed": 89
+   },
+   "positions": [
+    {
+     "role": "שר במשרד האוצר",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר במשרד האוצר",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    },
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2019,
+     "y1": 2020,
+     "k": 22,
+     "now": false
+    }
+   ]
+  },
+  "1110": {
+   "id": 1110,
+   "pids": [
+    30859
+   ],
+   "he": "צביקה פוגל",
+   "en": "Tzvika Foghel",
+   "slugHe": "צביקה-פוגל",
+   "slugEn": "tzvika-foghel",
+   "photo": "1110-a7a4e9af.jpg",
+   "current": true,
+   "role": "",
+   "faction": "עוצמה יהודית",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 217,
+    "passed": 25
+   },
+   "positions": []
+  },
+  "951": {
+   "id": 951,
+   "pids": [
+    30121
+   ],
+   "he": "עודד פורר",
+   "en": "Oded Forer",
+   "slugHe": "עודד-פורר",
+   "slugEn": "oded-forer",
+   "photo": "951-9b313289.jpg",
+   "current": true,
+   "role": "",
+   "faction": "ישראל ביתנו",
+   "since": 2015,
+   "until": null,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 1280,
+    "passed": 82
+   },
+   "positions": [
+    {
+     "role": "שר החקלאות ופיתוח הכפר",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "השר לפיתוח הפריפריה, הנגב והגליל",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר החקלאות ופיתוח הכפר",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "השר לפיתוח הפריפריה, הנגב והגליל",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1001": {
+   "id": 1001,
+   "pids": [
+    30672
+   ],
+   "he": "יצחק פינדרוס",
+   "en": "Yitzhak Ze'ev Pindrus",
+   "slugHe": "יצחק-פינדרוס",
+   "slugEn": "yitzhak-zeev-pindrus",
+   "photo": "1001-821bd122.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יהדות התורה",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 399,
+    "passed": 23
+   },
+   "positions": []
+  },
+  "1124": {
+   "id": 1124,
+   "pids": [
+    30877
+   ],
+   "he": "משה פסל",
+   "en": "Moshe Passal",
+   "slugHe": "משה-פסל",
+   "slugEn": "moshe-passal",
+   "photo": "1124-be0a7e06.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 180,
+    "passed": 19
+   },
+   "positions": []
+  },
+  "103": {
+   "id": 103,
+   "pids": [
+    563
+   ],
+   "he": "מאיר פרוש",
+   "en": "Meir Porush",
+   "slugHe": "מאיר-פרוש",
+   "slugEn": "meir-porush",
+   "photo": "103-151bb33a.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יהדות התורה",
+   "since": 1996,
+   "until": null,
+   "knessets": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 356,
+    "passed": 34
+   },
+   "positions": [
+    {
+     "role": "השר לירושלים ומסורת ישראל",
+     "y0": 2023,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר בלי תיק",
+     "y0": 2023,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן שר החינוך",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "סגן שר החינוך",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "1079": {
+   "id": 1079,
+   "pids": [
+    30783
+   ],
+   "he": "יסמין פרידמן",
+   "en": "Yasmin Fridman",
+   "slugHe": "יסמין-פרידמן",
+   "slugEn": "yasmin-fridman",
+   "photo": "1079-98317a36.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2021,
+   "until": null,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 286,
+    "passed": 11
+   },
+   "positions": []
+  },
+  "978": {
+   "id": 978,
+   "pids": [
+    30685
+   ],
+   "he": "אורית פרקש הכהן",
+   "en": "Orit Farkash Hacohen",
+   "slugHe": "אורית-פרקש-הכהן",
+   "slugEn": "orit-farkash-hacohen",
+   "photo": "978-e614e53d.jpg",
+   "current": true,
+   "role": "",
+   "faction": "כחול לבן - המחנה הממלכתי",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 92,
+    "passed": 5
+   },
+   "positions": [
+    {
+     "role": "סגנית יושב-ראש הכנסת",
+     "y0": 2023,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שרת החדשנות, המדע והטכנולוגיה",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שרת החדשנות, המדע והטכנולוגיה",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "שרת התיירות",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1091": {
+   "id": 1091,
+   "pids": [
+    30851
+   ],
+   "he": "מטי צרפתי הרכבי",
+   "en": "Matti Sarfatti Harcavi",
+   "slugHe": "מטי-צרפתי-הרכבי",
+   "slugEn": "matti-sarfatti-harcavi",
+   "photo": "1091-7482900d.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 207,
+    "passed": 9
+   },
+   "positions": []
+  },
+  "1134": {
+   "id": 1134,
+   "pids": [
+    30922
+   ],
+   "he": "שבתאי קטש",
+   "en": "Shabtay Katash",
+   "slugHe": "שבתאי-קטש",
+   "slugEn": "shabtay-katash",
+   "photo": "1134-58de240c.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 0,
+    "passed": 0
+   },
+   "positions": []
+  },
+  "945": {
+   "id": 945,
+   "pids": [
+    30057
+   ],
+   "he": "יואב קיש",
+   "en": "Yoav Kisch",
+   "slugHe": "יואב-קיש",
+   "slugEn": "yoav-kisch",
+   "photo": "945-9b3a6359.jpg",
+   "current": false,
+   "role": "שר החינוך",
+   "faction": "הליכוד",
+   "since": 2015,
+   "until": 2023,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 404,
+    "passed": 52
+   },
+   "positions": [
+    {
+     "role": "שר החינוך",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "השר לשיתוף פעולה אזורי",
+     "y0": 2022,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן שר הבריאות",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "סגן שר הבריאות",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "987": {
+   "id": 987,
+   "pids": [
+    30710
+   ],
+   "he": "אריאל קלנר",
+   "en": "Ariel Kallner",
+   "slugHe": "אריאל-קלנר",
+   "slugEn": "ariel-kallner",
+   "photo": "987-cee6ecca.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    23,
+    25
+   ],
+   "bills": {
+    "proposed": 192,
+    "passed": 22
+   },
+   "positions": []
+  },
+  "1114": {
+   "id": 1114,
+   "pids": [
+    30867
+   ],
+   "he": "יצחק קרויזר",
+   "en": "Yitzhak Kroizer",
+   "slugHe": "יצחק-קרויזר",
+   "slugEn": "yitzhak-kroizer",
+   "photo": "1114-76470c43.jpg",
+   "current": true,
+   "role": "",
+   "faction": "עוצמה יהודית",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 300,
+    "passed": 31
+   },
+   "positions": []
+  },
+  "1066": {
+   "id": 1066,
+   "pids": [
+    30807
+   ],
+   "he": "גלעד קריב",
+   "en": "Gilad Kariv",
+   "slugHe": "גלעד-קריב",
+   "slugEn": "gilad-kariv",
+   "photo": "1066-4f6e66aa.jpg",
+   "current": true,
+   "role": "",
+   "faction": "העבודה",
+   "since": 2021,
+   "until": null,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 315,
+    "passed": 11
+   },
+   "positions": []
+  },
+  "1011": {
+   "id": 1011,
+   "pids": [
+    30704
+   ],
+   "he": "שלמה קרעי",
+   "en": "Shlomo Karhi",
+   "slugHe": "שלמה-קרעי",
+   "slugEn": "shlomo-karhi",
+   "photo": "1011-cacbe54c.jpg",
+   "current": true,
+   "role": "שר התקשורת",
+   "faction": "הליכוד",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 330,
+    "passed": 10
+   },
+   "positions": [
+    {
+     "role": "שר התקשורת",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    }
+   ]
+  },
+  "1111": {
+   "id": 1111,
+   "pids": [
+    30832
+   ],
+   "he": "אליהו רביבו",
+   "en": "Eliyahu Revivo",
+   "slugHe": "אליהו-רביבו",
+   "slugEn": "eliyahu-revivo",
+   "photo": "1111-7db6271e.jpg",
+   "current": true,
+   "role": "סגן יושב-ראש הכנסת",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 166,
+    "passed": 15
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2025,
+     "y1": null,
+     "k": 25,
+     "now": true
+    }
+   ]
+  },
+  "831": {
+   "id": 831,
+   "pids": [
+    12959
+   ],
+   "he": "מירי מרים רגב",
+   "en": "Miri Miriam Regev",
+   "slugHe": "מירי-מרים-רגב",
+   "slugEn": "miri-miriam-regev",
+   "photo": "831-68f10bdd.jpg",
+   "current": false,
+   "role": "שרת התחבורה והבטיחות בדרכים",
+   "faction": "הליכוד",
+   "since": 2009,
+   "until": 2023,
+   "knessets": [
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 677,
+    "passed": 41
+   },
+   "positions": [
+    {
+     "role": "שרת התחבורה והבטיחות בדרכים",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "שרת התחבורה והבטיחות בדרכים",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "שרת התחבורה והבטיחות בדרכים",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    },
+    {
+     "role": "שרת התרבות והספורט",
+     "y0": 2020,
+     "y1": 2020,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "1117": {
+   "id": 1117,
+   "pids": [
+    30870
+   ],
+   "he": "משה רוט",
+   "en": "Moshe Roth",
+   "slugHe": "משה-רוט",
+   "slugEn": "moshe-roth",
+   "photo": "1117-4069a143.jpg",
+   "current": false,
+   "role": "",
+   "faction": "יהדות התורה",
+   "since": 2022,
+   "until": 2025,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 33,
+    "passed": 9
+   },
+   "positions": [
+    {
+     "role": "סגן יושב-ראש הכנסת",
+     "y0": 2023,
+     "y1": 2025,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1067": {
+   "id": 1067,
+   "pids": [
+    30812
+   ],
+   "he": "שמחה רוטמן",
+   "en": "Simcha Rothman",
+   "slugHe": "שמחה-רוטמן",
+   "slugEn": "simcha-rothman",
+   "photo": "1067-797b9b6b.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הציונות הדתית",
+   "since": 2021,
+   "until": null,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 245,
+    "passed": 24
+   },
+   "positions": []
+  },
+  "1009": {
+   "id": 1009,
+   "pids": [
+    30721
+   ],
+   "he": "עידן רול",
+   "en": "Idan Roll",
+   "slugHe": "עידן-רול",
+   "slugEn": "idan-roll",
+   "photo": "1009-9e78e32c.jpg",
+   "current": false,
+   "role": "",
+   "faction": "חה\"כ עידן רול",
+   "since": 2019,
+   "until": 2025,
+   "knessets": [
+    21,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 179,
+    "passed": 6
+   },
+   "positions": [
+    {
+     "role": "סגן שר במשרד החוץ",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן שר במשרד החוץ",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1048": {
+   "id": 1048,
+   "pids": [
+    30775
+   ],
+   "he": "יעל רון בן משה",
+   "en": "Yael Ron Ben-Moshe",
+   "slugHe": "יעל-רון-בן-משה",
+   "slugEn": "yael-ron-ben-moshe",
+   "photo": "1048-aecee791.jpg",
+   "current": true,
+   "role": "",
+   "faction": "המחנה הממלכתי",
+   "since": 2020,
+   "until": null,
+   "knessets": [
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 67,
+    "passed": 0
+   },
+   "positions": []
+  },
+  "897": {
+   "id": 897,
+   "pids": [
+    23601
+   ],
+   "he": "יואל רזבוזוב",
+   "en": "Yoel Razvozov",
+   "slugHe": "יואל-רזבוזוב",
+   "slugEn": "yoel-razvozov",
+   "photo": "897-d18eefa2.jpg",
+   "current": false,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2013,
+   "until": 2023,
+   "knessets": [
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 391,
+    "passed": 30
+   },
+   "positions": [
+    {
+     "role": "שר התיירות",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שר התיירות",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1068": {
+   "id": 1068,
+   "pids": [
+    30808
+   ],
+   "he": "אפרת רייטן מרום",
+   "en": "Efrat Rayten Marom",
+   "slugHe": "אפרת-רייטן-מרום",
+   "slugEn": "efrat-rayten-marom",
+   "photo": "1068-a6143688.jpg",
+   "current": true,
+   "role": "",
+   "faction": "העבודה",
+   "since": 2021,
+   "until": null,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 186,
+    "passed": 14
+   },
+   "positions": []
+  },
+  "946": {
+   "id": 946,
+   "pids": [
+    30082
+   ],
+   "he": "יפעת שאשא ביטון",
+   "en": "Yifat Shasha Biton",
+   "slugHe": "יפעת-שאשא-ביטון",
+   "slugEn": "yifat-shasha-biton",
+   "photo": "946-ddc8d79d.jpg",
+   "current": false,
+   "role": "",
+   "faction": "הימין הממלכתי",
+   "since": 2015,
+   "until": 2024,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 106,
+    "passed": 51
+   },
+   "positions": [
+    {
+     "role": "שרה",
+     "y0": 2023,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגנית יושב-ראש הכנסת",
+     "y0": 2023,
+     "y1": 2023,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שרת החינוך",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שרת החינוך",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "982": {
+   "id": 982,
+   "pids": [
+    30694
+   ],
+   "he": "אלון שוסטר",
+   "en": "Alon Schuster",
+   "slugHe": "אלון-שוסטר",
+   "slugEn": "alon-schuster",
+   "photo": "982-62d52b6c.jpg",
+   "current": true,
+   "role": "",
+   "faction": "כחול לבן - המחנה הממלכתי",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 225,
+    "passed": 13
+   },
+   "positions": [
+    {
+     "role": "סגן שר במשרד הביטחון",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "סגן שר במשרד הביטחון",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "שר החקלאות ופיתוח הכפר",
+     "y0": 2021,
+     "y1": 2021,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "שר החקלאות ופיתוח הכפר",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    }
+   ]
+  },
+  "1018": {
+   "id": 1018,
+   "pids": [
+    30706
+   ],
+   "he": "קטי קטרין שטרית",
+   "en": "Kathrin Shitrit",
+   "slugHe": "קטי-קטרין-שטרית",
+   "slugEn": "kathrin-shitrit",
+   "photo": "1018-947569c2.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 477,
+    "passed": 27
+   },
+   "positions": []
+  },
+  "899": {
+   "id": 899,
+   "pids": [
+    23591
+   ],
+   "he": "אלעזר שטרן",
+   "en": "Elazar Stern",
+   "slugHe": "אלעזר-שטרן",
+   "slugEn": "elazar-stern",
+   "photo": "899-1ea7a59c.jpg",
+   "current": false,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2013,
+   "until": 2026,
+   "knessets": [
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 770,
+    "passed": 49
+   },
+   "positions": [
+    {
+     "role": "השר לענייני מודיעין",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "השר לענייני מודיעין",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    }
+   ]
+  },
+  "1070": {
+   "id": 1070,
+   "pids": [
+    30786
+   ],
+   "he": "עמיחי שיקלי",
+   "en": "Amichai Chikli",
+   "slugHe": "עמיחי-שיקלי",
+   "slugEn": "amichai-chikli",
+   "photo": "1070-ca9eff61.jpg",
+   "current": false,
+   "role": "שר התפוצות והמאבק באנטישמיות",
+   "faction": "הליכוד",
+   "since": 2021,
+   "until": 2024,
+   "knessets": [
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 14,
+    "passed": 1
+   },
+   "positions": [
+    {
+     "role": "שר התפוצות והמאבק באנטישמיות",
+     "y0": 2022,
+     "y1": null,
+     "k": 25,
+     "now": true
+    },
+    {
+     "role": "השר לשוויון חברתי",
+     "y0": 2022,
+     "y1": 2024,
+     "k": 25,
+     "now": false
+    }
+   ]
+  },
+  "1004": {
+   "id": 1004,
+   "pids": [
+    30705
+   ],
+   "he": "מיכל שיר סגמן",
+   "en": "Michal Shir Segman",
+   "slugHe": "מיכל-שיר-סגמן",
+   "slugEn": "michal-shir-segman",
+   "photo": "1004-c7a074bb.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2019,
+   "until": null,
+   "knessets": [
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 205,
+    "passed": 8
+   },
+   "positions": []
+  },
+  "1112": {
+   "id": 1112,
+   "pids": [
+    30854
+   ],
+   "he": "נאור שירי",
+   "en": "Naor Shiri",
+   "slugHe": "נאור-שירי",
+   "slugEn": "naor-shiri",
+   "photo": "1112-a1451ea6.jpg",
+   "current": true,
+   "role": "",
+   "faction": "יש עתיד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 191,
+    "passed": 11
+   },
+   "positions": []
+  },
+  "1123": {
+   "id": 1123,
+   "pids": [
+    30876
+   ],
+   "he": "אושר שקלים",
+   "en": "Osher Shkalim",
+   "slugHe": "אושר-שקלים",
+   "slugEn": "osher-shkalim",
+   "photo": "1123-36d25de7.jpg",
+   "current": true,
+   "role": "",
+   "faction": "הליכוד",
+   "since": 2022,
+   "until": null,
+   "knessets": [
+    25
+   ],
+   "bills": {
+    "proposed": 130,
+    "passed": 17
+   },
+   "positions": []
+  },
+  "948": {
+   "id": 948,
+   "pids": [
+    30067
+   ],
+   "he": "עאידה תומא סלימאן",
+   "en": "Aida Touma Sliman",
+   "slugHe": "עאידה-תומא-סלימאן",
+   "slugEn": "aida-touma-sliman",
+   "photo": "948-a4378263.jpg",
+   "current": true,
+   "role": "",
+   "faction": "חד\"ש-תע\"ל",
+   "since": 2015,
+   "until": null,
+   "knessets": [
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 1518,
+    "passed": 47
+   },
+   "positions": []
+  },
+  "905": {
+   "id": 905,
+   "pids": [
+    23635
+   ],
+   "he": "פנינה תמנו",
+   "en": "Pnina Tameno",
+   "slugHe": "פנינה-תמנו",
+   "slugEn": "pnina-tameno",
+   "photo": "905-d155f444.jpg",
+   "current": true,
+   "role": "",
+   "faction": "כחול לבן - המחנה הממלכתי",
+   "since": 2013,
+   "until": null,
+   "knessets": [
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+   ],
+   "bills": {
+    "proposed": 455,
+    "passed": 44
+   },
+   "positions": [
+    {
+     "role": "שרת העלייה והקליטה",
+     "y0": 2022,
+     "y1": 2022,
+     "k": 25,
+     "now": false
+    },
+    {
+     "role": "שרת העלייה והקליטה",
+     "y0": 2021,
+     "y1": 2022,
+     "k": 24,
+     "now": false
+    },
+    {
+     "role": "שרת העלייה והקליטה",
+     "y0": 2020,
+     "y1": 2021,
+     "k": 23,
+     "now": false
+    },
+    {
+     "role": "סגנית יושב-ראש הכנסת",
+     "y0": 2013,
+     "y1": 2015,
+     "k": 19,
+     "now": false
+    }
+   ]
+  }
+ }
+}
