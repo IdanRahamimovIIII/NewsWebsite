@@ -160,8 +160,10 @@ a `$count` refusing unfiltered counts, dirty doc paths, CMS entities, the
 photo manifest, the build race, Back/Forward, the caret.
 
 ## Open
-- `/data/mkcards` is live (`pipeline\mkcards\NOTES.md`): directory cards
-  read it + link to the entity URLs (phase 4).
+- The worker pre-fills `/mk/` with linked cards; the live grid still
+  redraws with `<button>`s and ~300 requests → read `/data/mkcards` and
+  link to the entity URLs (phase 4). Live card shows an ongoing leaver role
+  as "· 2022", the baked one "· 2022–היום" — align?
 - English entity page: the baked hero says "Roni Malkai", then the live
   profile redraws the Hebrew name (cards carry `en` — use it on toggle?).
 - Coalition/opposition: a DevTools capture or a curated per-Knesset file.

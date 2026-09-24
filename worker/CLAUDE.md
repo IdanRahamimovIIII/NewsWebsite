@@ -105,6 +105,9 @@ re-derive a number here. Same discipline as v8, same CONTRACTS binding.
   → `node worker/wtest_pages.mjs` (also renders every local out\ card).
 - slugHe → he, slugEn → en; any other spelling 301s; unknown id → 404
   noindex; inputs down → 503 (never the site's catch-all). Memo 10 min.
+- `/mk/` (any query): `#dir` pre-filled with every card as `<a>` to its
+  page, order ≈ dirRank; any failure → the site's page as is. Today's role
+  = `nowRole` (a minister outside the Knesset has an ongoing position only).
 
 ## Open
 - v10: store bill id (`sess_item_id` / FK_ItemID) on each vote-index row →

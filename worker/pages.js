@@ -7,6 +7,7 @@
  *   /mk/<MkId>-<hebrew-name>/   the MK page in Hebrew, facts baked into the HTML
  *   /mk/<MkId>-<english-name>/  the same page in English
  *   /mk/<MkId>[-anything][/]    301 → the right address (wrong/missing slug, no slash)
+ *   /mk/                        the list, every card pre-filled as a link (else the site's page)
  *   /mk/sitemap.xml             every MK address, he+en, for search engines
  *   anything else               passed through to the site untouched
  *
@@ -40,6 +41,10 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
 const fill = (s, o) => String(s).replace(/\{(\w+)\}/g, (m, k) => (o[k] ?? m));
 const pathOf = (c, lang) => `/mk/${c.id}-${encodeURIComponent(lang === "en" ? c.slugEn : c.slugHe)}/`;
 
+// today's role: the card's, else an ongoing position (a minister who left
+// the Knesset under the Norwegian law has no Knesset role but is serving)
+const nowRole = c => String(c.role || ((c.positions || []).find(p => p.now) || {}).role || "").trim();
+
 /* ---- the facts, in the page's own markup (mk.view.js renderHead /
    renderTiles / renderPositions) so nothing jumps when the JS takes over ---- */
 function tenure(c, S) {
@@ -70,7 +75,7 @@ function heroHtml(c, S, lang) {
   return `<a class="backbtn" href="/mk/">${esc(S.backToDir)}</a>
      <div class="pheadcol">
        ${av}
-       <h1 class="mkname">${esc(name)}${c.role ? ` <span class="mkrole">· ${esc(c.role)}</span>` : ""}</h1>
+       <h1 class="mkname">${esc(name)}${nowRole(c) ? ` <span class="mkrole">· ${esc(nowRole(c))}</span>` : ""}</h1>
        ${story ? `<div class="story">${story}</div>` : ""}
      </div>`;
 }
@@ -87,7 +92,7 @@ function positionsHtml(c, S) {
     </div>`).join("");
 }
 function description(c, S, lang) {
-  const who = [c.role, c.faction].filter(Boolean).join(", ");
+  const who = [nowRole(c), c.faction].filter(Boolean).join(", ");
   return [lang === "en" ? c.en : c.he, who].filter(Boolean).join(" — ") + ". " +
     [tenure(c, S), billsLine(c, S)].filter(Boolean).join(". ") + ". " + S.entityDesc;
 }
@@ -127,7 +132,7 @@ function render(shell, c, I, lang) {
   const ld = {
     "@context": "https://schema.org", "@type": "Person",
     name, alternateName: lang === "en" ? c.he : c.en, url: canon, description: desc,
-    jobTitle: c.role || S.posMember,
+    jobTitle: nowRole(c) || S.posMember,
     memberOf: [{ "@type": "Organization", name: lang === "en" ? "Knesset" : "הכנסת" }]
       .concat(c.faction ? [{ "@type": "Organization", name: c.faction }] : []),
   };
@@ -176,6 +181,66 @@ function render(shell, c, I, lang) {
   return h;
 }
 
+/* ---- /mk/ itself: every card of the snapshot as a real link to its page,
+   in the directory's order (mk.data.js dirRank/dirOrder, approximated from
+   the card: serving first, then PM → alternate/deputy PM → Speaker →
+   opposition leader → minister → deputy minister → committee chair →
+   former minister; leavers by year left). The page's JS redraws it live. ---- */
+const MINISTER = /^ה?שר(ה|ת)?(\s|$)/;
+function tier(c) {
+  const r = nowRole(c);
+  if (r === "ראש הממשלה") return 10;
+  if (/ראש הממשלה החלופי|ממלא מקום ראש הממשלה|סגן ראש הממשלה/.test(r)) return 9;
+  if (/^יושב(ת)?[-–\s]?ראש הכנסת/.test(r)) return 8;
+  if (/ראש האופוזיציה/.test(r)) return 7;
+  if (MINISTER.test(r)) return 6;
+  if (/^סגנ(ית)?\s*שר/.test(r)) return 5;
+  if (/^(יושב(ת)?[-–\s]?ראש\s*ועד|יו"ר\s*ועד)/.test(r)) return 4;
+  return (c.positions || []).some(p => !p.now && MINISTER.test(String(p.role || "").trim())) ? 3 : 0;
+}
+const lastMin = c => Math.max(0, ...(c.positions || [])
+  .filter(p => !p.now && MINISTER.test(String(p.role || "").trim())).map(p => p.y1 || 0));
+function listOrder(a, b) {
+  return (b.current - a.current) ||
+    (a.current ? 0 : (b.until || 0) - (a.until || 0)) ||
+    (tier(b) - tier(a)) || (lastMin(b) - lastMin(a)) || a.he.localeCompare(b.he, "he");
+}
+function cardRole(c, S) {
+  if (c.current) return String(c.role || "").trim() || S.posMember;
+  const p = (c.positions || [])[0];                    // a leaver: the latest role (a minister outside the Knesset: today's)
+  if (!p) return S.posMember;
+  const span = p.now ? "–" + S.untilNow : p.y1 && p.y1 !== p.y0 ? "–" + p.y1 : "";   // ongoing says so (the live card shows only the start)
+  return String(p.role || "").trim() + (p.y0 ? ` · ${p.y0}${span}` : "");
+}
+function listHtml(cards, S) {
+  const list = Object.values(cards.data.members).sort(listOrder);
+  return `<div class="dirgrid">` + list.map(c => {
+    const initials = c.he.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("");
+    const av = c.photo ? `<img class="avatar avxl" src="${esc(PHOTO_BASE + c.photo)}" alt="" loading="lazy">`
+      : `<span class="avatar avxl">${esc(initials)}</span>`;
+    const years = c.since ? `${c.since}–${c.current ? S.untilNow : (c.until || "")}` : "";
+    const b = c.bills && c.bills.passed;                 // none or unknown → no line (Mercy)
+    const bills = !b ? "" : b === 1 ? S.dirPassed1 : fill(S.dirPassed, { n: b });
+    return `<a class="dircard" href="${esc(pathOf(c, "he"))}">${av}` +
+      `<span class="dcname">${esc(c.he)}</span><span class="dcrole">${esc(cardRole(c, S))}</span>` +
+      (c.faction ? `<span class="dcparty" title="${esc(S.factionTip)}">${esc(c.faction)}</span>` : "") +
+      (years ? `<span class="dcyears">${esc(years)}</span>` : "") +
+      (bills ? `<span class="dcbills">${esc(bills)}</span>` : "") + `</a>`;
+  }).join("") + `</div>`;
+}
+async function listPage(request, url) {
+  const [cards, I, shell] = await Promise.all([
+    cached("cards", async () => JSON.parse(await getText(CARDS_URL))),
+    cached("i18n", async () => JSON.parse(await getText(url.origin + "/mk/mk.i18n.json"))),
+    cached("shell", () => getText(url.origin + "/mk/")),
+  ]);
+  if (!cards || !cards.data || !cards.data.members) throw new Error("mkcards: no members");
+  const re = /(<div id="dir"[^>]*>)(?:<div class="loading"[^>]*>[^<]*<\/div>)?<\/div>/;
+  if (!re.test(shell)) throw new Error("shell: #dir anchor missing");
+  const h = shell.replace(re, (m, a) => a + listHtml(cards, I.he) + "</div>");
+  return html(request.method === "HEAD" ? null : h);
+}
+
 function sitemap(cards) {
   const alts = c => ["he", "en"].map(l =>
     `<xhtml:link rel="alternate" hreflang="${l}" href="${esc(SITE + pathOf(c, l))}"/>`).join("");
@@ -210,9 +275,11 @@ export default {
   async fetch(request) {
     const url = new URL(request.url);
     if (request.method !== "GET" && request.method !== "HEAD") return fetch(request);
+    // the list: pre-filled when everything is at hand, else the site's page as is
+    if (url.pathname === "/mk/") return listPage(request, url).catch(() => fetch(request));
     const isMap = url.pathname === "/mk/sitemap.xml";
     const m = /^\/mk\/(\d+)(?:-([^/]*))?(\/?)$/.exec(url.pathname);
-    if (!m && !isMap) return fetch(request);           // the page itself, its files — the site's
+    if (!m && !isMap) return fetch(request);           // the page's files — the site's
 
     let cards, I;
     try {

@@ -92,8 +92,9 @@ defined · `esc(s)` · `isoDaysAgo(n)` · `dateOf(v)` / `fmtDate(v,"long"?)` ·
 navCourt, loading, searchBtn, empty, credit, err, updatedAt, errCors, errProxy,
 aboutBody, contactLabel (footer about block — static markup in every page
 footer above the credit line: `p.aboutpara` + `p.aboutmail` with mailto
-contact@ourmoneyil.com; styles in style.css; copy it when adding a page;
-wording is Mercy's).
+contact@ourmoneyil.com, then its own `p.aboutmail` devLabel + /api/ URL
+(same line = RTL/LTR links run together); styles in style.css;
+copy it when adding a page; wording is Mercy's).
 Change this surface → update this block.
 
 ## Relay routes the pages call (owner: `worker\CLAUDE.md`)

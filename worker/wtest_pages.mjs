@@ -46,7 +46,7 @@ const enc = s => encodeURIComponent(s);
 const divBalance = h => (h.match(/<div\b/g) || []).length - (h.match(/<\/div>/g) || []).length;
 
 // 1. everything that isn't an MK address belongs to the site
-for (const p of ["/mk/", "/mk/mk.css", "/mk/?name=x", "/mk/mk.i18n.json", "/mk/tests/x"]) {
+for (const p of ["/mk/mk.css", "/mk/mk.i18n.json", "/mk/tests/x"]) {
   const r = await get(p), site = await (await fetch(ORIGIN + p)).text();
   ok((await r.text()) === site, "pass-through " + p);
 }
@@ -123,6 +123,37 @@ r = await get("/mk/sitemap.xml"); h = await r.text();
 ok(r.headers.get("content-type").startsWith("application/xml"), "sitemap type");
 ok((h.match(/<url>/g) || []).length === 8 && (h.match(/<xhtml:link /g) || []).length === 16, "sitemap: 4 cards × 2 langs, paired");
 ok(h.includes(`<loc>${ORIGIN}${heP}</loc><lastmod>2026-09-24</lastmod>`), "sitemap loc + lastmod");
+
+// 7b. /mk/ itself: every card a real link, in the directory's order; a
+// minister outside the Knesset (left under the Norwegian law) keeps today's role
+{
+  const { default: wl } = await import("./pages.js?list" + Date.now());
+  const LIST = JSON.parse(JSON.stringify(FIX));
+  Object.assign(LIST.data.members, {
+    "90": card({ id: 90, he: "בנימין נתניהו", en: "Benjamin Netanyahu", slugHe: "בנימין-נתניהו", slugEn: "benjamin-netanyahu", role: "ראש הממשלה", bills: { proposed: 3, passed: 0 } }),
+    "91": card({ id: 91, he: "דוד אמסלם", en: "David Amsalem", slugHe: "דוד-אמסלם", slugEn: "david-amsalem", current: false, until: 2023,
+      positions: [{ role: "שר נוסף במשרד המשפטים", y0: 2023, y1: null, k: 25, now: true }] }),
+  });
+  const keep = upstream.cards; upstream.cards = () => new Response(JSON.stringify(LIST));
+  r = await wl.fetch(new Request(ORIGIN + "/mk/")); h = await r.text();
+  const links = [...h.matchAll(/<a class="dircard" href="([^"]+)">/g)].map(x => x[1]);
+  ok(r.status === 200 && links.length === 6, "list: all 6 cards as links");
+  ok((await (await wl.fetch(new Request(ORIGIN + "/mk/?name=x"))).text()).includes(links[0]), "list: ?name= arrivals get it too");
+  ok(links[0] === "/mk/90-" + enc("בנימין-נתניהו") + "/" && links[1].startsWith("/mk/1096-"), "list: PM, then the minister");
+  ok(links.slice(-2).includes("/mk/91-" + enc("דוד-אמסלם") + "/") && links.slice(-2).includes("/mk/31-" + enc("אלי-כהן") + "/"), "list: leavers last");
+  ok(h.includes('<span class="dcrole">שר נוסף במשרד המשפטים · 2023–היום</span>'), "list: a minister outside the Knesset keeps the role");
+  ok(!/dcbills">[^<]*0 /.test(h) && h.includes(fill(JSON.parse(I18N).he.dirPassed, 2)), "list: laws passed, never a 0");
+  ok(!/<div id="dir"><div class="loading"/.test(h) && divBalance(h) === divBalance(SHELL), "list: loader replaced, divs balanced");
+  ok(h.includes('data-i18n="devLabel"'), "footer carries the API link");
+  r = await wl.fetch(new Request(ORIGIN + `/mk/91-${enc("דוד-אמסלם")}/`)); h = await r.text();
+  ok(h.includes('<span class="mkrole">· שר נוסף במשרד המשפטים</span>') && h.includes('"jobTitle":"שר נוסף במשרד המשפטים"'), "entity: today's role for a minister outside the Knesset");
+  // inputs down or the anchor gone → the site's own /mk/, never an error
+  upstream.cards = () => new Response("nope", { status: 500 });
+  const { default: wd } = await import("./pages.js?listdown" + Date.now());
+  ok((await (await wd.fetch(new Request(ORIGIN + "/mk/"))).text()) === SHELL, "list: snapshot down → the site's page");
+  upstream.cards = keep;
+}
+function fill(s, n) { return s.replace("{n}", n); }
 
 // 8. snapshot down → 503, not the site
 const { default: w2 } = await import("./pages.js?down" + Date.now());
