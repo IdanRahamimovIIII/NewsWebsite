@@ -106,9 +106,14 @@ re-derive a number here. Same discipline as v8, same CONTRACTS binding.
 - slugHe → he, slugEn → en; any other spelling 301s; unknown id → 404
   noindex; inputs down → 503 (never the site's catch-all). Memo 10 min +
   edge cache 5 min → after a site deploy, /mk/ pages show the old shell ≤15 min.
-- `/mk/` (any query): `#dir` pre-filled with every card as `<a>` to its
-  page, order ≈ dirRank; any failure → the site's page as is. Today's role
+- The snapshot spans K16 → today; `/mk/` (any query) pre-fills `#dir` with
+  the CURRENT Knesset's cards only (`inKnesset`), as `<a>`, order ≈
+  dirRank; any failure → the site's page as is. Pages + sitemap: everyone. Today's role
   = `nowRole` (a minister outside the Knesset has an ongoing position only).
+- `/mk/roster.txt`: every card in exactly one group (gov · deputy · Knesset
+  post · member · left this term · earlier Knessets only), counted — AI agents' one-fetch answer. Hebrew
+  regexes: "סגן" ends in a FINAL nun (ן); "סגן שר במשרד ראש הממשלה" is a
+  deputy, so PM titles match whole (`PM`).
 
 ## Open
 - v10: store bill id (`sess_item_id` / FK_ItemID) on each vote-index row →

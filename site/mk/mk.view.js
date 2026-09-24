@@ -223,12 +223,16 @@ function syncEntityLang() {
     document.title = ENTITY.title[lang];
   } catch (e) { /* never fatal */ }
 }
-/* the entity address names an MkId: open the directory's entry for it
-   (namesakes resolved there), else fall back to the name */
+/* the entity address names an MkId: open the directory's entry for it,
+   else (an earlier Knesset) the search result carrying that MkId — a
+   namesake must never open instead — and only then the plain name */
 async function openByMkId(id, nm) {
+  const has = x => (x.cmb || []).some(r => +r.Id === +id);
   await buildDirectory().catch(() => null);
-  const e = (state._dir || []).find(x => (x.cmb || []).some(r => +r.Id === +id));
+  const e = (state._dir || []).find(has);
   if (e) return openPerson(e);
+  const c = (await findCandidates(nm).catch(() => [])).find(has);
+  if (c) return openPerson(c);
   return openByName(nm);
 }
 function showDirectory() {
@@ -601,7 +605,7 @@ function votePage(d) {
 /* =====================================================================
    8. INIT
    ===================================================================== */
-const PAGE_VER = "26.09ac · רשימה אפויה"; // bumped on every update — an older stamp in the footer means a cached/old copy
+const PAGE_VER = "26.09ae · כל חברי הכנסת מ-2003"; // bumped on every update — an older stamp in the footer means a cached/old copy
 document.getElementById("pagever").textContent = "גרסה " + PAGE_VER;
 if (ENTITY && ENTITY.lang === "en") lang = "en";   // the English entity address
 applyLang();

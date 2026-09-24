@@ -9,6 +9,7 @@
  *   /mk/<MkId>[-anything][/]    301 → the right address (wrong/missing slug, no slash)
  *   /mk/                        the list, every card pre-filled as a link (else the site's page)
  *   /mk/sitemap.xml             every MK address, he+en, for search engines
+ *   /mk/roster.txt              who holds what today, grouped + counted (for AI agents)
  *   anything else               passed through to the site untouched
  *
  * The page IS the site's /mk/ page: its HTML is fetched from the site, the
@@ -41,8 +42,13 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
 const fill = (s, o) => String(s).replace(/\{(\w+)\}/g, (m, k) => (o[k] ?? m));
 const pathOf = (c, lang) => `/mk/${c.id}-${encodeURIComponent(lang === "en" ? c.slugEn : c.slugHe)}/`;
 
+const MINISTER = /^ה?שר(ה|ת)?(\s|$)/;
+const PM = /^(ראש הממשלה|ראש הממשלה החלופי|ממלא מקום ראש הממשלה|(סגן|סגנית) ראש הממשלה)$/;   // "סגן שר במשרד ראש הממשלה" is a deputy minister
+const DEPUTY = /^(סגן|סגנית)\s+שר(ה|ת)?(\s|$)/;
+const GOV = { test: r => MINISTER.test(r) || PM.test(r) || DEPUTY.test(r) };   // minister · deputy minister · PM and deputies
 // today's role: the card's, else an ongoing position (a minister who left
 // the Knesset under the Norwegian law has no Knesset role but is serving)
+const inKnesset = (c, k) => (c.knessets || []).includes(k);   // the snapshot spans K16 → today
 const nowRole = c => String(c.role || ((c.positions || []).find(p => p.now) || {}).role || "").trim();
 
 /* ---- the facts, in the page's own markup (mk.view.js renderHead /
@@ -53,7 +59,11 @@ function tenure(c, S) {
     const n = new Date().getFullYear() - c.since;
     return fill(S.tenureSince, { y: c.since }) + (n >= 2 ? " " + fill(S.tenureYears, { n }) : "");
   }
-  return fill(S.tenureSpan, { a: c.since, b: c.until || S.untilNow });
+  // left the Knesset but still in government (Norwegian law): say both, or
+  // "Knesset 2015–2023" next to "minister, now" reads as a contradiction
+  const gov = !c.current && (c.positions || []).find(p => p.now && GOV.test(String(p.role || "").trim()));
+  return fill(S.tenureSpan, { a: c.since, b: c.until || S.untilNow }) +
+    (gov && gov.y0 && S.tenureGov ? " · " + fill(S.tenureGov, { y: gov.y0 }) : "");   // (words not deployed yet → skip)
 }
 function billsLine(c, S) {
   const b = c.bills;
@@ -93,8 +103,9 @@ function positionsHtml(c, S) {
 }
 function description(c, S, lang) {
   const who = [nowRole(c), c.faction].filter(Boolean).join(", ");
+  const bits = [tenure(c, S), billsLine(c, S)].map(s => s.replace(/\.$/, "")).filter(Boolean);   // no ".."
   return [lang === "en" ? c.en : c.he, who].filter(Boolean).join(" — ") + ". " +
-    [tenure(c, S), billsLine(c, S)].filter(Boolean).join(". ") + ". " + S.entityDesc;
+    (bits.length ? bits.join(". ") + ". " : "") + S.entityDesc;
 }
 
 /* ---- the site's /mk/ shell → this MK's page. Each step touches one known
@@ -186,7 +197,6 @@ function render(shell, c, I, lang) {
    the card: serving first, then PM → alternate/deputy PM → Speaker →
    opposition leader → minister → deputy minister → committee chair →
    former minister; leavers by year left). The page's JS redraws it live. ---- */
-const MINISTER = /^ה?שר(ה|ת)?(\s|$)/;
 function tier(c) {
   const r = nowRole(c);
   if (r === "ראש הממשלה") return 10;
@@ -194,7 +204,7 @@ function tier(c) {
   if (/^יושב(ת)?[-–\s]?ראש הכנסת/.test(r)) return 8;
   if (/ראש האופוזיציה/.test(r)) return 7;
   if (MINISTER.test(r)) return 6;
-  if (/^סגנ(ית)?\s*שר/.test(r)) return 5;
+  if (DEPUTY.test(r)) return 5;
   if (/^(יושב(ת)?[-–\s]?ראש\s*ועד|יו"ר\s*ועד)/.test(r)) return 4;
   return (c.positions || []).some(p => !p.now && MINISTER.test(String(p.role || "").trim())) ? 3 : 0;
 }
@@ -213,7 +223,7 @@ function cardRole(c, S) {
   return String(p.role || "").trim() + (p.y0 ? ` · ${p.y0}${span}` : "");
 }
 function listHtml(cards, S) {
-  const list = Object.values(cards.data.members).sort(listOrder);
+  const list = Object.values(cards.data.members).filter(c => inKnesset(c, cards.data.knesset)).sort(listOrder);   // earlier Knessets: pages + sitemap + roster
   return `<div class="dirgrid">` + list.map(c => {
     const initials = c.he.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("");
     const av = c.photo ? `<img class="avatar avxl" src="${esc(PHOTO_BASE + c.photo)}" alt="" loading="lazy">`
@@ -237,8 +247,64 @@ async function listPage(request, url) {
   if (!cards || !cards.data || !cards.data.members) throw new Error("mkcards: no members");
   const re = /(<div id="dir"[^>]*>)(?:<div class="loading"[^>]*>[^<]*<\/div>)?<\/div>/;
   if (!re.test(shell)) throw new Error("shell: #dir anchor missing");
-  const h = shell.replace(re, (m, a) => a + listHtml(cards, I.he) + "</div>");
+  const h = shell.replace(re, (m, a) => a + listHtml(cards, I.he) + "</div>")
+    .replace(/<\/head>/, `<link rel="alternate" type="text/plain" href="/mk/roster.txt" title="Knesset members and ministers — plain text">
+</head>`);
   return html(request.method === "HEAD" ? null : h);
+}
+
+/* ---- /mk/roster.txt: who holds what today, grouped and counted, in one
+   plain-text fetch — for AI agents (they summarise long HTML badly and
+   can't open 152 pages). English prose: it's machine-facing like llms.txt;
+   roles stay in the register's Hebrew. Every card lands in exactly one group. ---- */
+function rosterTxt(cards) {
+  const K = cards.data.knesset;
+  const all = Object.values(cards.data.members);
+  const now = all.filter(c => inKnesset(c, K)), earlier = all.filter(c => !inKnesset(c, K));
+  const firstK = Math.min(K, ...all.flatMap(c => c.knessets || []));
+  const rolesOf = c => [...new Set([c.role, ...(c.positions || []).filter(p => p.now).map(p => p.role)]
+    .map(r => String(r || "").trim()).filter(Boolean))];
+  const inGov = c => rolesOf(c).some(r => MINISTER.test(r) || PM.test(r));
+  const deputy = c => rolesOf(c).some(r => DEPUTY.test(r));
+  // the register has had no committee-chair rows this Knesset: say so only
+  // while that's true — once chairs appear they land in "Knesset posts"
+  const chairs = now.some(c => rolesOf(c).some(r => /^(יושב(ת)?[-–\s]?ראש|יו"ר)\s*(ה)?ועד/.test(r)));
+  const groups = [
+    ["Government — ministers · הממשלה — שרים (incl. PM and deputy PM)", inGov],
+    ["Deputy ministers · סגני שרים", c => !inGov(c) && deputy(c)],
+    [`Knesset posts · תפקידים בכנסת (Speaker, deputy speakers, opposition leader, coalition chair${chairs ? ", committee chairs" : ""})`,
+      c => c.current && !inGov(c) && !deputy(c) && rolesOf(c).length],
+    ["Other serving members · חברי כנסת", c => c.current && !inGov(c) && !deputy(c) && !rolesOf(c).length],
+    ["Left the Knesset during this term · עזבו את הכנסת", c => !c.current && !inGov(c) && !deputy(c)],
+  ];
+  const line = c => {
+    const roles = rolesOf(c), past = !c.current && (c.positions || [])[0];
+    const b = c.bills && c.bills.proposed ? `${c.bills.proposed} bill${c.bills.proposed === 1 ? "" : "s"}, ${c.bills.passed} became law` : "";
+    const mk = c.current ? `MK since ${c.since}` : `MK ${c.since}–${c.until || ""}` + (inGov(c) || deputy(c) ? " (not an MK now)" : "");
+    return "- " + [`${c.he} | ${c.en}`,
+      roles.length ? roles.join("; ") : past ? `last post: ${String(past.role || "").trim()} ${past.y0 || ""}${past.y1 && past.y1 !== past.y0 ? "–" + past.y1 : ""}` : "",
+      c.faction, mk, b, SITE + pathOf(c, "en")].filter(Boolean).join(" — ");
+  };
+  const date = cards.t ? new Date(cards.t).toISOString().slice(0, 10) : "";
+  let out = `# Knesset members and government ministers — הכסף שלנו (Our Money)
+
+All ${now.length} people who served in the ${K}th Knesset (including those who left it), grouped by the post they hold today;
+then the ${earlier.length} members of earlier Knessets only (the ${firstK}th–${K - 1}th).
+Source: the Knesset's official register (KNS_PersonToPosition), rebuilt monthly${date ? "; this snapshot: " + date : ""}.
+Ministers who never sat in the ${cards.data.knesset}th Knesset are not in this list.${chairs ? "" : `
+Committee chairs are not listed: the register holds no committee-chair rows for this Knesset.`}
+Each line: Hebrew name | English name — posts today (as the register writes them) — faction — Knesset years — bills — page.
+Machine-readable: https://api.ourmoneyil.com/data/mkcards · every page: ${SITE}/mk/sitemap.xml
+`;
+  const byTier = (a, b) => (tier(b) - tier(a)) || a.he.localeCompare(b.he, "he");
+  for (const [title, test] of groups) {
+    const rows = now.filter(test).sort(byTier);
+    out += `\n## ${title} (${rows.length})\n` + rows.map(line).join("\n") + "\n";
+  }
+  const byLeft = (a, b) => ((b.until || 0) - (a.until || 0)) || a.he.localeCompare(b.he, "he");
+  out += `\n## Members of earlier Knessets only · חברי כנסות קודמות (${earlier.length})\n` +
+    earlier.sort(byLeft).map(line).join("\n") + "\n";
+  return out;
 }
 
 function sitemap(cards) {
@@ -277,9 +343,9 @@ export default {
     if (request.method !== "GET" && request.method !== "HEAD") return fetch(request);
     // the list: pre-filled when everything is at hand, else the site's page as is
     if (url.pathname === "/mk/") return listPage(request, url).catch(() => fetch(request));
-    const isMap = url.pathname === "/mk/sitemap.xml";
+    const isMap = url.pathname === "/mk/sitemap.xml", isRoster = url.pathname === "/mk/roster.txt";
     const m = /^\/mk\/(\d+)(?:-([^/]*))?(\/?)$/.exec(url.pathname);
-    if (!m && !isMap) return fetch(request);           // the page's files — the site's
+    if (!m && !isMap && !isRoster) return fetch(request);           // the page's files — the site's
 
     let cards, I;
     try {
@@ -293,6 +359,8 @@ export default {
       return new Response("Temporarily unavailable — " + e.message, {
         status: 503, headers: { "content-type": "text/plain; charset=utf-8", "retry-after": "300" } });
     }
+    if (isRoster) return new Response(request.method === "HEAD" ? null : rosterTxt(cards), {
+      headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" } });
     if (isMap) return new Response(request.method === "HEAD" ? null : sitemap(cards), {
       headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
 

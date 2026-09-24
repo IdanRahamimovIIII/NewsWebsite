@@ -119,7 +119,8 @@ Enter opens a lone card; `openByName` with namesakes filters to them.
   Search card + tagline hidden while open. `state.seq` cancels older loads.
 - Entity address `/mk/<MkId>-<slug>/` (worker `pages.js`, `worker\CLAUDE.md`):
   same shell, facts pre-baked, `window.MK_ENTITY` → `openByMkId` (directory
-  entry by cmb Id, else by name); `atEntity` = no `?name=` push; language
+  entry by cmb Id, else the `findCandidates` hit carrying that Id — never a
+  namesake — else by name); `atEntity` = no `?name=` push; language
   toggle swaps he/en address; Back to list → `/mk/`. Shell ids/classes are
   the worker's anchors — change them → run `worker/wtest_pages.mjs`.
 - Hero (Mercy: guide the eyes, don't throw data): portrait 128px (104 phones)
@@ -164,6 +165,9 @@ photo manifest, the build race, Back/Forward, the caret.
   redraws with `<button>`s and ~300 requests → read `/data/mkcards` and
   link to the entity URLs (phase 4). Live card shows an ongoing leaver role
   as "· 2022", the baked one "· 2022–היום" — align?
+- Port the builder's second pass (`pipeline\mkcards` norm_name/nickname)
+  to `findCandidates`/name bridge: former MKs like בר-לב, רפאל פרץ, מוץ
+  מטלון miss their PersonID on the live page too.
 - English entity page: the baked hero says "Roni Malkai", then the live
   profile redraws the Hebrew name (cards carry `en` — use it on toggle?).
 - Coalition/opposition: a DevTools capture or a curated per-Knesset file.

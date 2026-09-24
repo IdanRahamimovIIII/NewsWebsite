@@ -5,7 +5,8 @@ visitors to the content pages. No JS, no strings files, not in the nav, not
 in the bake — plain HTML edited directly. In sitemap.xml; linked from
 llms.txt / llms-full.txt (site root — keep all three in sync with this page).
 
-Documented surface (Mercy's ruling): /data/* snapshots, /contracts
+Documented surface (Mercy's ruling): /data/* snapshots (incl. /data/mkcards
++ the worker's /mk/roster.txt, both as real links — agents only open linked URLs), /contracts
 /contract /supplier, /search/votes, /preset/*. NOT documented: /b64/
 passthrough (invites third-party traffic through the worker), /contractors/*
 (page not shipped), anything mutating. Changing a documented route in

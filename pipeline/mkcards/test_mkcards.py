@@ -16,6 +16,13 @@ source is a rubber stamp):
   - pages capped at 100 rows whatever $top says
   - $count refusing an unfiltered count
   - a missing photo, a missing English name, a leaver, zero bills
+  - since 2003: namesakes 20 years apart (K16 "כהן אלי" vs K25 "כהן אלי
+    אליהו", the live spellings) decided by rows in THEIR OWN Knessets; a
+    former MK whose register rows were left OPEN (not a minister today)
+  - the eight live misses of the first run since 2003: hyphens ("בר-לב" /
+    "בר לב"), parentheses ("משה (מוץ) מטלון"), a name split differently in
+    KNS_Person ("עבד אלחכים" / "עבד אל חכים"), nicknames ("רפאל" / "רפי",
+    "אבי" / "אברהם") — with עמיר פרץ sitting in the same Knesset as a trap
 """
 import io, json, re, sys, unittest, urllib.parse
 from contextlib import redirect_stdout
@@ -42,7 +49,19 @@ PERSONS = {          # PersonID → name, persons form ("יאיר לפיד")
     # 500 "רות קלדרון" exists ONLY in KNS_Person (snapshot miss → fallback)
     "600": "אמיר אוחנה",        # the Speaker, en-dash role
     "700": "משה גפני",          # leaver fixture (until year)
+    "800": "ישראל ישראלי",      # K17 only; the register left his rows open
+    "900": "עמר בר לב",          # cmb "בר-לב עמר" (hyphen)
+    "901": "משה (מוץ) מטלון",    # cmb "מטלון משה מוץ" (parentheses)
+    "902": "רפי פרץ",            # cmb "פרץ רפאל" (nickname)
+    "903": "עמיר פרץ",           # the trap: same surname, same Knesset
+    "905": "אברהם וורצמן",       # cmb "וורצמן אבי" (nickname)
+    # 904 "עבד אל חכים חאג' יחיא" exists ONLY in KNS_Person, split differently
 }
+
+KNS_PERSON = [       # what KNS_Person answers by LastName
+    {"PersonID": 500, "FirstName": "רות", "LastName": "קלדרון"},
+    {"PersonID": 904, "FirstName": "עבד אל חכים", "LastName": "חאג' יחיא"},
+]
 
 # cmb MKS rows: Id = MkId (stable), KnessetId, faction_id
 MKS = [
@@ -50,12 +69,19 @@ MKS = [
     {"Id": 771, "Name": "נתניהו בנימין", "KnessetId": 24, "faction_id": 1},
     {"Id": 771, "Name": "נתניהו בנימין", "KnessetId": 16, "faction_id": 1},
     {"Id": 802, "Name": "גנץ בני", "KnessetId": 25, "faction_id": 2},
-    {"Id": 803, "Name": "כהן אלי", "KnessetId": 25, "faction_id": 1},
+    {"Id": 803, "Name": "כהן אלי אליהו", "KnessetId": 25, "faction_id": 1},   # the live spelling
     {"Id": 804, "Name": "פינדרוס יצחק זאב", "KnessetId": 25, "faction_id": 3},
     {"Id": 805, "Name": "קלדרון רות", "KnessetId": 25, "faction_id": 2},
     {"Id": 806, "Name": "אוחנה אמיר", "KnessetId": 25, "faction_id": 1},
     {"Id": 807, "Name": "גפני משה", "KnessetId": 25, "faction_id": 3},
     {"Id": 807, "Name": "גפני משה", "KnessetId": 24, "faction_id": 3},
+    {"Id": 810, "Name": "כהן אלי", "KnessetId": 16, "faction_id": 1},      # the OTHER אלי כהן
+    {"Id": 811, "Name": "ישראלי ישראל", "KnessetId": 17, "faction_id": 2},
+    {"Id": 866, "Name": "בר-לב עמר", "KnessetId": 20, "faction_id": 2},
+    {"Id": 838, "Name": "מטלון משה מוץ", "KnessetId": 21, "faction_id": 2},
+    {"Id": 1021, "Name": "פרץ רפאל", "KnessetId": 21, "faction_id": 2},
+    {"Id": 923, "Name": "חאג' יחיא  עבד אלחכים", "KnessetId": 20, "faction_id": 2},   # the live double space
+    {"Id": 870, "Name": "וורצמן אבי", "KnessetId": 20, "faction_id": 2},
 ]
 
 FACTIONS = [
@@ -66,6 +92,9 @@ FACTIONS = [
 
 KNESSETS = [
     {"KnessetId": 16, "KnessetStart": "2003-02-17T00:00:00", "KnessetEnd": "2006-04-17T00:00:00"},
+    {"KnessetId": 17, "KnessetStart": "2006-04-17T00:00:00", "KnessetEnd": "2009-03-31T00:00:00"},
+    {"KnessetId": 20, "KnessetStart": "2015-03-31T00:00:00", "KnessetEnd": "2019-04-30T00:00:00"},
+    {"KnessetId": 21, "KnessetStart": "2019-04-30T00:00:00", "KnessetEnd": "2019-10-03T00:00:00"},
     {"KnessetId": 24, "KnessetStart": "2021-04-06T00:00:00", "KnessetEnd": "2022-11-15T00:00:00"},
     {"KnessetId": 25, "KnessetStart": "2022-11-15T00:00:00", "KnessetEnd": None},
 ]
@@ -73,11 +102,18 @@ KNESSETS = [
 DROP_HE = [
     {"ID": 771, "Name": "נתניהו בנימין", "IsCurrent": True},
     {"ID": 802, "Name": "גנץ בני", "IsCurrent": True},
-    {"ID": 803, "Name": "כהן אלי", "IsCurrent": True},
+    {"ID": 803, "Name": "כהן אלי אליהו", "IsCurrent": True},
     {"ID": 804, "Name": "פינדרוס יצחק זאב", "IsCurrent": True},
     {"ID": 805, "Name": "קלדרון רות", "IsCurrent": True},
     {"ID": 806, "Name": "אוחנה אמיר", "IsCurrent": True},
     {"ID": 807, "Name": "גפני משה", "IsCurrent": False},   # left mid-Knesset
+    {"ID": 810, "Name": "כהן אלי", "IsCurrent": False},
+    {"ID": 811, "Name": "ישראלי ישראל", "IsCurrent": False},
+    {"ID": 866, "Name": "בר-לב עמר", "IsCurrent": False},
+    {"ID": 838, "Name": "מטלון משה מוץ", "IsCurrent": False},
+    {"ID": 1021, "Name": "פרץ רפאל", "IsCurrent": False},
+    {"ID": 923, "Name": "חאג' יחיא  עבד אלחכים", "IsCurrent": False},
+    {"ID": 870, "Name": "וורצמן אבי", "IsCurrent": False},
 ]
 
 DROP_EN = [
@@ -88,6 +124,13 @@ DROP_EN = [
     {"ID": 805, "Name": "Ruth Calderon", "IsCurrent": True},
     {"ID": 806, "Name": "Amir Ohana", "IsCurrent": True},
     {"ID": 807, "Name": "Moshe Gafni", "IsCurrent": False},
+    {"ID": 810, "Name": "Eli Cohen", "IsCurrent": False},
+    {"ID": 811, "Name": "Israel Israeli", "IsCurrent": False},
+    {"ID": 866, "Name": "Omer Bar-Lev", "IsCurrent": False},
+    {"ID": 838, "Name": "Moshe Mutz Matalon", "IsCurrent": False},
+    {"ID": 1021, "Name": "Rafael Peretz", "IsCurrent": False},
+    {"ID": 923, "Name": "Abd al-Hakim Hajj Yahya", "IsCurrent": False},
+    {"ID": 870, "Name": "Avi Wortzman", "IsCurrent": False},
 ]
 
 # register rows for K25 (the bulk query). PM listed TWICE under two gendered
@@ -144,6 +187,29 @@ POS_ALL = POS_K25 + [
     {"PersonID": 700, "PositionID": 61, "KnessetNum": 24, "StartDate": "2021-04-06T00:00:00",
      "FinishDate": "2022-11-15T00:00:00", "GovMinistryName": None, "DutyDesc": 'יו"ר ועדת הכספים',
      "CommitteeName": "ועדת הכספים", "FactionName": None, "IsCurrent": False},
+    # the other אלי כהן: K16 only
+    {"PersonID": 301, "PositionID": 43, "KnessetNum": 16, "StartDate": "2003-02-17T00:00:00",
+     "FinishDate": "2006-04-17T00:00:00", "GovMinistryName": None, "DutyDesc": "חבר הכנסת",
+     "CommitteeName": None, "FactionName": None, "IsCurrent": False},
+    # K17 only — and the register never closed his rows (the live dirt)
+    {"PersonID": 800, "PositionID": 43, "KnessetNum": 17, "StartDate": "2006-04-17T00:00:00",
+     "FinishDate": None, "GovMinistryName": None, "DutyDesc": "חבר הכנסת",
+     "CommitteeName": None, "FactionName": None, "IsCurrent": True},
+    {"PersonID": 800, "PositionID": 40, "KnessetNum": 17, "StartDate": "2007-01-01T00:00:00",
+     "FinishDate": None, "GovMinistryName": "משרד התיירות", "DutyDesc": "שר התיירות",
+     "CommitteeName": None, "FactionName": None, "IsCurrent": True},
+] + [   # one closed membership row each, in the Knesset they sat in
+    {"PersonID": pid, "PositionID": 43, "KnessetNum": k, "StartDate": start, "FinishDate": end,
+     "GovMinistryName": None, "DutyDesc": "חבר הכנסת", "CommitteeName": None,
+     "FactionName": None, "IsCurrent": False}
+    for pid, k, start, end in [
+        (900, 20, "2015-03-31T00:00:00", "2019-04-30T00:00:00"),
+        (901, 21, "2019-04-30T00:00:00", "2019-10-03T00:00:00"),
+        (902, 21, "2019-04-30T00:00:00", "2019-10-03T00:00:00"),
+        (903, 21, "2019-04-30T00:00:00", "2019-10-03T00:00:00"),   # עמיר פרץ, same Knesset
+        (904, 20, "2015-03-31T00:00:00", "2019-04-30T00:00:00"),
+        (905, 20, "2015-03-31T00:00:00", "2019-04-30T00:00:00"),
+    ]
 ]
 
 STATUSES = [
@@ -157,7 +223,7 @@ PASSED_IDS = {118, 122}
 # bills per PersonID: (proposed, passed). PersonID 301 (the wrong אלי כהן)
 # carries 99 laws — summing the namesakes is the classic bug.
 BILLS = {100: (31, 6), 200: (12, 2), 300: (20, 5), 301: (99, 99),
-         400: (7, 0), 500: (3, 1), 600: (15, 4), 700: (40, 9)}
+         400: (7, 0), 500: (3, 1), 600: (15, 4), 700: (40, 9), 800: (4, 1)}
 
 PHOTOS = {"771": "771-abcd1234.jpg", "802": "802-ef567890.jpg", "803": "803-11112222.jpg",
           "804": "804-33334444.jpg", "806": "806-55556666.jpg", "807": "807-77778888.jpg"}
@@ -216,11 +282,9 @@ class FakeWorld:
             return self.od_page(url, rows)
         if "KNS_Person()" in url:
             flt = self.filter_of(url)
-            m = re.search(r"FirstName eq '([^']*)' and LastName eq '([^']*)'", flt)
-            rows = []
-            if m and (m.group(1), m.group(2)) == ("רות", "קלדרון"):
-                rows = [{"PersonID": 500}]
-            return self.od_page(url, rows)
+            m = re.search(r"LastName eq '((?:[^']|'')*)'", flt)
+            last = m.group(1).replace("''", "'") if m else None
+            return self.od_page(url, [r for r in KNS_PERSON if r["LastName"] == last])
         if "KNS_Status()" in url:
             return self.od_page(url, STATUSES)
         raise RuntimeError("HTTP 404 from upstream " + url[:100])
@@ -277,6 +341,13 @@ class NameLogic(unittest.TestCase):
         self.assertTrue(B.loose_match("סגלוביץ אבישי", "אבישי סגלוביץ'"))   # apostrophe
         self.assertFalse(B.loose_match("גנץ בני", "בניה גנצר"))          # THE trap
         self.assertFalse(B.loose_match("כהן", "אלי כהן"))                # one word — never
+
+    def test_dates_before_1970(self):
+        # a 1960s career start arrives as a NEGATIVE /Date(ms)/ — Windows'
+        # fromtimestamp refuses those (the first run since 2003 died on it)
+        self.assertEqual(B.year_of("/Date(-157766400000)/"), 1965)
+        self.assertEqual(B.year_of("/Date(1672531200000+0200)/"), 2023)
+        self.assertEqual(B.year_of("1969-12-31T00:00:00"), 1969)
 
     def test_en_display_flips_comma(self):
         self.assertEqual(B.en_display("Netanyahu, Benjamin"), "Benjamin Netanyahu")
@@ -359,7 +430,7 @@ class EndToEnd(unittest.TestCase):
 
     def test_everyone_resolved(self):
         self.assertEqual(self.problems["unresolved"], [])
-        self.assertEqual(len(self.cards), 7)
+        self.assertEqual(len(self.cards), 14)         # everyone since 2003, not just K25
         self.assertEqual(self.data["knesset"], 25)
 
     def test_netanyahu_card(self):
@@ -409,9 +480,42 @@ class EndToEnd(unittest.TestCase):
         chair = next(p for p in c["positions"] if "ועדת הכספים" in p["role"])
         self.assertEqual((chair["y0"], chair["y1"], chair["now"]), (2021, 2022, False))
 
+    def test_namesakes_twenty_years_apart(self):
+        old = self.cards["810"]                         # "כהן אלי", K16 only
+        self.assertEqual(old["pids"], [301])            # HIS rows are in K16
+        self.assertEqual(old["bills"], {"proposed": 99, "passed": 99})
+        self.assertEqual((old["knessets"], old["since"], old["until"]), ([16], 2003, 2006))
+        self.assertFalse(old["current"])
+        self.assertEqual(self.cards["803"]["pids"], [300])   # the K25 one keeps his own
+        self.assertEqual(self.problems["shared"], [])
+
+    def test_second_pass_spellings(self):
+        pids = {k: self.cards[k]["pids"] for k in ("866", "838", "923", "1021", "870")}
+        self.assertEqual(pids, {"866": [900], "838": [901], "923": [904],
+                                "1021": [902], "870": [905]})   # רפאל → רפי, never עמיר
+
+    def test_nickname_is_refused_when_ambiguous(self):
+        global PERSONS, POS_ALL
+        keep_p, keep_a = PERSONS, POS_ALL
+        PERSONS = dict(PERSONS, **{"906": "אברמי וורצמן"})    # a second "אב…" וורצמן, same Knesset
+        POS_ALL = POS_ALL + [dict(POS_ALL[-1], PersonID=906)]
+        try:
+            data, problems, _ = build_world()
+        finally:
+            PERSONS, POS_ALL = keep_p, keep_a
+        self.assertIn("וורצמן אבי", problems["unresolved"])      # no guess — the gate stops it
+
+    def test_open_rows_of_someone_long_gone(self):
+        c = self.cards["811"]                           # K17 only, register rows never closed
+        self.assertFalse(c["current"])
+        self.assertEqual(c["role"], "")                 # not "שר התיירות" today
+        self.assertTrue(c["positions"] and not any(p["now"] for p in c["positions"]))
+        self.assertEqual((c["since"], c["until"]), (2006, 2009))   # until = his Knesset's end
+
     def test_stats_yardstick(self):
         s = self.data["stats"]
-        self.assertEqual(s["count"], 7)
+        self.assertEqual(s["count"], 7)                 # the current Knesset's yardstick
+        self.assertEqual(s["all"], 14)
         self.assertAlmostEqual(s["avgProposed"], round((31 + 12 + 20 + 7 + 3 + 15 + 40) / 7, 1))
         self.assertAlmostEqual(s["avgPassed"], round((6 + 2 + 5 + 0 + 1 + 4 + 9) / 7, 1))
 
@@ -438,6 +542,21 @@ class Gates(unittest.TestCase):
         problems["unresolved"] = ["מישהו עלום"]
         bad = B.gates(data, problems, partial=False)
         self.assertTrue(any("מישהו עלום" in b for b in bad))   # named IN FULL
+
+    def test_shared_person_blocks(self):
+        # the old אלי כהן loses his K16 row → both namesakes fall back to the
+        # same two PersonIDs → merged people must never publish
+        fake = FakeWorld()
+        global POS_ALL
+        keep = POS_ALL
+        POS_ALL = [r for r in POS_ALL if not (r["PersonID"] == 301 and r["KnessetNum"] == 16)]
+        try:
+            data, problems, _ = build_world(fake)
+        finally:
+            POS_ALL = keep
+        self.assertTrue(problems["shared"])
+        bad = B.gates(data, problems, partial=False)
+        self.assertTrue(any("PersonID" in b and "כהן אלי" in b for b in bad))   # named in full
 
     def test_missing_en_blocks(self):
         data, problems, _ = build_world()

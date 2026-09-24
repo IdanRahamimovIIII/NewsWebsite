@@ -133,20 +133,58 @@ ok(h.includes(`<loc>${ORIGIN}${heP}</loc><lastmod>2026-09-24</lastmod>`), "sitem
     "90": card({ id: 90, he: "בנימין נתניהו", en: "Benjamin Netanyahu", slugHe: "בנימין-נתניהו", slugEn: "benjamin-netanyahu", role: "ראש הממשלה", bills: { proposed: 3, passed: 0 } }),
     "91": card({ id: 91, he: "דוד אמסלם", en: "David Amsalem", slugHe: "דוד-אמסלם", slugEn: "david-amsalem", current: false, until: 2023,
       positions: [{ role: "שר נוסף במשרד המשפטים", y0: 2023, y1: null, k: 25, now: true }] }),
+    // traps: "סגן" ends in a final nun; a deputy minister's title contains "ראש הממשלה"
+    "92": card({ id: 92, he: "אלמוג כהן", en: "Almog Cohen", slugHe: "אלמוג-כהן", slugEn: "almog-cohen", current: false, until: 2025,
+      positions: [{ role: "סגן שר במשרד ראש הממשלה", y0: 2023, y1: null, k: 25, now: true }] }),
+    "93": card({ id: 93, he: "יעקב מרגי", en: "Yakov Margi", slugHe: "יעקב-מרגי", slugEn: "yakov-margi", role: "סגן יושב-ראש הכנסת" }),
+    // an earlier Knesset only (K17): a page + the roster, not the current list
+    "95": card({ id: 95, he: "ישראל ישראלי", en: "Israel Israeli", slugHe: "ישראל-ישראלי", slugEn: "israel-israeli",
+      current: false, since: 2006, until: 2009, knessets: [17],
+      positions: [{ role: "שר התיירות", y0: 2007, y1: null, k: 17, now: false }] }),
   });
   const keep = upstream.cards; upstream.cards = () => new Response(JSON.stringify(LIST));
   r = await wl.fetch(new Request(ORIGIN + "/mk/")); h = await r.text();
   const links = [...h.matchAll(/<a class="dircard" href="([^"]+)">/g)].map(x => x[1]);
-  ok(r.status === 200 && links.length === 6, "list: all 6 cards as links");
+  ok(r.status === 200 && links.length === 8 && !links.some(l => l.startsWith("/mk/95-")), "list: the 8 of the current Knesset as links, not earlier Knessets");
   ok((await (await wl.fetch(new Request(ORIGIN + "/mk/?name=x"))).text()).includes(links[0]), "list: ?name= arrivals get it too");
   ok(links[0] === "/mk/90-" + enc("בנימין-נתניהו") + "/" && links[1].startsWith("/mk/1096-"), "list: PM, then the minister");
-  ok(links.slice(-2).includes("/mk/91-" + enc("דוד-אמסלם") + "/") && links.slice(-2).includes("/mk/31-" + enc("אלי-כהן") + "/"), "list: leavers last");
+  ok(["91", "92", "31"].every(id => links.slice(-3).some(l => l.startsWith(`/mk/${id}-`))), "list: leavers last");
+  ok(h.includes('href="/mk/roster.txt"'), "list: points to the roster");
   ok(h.includes('<span class="dcrole">שר נוסף במשרד המשפטים · 2023–היום</span>'), "list: a minister outside the Knesset keeps the role");
   ok(!/dcbills">[^<]*0 /.test(h) && h.includes(fill(JSON.parse(I18N).he.dirPassed, 2)), "list: laws passed, never a 0");
   ok(!/<div id="dir"><div class="loading"/.test(h) && divBalance(h) === divBalance(SHELL), "list: loader replaced, divs balanced");
   ok(h.includes('data-i18n="devLabel"'), "footer carries the API link");
   r = await wl.fetch(new Request(ORIGIN + `/mk/91-${enc("דוד-אמסלם")}/`)); h = await r.text();
   ok(h.includes('<span class="mkrole">· שר נוסף במשרד המשפטים</span>') && h.includes('"jobTitle":"שר נוסף במשרד המשפטים"'), "entity: today's role for a minister outside the Knesset");
+  ok(h.includes(JSON.parse(I18N).he.tenureGov.replace("{y}", 2023)), "entity: 'in government, not in the Knesset' said, not a contradiction");
+  r = await wl.fetch(new Request(ORIGIN + "/mk/1096-amichay-eliyahu/")); h = await r.text();
+  ok(!/content="[^"]*\.\.[^"]*"/.test(h), "description: no double period");
+  // the roster: every card in exactly one group, counted
+  r = await wl.fetch(new Request(ORIGIN + "/mk/roster.txt")); const txt = await r.text();
+  ok(r.headers.get("content-type").startsWith("text/plain"), "roster: plain text");
+  const sec = t => (new RegExp(`## ${t}[^\\n]*\\((\\d+)\\)\\n([\\s\\S]*?)(?=\\n## |$)`).exec(txt) || []);
+  const gov = sec("Government"), dep = sec("Deputy"), posts = sec("Knesset posts"), oth = sec("Other"), left = sec("Left");
+  ok([gov, dep, posts, oth, left].every(x => x.length) &&
+    [gov, dep, posts, oth, left].reduce((n, x) => n + +x[1], 0) === 8 && (txt.match(/^- /gm) || []).length === 9, "roster: 9 cards, each once, counts add up");
+  const early = sec("Members of earlier Knessets");
+  ok(early[1] === "1" && early[2].includes("ישראל ישראלי") && early[2].includes("last post: שר התיירות 2007") && !gov[2].includes("ישראל ישראלי"), "roster: earlier Knesset in its own section, not in government");
+  ok(/the 17th–24th/.test(txt), "roster: the span of earlier Knessets from the data");
+  r = await wl.fetch(new Request(ORIGIN + "/mk/95-israel-israeli/")); h = await r.text();
+  ok(r.status === 200 && h.includes("In the Knesset 2006–2009") && !h.includes('class="mkrole"'), "entity: an earlier-Knesset member's page, no role today");
+  ok(gov[2].includes("בנימין נתניהו") && gov[2].includes("דוד אמסלם") && gov[2].includes("(not an MK now)") && !gov[2].includes("אלמוג"), "roster: government incl. the minister outside the Knesset");
+  ok(dep[1] === "1" && dep[2].includes("אלמוג כהן"), "roster: deputy minister in the PM's office is a deputy");
+  ok(posts[2].includes("יעקב מרגי") && !posts[2].includes("אלמוג"), "roster: deputy speaker is a Knesset post");
+  ok(left[2].includes("אלי כהן") && txt.includes("https://ourmoneyil.com/mk/90-benjamin-netanyahu/"), "roster: leavers + page links");
+  ok(txt.includes("https://api.ourmoneyil.com/data/mkcards") && /never sat in the 25th Knesset/.test(txt), "roster: data link + honest scope");
+  ok(txt.includes("Committee chairs are not listed"), "roster: no chairs in the data → says so");
+  // once the register carries chairs, they're listed and the caveat goes
+  const CH = JSON.parse(JSON.stringify(LIST));
+  CH.data.members["94"] = card({ id: 94, he: "שמחה רוטמן", en: "Simcha Rothman", slugHe: "שמחה-רוטמן", slugEn: "simcha-rothman", role: 'יו"ר ועדת החוקה, חוק ומשפט' });
+  upstream.cards = () => new Response(JSON.stringify(CH));
+  const { default: wc } = await import("./pages.js?chairs" + Date.now());
+  const t2 = await (await wc.fetch(new Request(ORIGIN + "/mk/roster.txt"))).text();
+  ok(!t2.includes("Committee chairs are not listed") && /## Knesset posts[^\n]*committee chairs\) \(2\)/.test(t2) && t2.includes("שמחה רוטמן"), "roster: chairs appear → listed, caveat gone");
+  upstream.cards = () => new Response(JSON.stringify(LIST));
   // inputs down or the anchor gone → the site's own /mk/, never an error
   upstream.cards = () => new Response("nope", { status: 500 });
   const { default: wd } = await import("./pages.js?listdown" + Date.now());

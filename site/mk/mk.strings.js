@@ -91,6 +91,7 @@ window.PAGE_STR = {
     entityDesc: "תפקידים, הצעות חוק והצבעות — מנתונים רשמיים של הכנסת.",
     entityNotFound: "לא מצאנו חבר/ת כנסת בכתובת הזו.",
     entityToList: "לרשימת חברי הכנסת",
+    tenureGov: "בממשלה מאז {y} (לא בכנסת)",
 
     /* no longer in index.html (the bio card and the four hint lines under the
        section titles) — kept so a browser holding a cached older index.html
@@ -176,6 +177,7 @@ window.PAGE_STR = {
     entityDesc: "Positions, bills and votes — from official Knesset data.",
     entityNotFound: "We couldn't find a Knesset member at this address.",
     entityToList: "All Knesset members",
+    tenureGov: "in government since {y} (not an MK)",
 
     secBio: "Personal background",
     bioHint: "As reported to the Knesset and published on its official site.",

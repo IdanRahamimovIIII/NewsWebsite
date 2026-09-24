@@ -1,4 +1,4 @@
-# Rebuilds the mkcards snapshot (one baked card per K25 MK) monthly and
+# Rebuilds the mkcards snapshot (one baked card per MK since 2003) monthly and
 # publishes KV pub:mkcards (served as /data/mkcards by the relay) — the
 # entity pages and the MK page read it. Same collector Mercy's
 # build-mkcards.bat runs; sanity gates refuse a partial or unresolved

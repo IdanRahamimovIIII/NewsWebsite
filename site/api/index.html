@@ -100,6 +100,11 @@
       <p>Master list of Knesset members.</p>
     </div>
     <div class="ep">
+      <code class="route"><a href="https://api.ourmoneyil.com/data/mkcards">GET /data/mkcards</a></code>
+      <p>One card per member of the Knesset since 2003 (the 16th Knesset onward; <code>knessets</code> lists which they sat in): Hebrew and English names, today's role, faction, years, bills proposed and passed, and up to four key positions. Keyed by MkId; each member's page is <code>ourmoneyil.com/mk/&lt;id&gt;-&lt;slugEn&gt;/</code>. Rebuilt monthly.</p>
+      <p>As plain text — the current Knesset grouped by post (ministers, deputy ministers, Knesset posts, members, leavers), then members of earlier Knessets, with counts: <a href="https://ourmoneyil.com/mk/roster.txt">ourmoneyil.com/mk/roster.txt</a></p>
+    </div>
+    <div class="ep">
       <code class="route">GET /data/votesmeta</code>
       <p>Status of the plenum-vote index behind <code>/search/votes</code>: which years are covered and how many votes each holds, the total row count, and when it last updated. Use it to judge coverage and freshness, not as a data endpoint.</p>
     </div>
@@ -155,7 +160,7 @@
   <div class="card">
     <h2>Sources &amp; more for machines</h2>
     <div class="ep">
-      <p>Machine-readable site overview: <a href="../llms.txt">/llms.txt</a> · full reference in one text file: <a href="../llms-full.txt">/llms-full.txt</a> · <a href="../sitemap.xml">/sitemap.xml</a></p>
+      <p>Machine-readable site overview: <a href="../llms.txt">/llms.txt</a> · full reference in one text file: <a href="../llms-full.txt">/llms-full.txt</a> · <a href="../sitemap.xml">/sitemap.xml</a> · who holds which post: <a href="../mk/roster.txt">/mk/roster.txt</a></p>
       <p>The data originates from official public sources — for bulk work use them directly: <a href="https://next.obudget.org" target="_blank" rel="noopener">obudget.org (מפתח התקציב)</a> · <a href="https://knesset.gov.il/Odata/ParliamentInfo.svc/" target="_blank" rel="noopener">Knesset OData</a> · <a href="https://data.gov.il" target="_blank" rel="noopener">data.gov.il</a></p>
       <p>Questions, wrong data, or a use case that needs more than this: <a href="mailto:contact@ourmoneyil.com">contact@ourmoneyil.com</a></p>
     </div>

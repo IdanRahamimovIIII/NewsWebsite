@@ -13,9 +13,10 @@ judge. All data comes directly from official sources and every fact links
 to its source document; the site re-hosts none of the state's documents.
 
 Languages: Hebrew is the primary language; every page has an English
-toggle. The full Hebrew content of each page is baked into the raw HTML,
-so crawlers and AI systems that do not execute JavaScript still see the
-complete text.
+toggle. Each page's Hebrew text and headings are in the raw HTML, and each
+Knesset member's page carries their key facts (role, faction, years, bills
+count, positions). Long lists — a member's bills and votes, budget lines,
+contracts — load with JavaScript; read those through the data API below.
 
 Errors: if you find a wrong or missing figure, write to
 contact@ourmoneyil.com and it will be fixed.
@@ -48,10 +49,13 @@ A file per member of Knesset: the bills they proposed (those that passed
 and those that failed), the positions they have held over the years
 (minister, committee chair, faction), and their voting record. Source: the
 Knesset's official APIs.
-Every member of the current Knesset also has their own address, in Hebrew
-and English, with the key facts in the raw HTML — e.g.
+Every member of the Knesset since 2003 also has their own address, in
+Hebrew and English, with the key facts in the raw HTML — e.g.
 https://ourmoneyil.com/mk/1096-amichay-eliyahu/ . The full list:
 https://ourmoneyil.com/mk/sitemap.xml
+Who holds which post today, as plain text (ministers, deputy ministers,
+Knesset posts, members, leavers, then earlier Knessets — counted, with links):
+https://ourmoneyil.com/mk/roster.txt
 
 ### https://ourmoneyil.com/court/ — בית המשפט העליון (the Supreme Court)
 Recent rulings and decisions of Israel's Supreme Court, from the court
@@ -88,6 +92,11 @@ General rules:
   38750-12-25"), CaseName (the parties), Type (פסק דין / החלטה),
   VerdictsDtString (DD/MM/YYYY), Pages, PathForWeb, DocName.
 - /data/persons — master list of Knesset members.
+- /data/mkcards — one card per member of the Knesset since 2003 (the 16th
+  onward): names (he/en), today's role, faction, years, Knessets served,
+  bills proposed/passed, up to four positions. Keyed by MkId; the
+  member's page is https://ourmoneyil.com/mk/<id>-<slugEn>/ . Monthly.
+  https://api.ourmoneyil.com/data/mkcards
 - /data/votesmeta — status of the plenum-vote index behind /search/votes:
   years covered with per-year vote counts, total rows, last update time.
   For judging coverage and freshness, not a data endpoint.

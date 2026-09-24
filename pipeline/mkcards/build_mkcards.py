@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Build the /data/mkcards snapshot — one card of baked facts per K25 MK.
+r"""Build the /data/mkcards snapshot — one card of baked facts per MK since
+2003 (every person in the votes directory, Knessets 16 → today).
 
 This is phase 1 of the entity-pages plan (claude/entity-pages-plan.md):
 the pages Worker will render /mk/<id>-<name>/ from THIS snapshot, and the
@@ -72,6 +73,32 @@ def name_key(s):
 
 
 _PLAIN = re.compile("['\"׳״]")
+
+
+_PUNCT = re.compile("[\"'`\u05f3\u05f4\u201c\u201d\u2018\u2019()\\[\\]]")
+
+
+def norm_name(s):
+    """the second pass (the page's first pass missed): hyphens are spaces,
+    parentheses and every kind of quote go — "בר-לב" = "בר לב", "משה (מוץ)
+    מטלון" = "משה מוץ מטלון", "כ”ץ" = "כ"ץ" = "כץ" """
+    s = re.sub("[-\u05be\u2013\u2014]", " ", str(s or ""))
+    return re.sub(r"\s+", " ", _PUNCT.sub("", s)).strip()
+
+
+def nickname_match(cmb_name, person_name):
+    """"פרץ רפאל" ~ "רפי פרץ", "וורצמן אבי" ~ "אברהם וורצמן": two words each,
+    the surname identical, the first names share their first two letters.
+    A CANDIDATE only — build() accepts it when exactly one such person has
+    rows in this member's own Knessets"""
+    a, b = norm_name(cmb_name).split(), norm_name(person_name).split()
+    if len(a) != 2 or len(b) != 2:
+        return False
+    same = set(a) & set(b)
+    if len(same) != 1:
+        return False
+    x, y = [w for w in a if w not in same][0], [w for w in b if w not in same][0]
+    return x != y and x[:2] == y[:2]
 
 
 def _words(s):
@@ -197,7 +224,10 @@ def year_of(v):
     if ms is None:
         return None
     import datetime
-    return datetime.datetime.fromtimestamp(ms / 1000, datetime.timezone.utc).year
+    # epoch + delta, not fromtimestamp: Windows refuses negative stamps and
+    # careers since 2003 reach back to the 1960s ("/Date(-...)/")
+    epoch = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+    return (epoch + datetime.timedelta(milliseconds=ms)).year
 
 
 _DAY = 86400000
@@ -263,9 +293,11 @@ def is_mk_row(r):
     return bool(re.fullmatch(r"חבר(ת)?\s*(ה)?כנסת", str(r.get("_role") or "").strip()))
 
 
-def highlights(rows, limit=4):
+def highlights(rows, limit=4, open_ok=True):
     """the timeline's head, baked: roles of substance, ongoing first
-    (heaviest first), then past newest-first — what the entity page shows"""
+    (heaviest first), then past newest-first — what the entity page shows.
+    open_ok=False (not in the current Knesset): the register leaves rows
+    open for people long gone — nothing of theirs is "now"."""
     subst = [r for r in rows if r.get("_role") and not plain_role(r)]
     now = sorted([r for r in subst if not r.get("FinishDate")],
                  key=lambda r: (-role_rank(r.get("_role")), -_start(r)))
@@ -275,7 +307,7 @@ def highlights(rows, limit=4):
         y0, y1 = year_of(r.get("StartDate")), year_of(r.get("FinishDate"))
         out.append({"role": pos_ctx(r), "y0": y0, "y1": y1,
                     "k": r.get("KnessetNum") or None,
-                    "now": not r.get("FinishDate")})
+                    "now": open_ok and not r.get("FinishDate")})
     return out
 
 
@@ -415,22 +447,29 @@ def odata_str(s):
 
 
 def fallback_person_ids(relay, name):
-    """KNS_Person by both word orders — for the spellings the persons
-    snapshot misses (runs BEFORE the gates; all 151 must resolve)"""
+    """KNS_Person for the spellings the persons snapshot misses: the last
+    name at every split point, both orders; the first name compared with
+    spaces ignored ("עבד אלחכים" = "עבד אל חכים"). Runs BEFORE the gates."""
     words = [w for w in str(name or "").split() if w]
     if len(words) < 2:
         return []
-    def try_pair(first, last):
-        try:
-            rows = relay.od("KNS_Person()?$filter=FirstName eq '%s' and LastName eq '%s'"
-                            "&$select=PersonID&$top=3" % (odata_str(first), odata_str(last)))
-            return [int(r["PersonID"]) for r in rows]
-        except Exception:  # noqa: BLE001
-            return []
-    a = try_pair(words[0], " ".join(words[1:]))
-    if a:
-        return a
-    return try_pair(words[-1], " ".join(words[:-1]))
+    squash = lambda s: re.sub(r"\s+", "", norm_name(s))
+    tried = set()
+    for i in range(1, len(words)):
+        for last, first in ((words[i:], words[:i]), (words[:i], words[i:])):
+            last_s = " ".join(last)
+            if last_s in tried:
+                continue
+            tried.add(last_s)
+            try:
+                rows = relay.od("KNS_Person()?$filter=LastName eq '%s'"
+                                "&$select=PersonID,FirstName&$top=20" % odata_str(last_s))
+            except Exception:  # noqa: BLE001
+                continue
+            hit = [int(r["PersonID"]) for r in rows if squash(r.get("FirstName")) == squash(" ".join(first))]
+            if hit:
+                return hit[:3]
+    return []
 
 
 POS_SELECT = ("$select=PersonID,PositionID,KnessetNum,StartDate,FinishDate,"
@@ -509,16 +548,21 @@ def collect(relay, limit=None):
     k_rows = bulk_positions(relay, "KnessetNum eq %d" % latest, pos_names)
     log("  %d register rows" % len(k_rows))
 
+    # everyone in the votes directory (K16 → today), one member per MkId,
+    # carried by the row of their LATEST Knesset (its faction is the card's)
     members = []
     seen = set()
-    for m in mks:
-        if int(m.get("KnessetId") or 0) != latest or m.get("Name") in seen:
+    for m in sorted(mks, key=lambda x: -int(x.get("KnessetId") or 0)):
+        mk_id = int(m.get("Id") or 0)
+        if not mk_id or mk_id in seen:
             continue
-        seen.add(m.get("Name"))
-        members.append(m)
+        seen.add(mk_id)
+        members.append(dict(m, _lastK=int(m.get("KnessetId") or 0)))
     if limit:
         members = members[:limit]
-    log("members of K%d: %d" % (latest, len(members)))
+    log("members since K%d: %d (K%d: %d)" % (
+        min(int(m.get("KnessetId") or 99) for m in mks), len(members), latest,
+        sum(1 for m in members if m["_lastK"] == latest)))
 
     return {"drop_he": drop_he, "drop_en": drop_en, "cmb": cmb, "persons": persons,
             "photos": photos, "status_map": status_map, "latest": latest,
@@ -536,7 +580,7 @@ def build(relay, world):
         k_start[int(k["KnessetId"])] = year_of(k.get("KnessetStart"))
         k_end[int(k["KnessetId"])] = year_of(k.get("KnessetEnd"))
     f_name = {f["ID"]: f.get("FactionName") for f in cmb.get("Factions") or []}
-    drop_he = {name_key(m.get("Name")): m for m in world["drop_he"]}
+    drop_by_id = {int(m["ID"]): m for m in world["drop_he"] if m.get("ID") is not None}
     en_by_id = {int(m["ID"]): m.get("Name") for m in world["drop_en"] if m.get("ID") is not None}
 
     pid_by_key = {}
@@ -547,31 +591,51 @@ def build(relay, world):
         by_pid_k.setdefault(int(r["PersonID"]), []).append(r)
     knessets_of, first_k = {}, {}
     for m in mks:
-        key = name_key(m.get("Name"))
+        mk_id = int(m.get("Id") or 0)
         k = int(m.get("KnessetId") or 0)
-        knessets_of.setdefault(key, set()).add(k)
-        first_k[key] = min(first_k.get(key, 99), k)
+        knessets_of.setdefault(mk_id, set()).add(k)
+        first_k[mk_id] = min(first_k.get(mk_id, 99), k)
 
-    # ---- resolve who each member is in the persons table --------------
-    unresolved = []
+    # ---- who each member is in the persons table: candidates by name ----
+    norm_key = {}
+    for pid, nm in persons.items():
+        norm_key.setdefault(name_key(norm_name(nm)), []).append(int(pid))
     for m in members:
-        key = name_key(m["Name"])
-        pids = pid_by_key.get(key) or []
+        m["_nick"] = False
+        pids = pid_by_key.get(name_key(m["Name"])) or []
         if not pids:
             pids = [int(pid) for pid, nm in persons.items() if loose_match(m["Name"], nm)]
-        in_this_k = [p for p in pids if p in by_pid_k]
-        pids = (in_this_k or pids)[:3]        # namesakes: rows in THIS Knesset win
+        if not pids:                          # hyphens, parentheses, quote marks
+            n = norm_name(m["Name"])
+            pids = norm_key.get(name_key(n)) or [
+                int(pid) for pid, nm in persons.items() if loose_match(n, norm_name(nm))]
         if not pids:
-            pids = fallback_person_ids(relay, m["Name"])[:3]
-        m["_pids"] = pids
-        if not pids:
-            unresolved.append(m["Name"])
+            pids = fallback_person_ids(relay, m["Name"])
+        if not pids:                          # רפאל ~ רפי — decided by own-Knesset rows below
+            pids = [int(pid) for pid, nm in persons.items() if nickname_match(m["Name"], nm)]
+            m["_nick"] = bool(pids)
+        m["_cand"] = pids
 
-    # ---- full position history, batched --------------------------------
-    all_pids = sorted({p for m in members for p in m["_pids"]})
+    # ---- full position history for every candidate, batched ------------
+    all_pids = sorted({p for m in members for p in m["_cand"]})
     log("reading position history for %d PersonIDs (%d queries)…"
         % (len(all_pids), (len(all_pids) + 5) // 6))
     by_pid_all = positions_for_many(relay, all_pids, world["pos_names"])
+
+    # ---- namesakes: the PersonID with rows in the Knessets THIS member
+    # served in wins (two אלי כהן: one in K16, one in K25) ---------------
+    unresolved, claimed = [], {}
+    for m in members:
+        ks = knessets_of.get(int(m.get("Id") or 0)) or {m["_lastK"]}
+        own = [p for p in m["_cand"] if any(int(r.get("KnessetNum") or 0) in ks
+                                            for r in by_pid_all.get(p, []))]
+        # a nickname match is a guess unless exactly ONE such person sat here
+        m["_pids"] = (own if len(own) == 1 else []) if m["_nick"] else (own or m["_cand"])[:3]
+        if not m["_pids"]:
+            unresolved.append(m["Name"])
+        for p in m["_pids"]:
+            claimed.setdefault(p, []).append("%s (%s)" % (m["Name"], m.get("Id")))
+    shared = ["PersonID %d ← %s" % (p, " + ".join(who)) for p, who in sorted(claimed.items()) if len(who) > 1]
 
     # ---- bill counts ($count per PersonID, always filtered) ------------
     passed_ids = sorted(sid for sid, d in world["status_map"].items()
@@ -597,26 +661,26 @@ def build(relay, world):
     # ---- assemble one card per member ----------------------------------
     cards, missing_en, no_photo = {}, [], []
     for m in members:
-        key = name_key(m["Name"])
         mk_id = int(m.get("Id") or 0)
         pids = m["_pids"]
+        in_latest = latest in (knessets_of.get(mk_id) or ())
         rows = tidy_positions([r for p in pids for r in by_pid_all.get(p, [])])
         he = (pids and persons.get(str(pids[0]))) or m["Name"]   # "יאיר לפיד", not "לפיד יאיר"
         en = en_display(en_by_id.get(mk_id) or "")
         if not en:
             missing_en.append("%s (%d)" % (he, mk_id))
-        d = drop_he.get(key)
-        serving = bool(d and d.get("IsCurrent")) or any(
-            is_mk_row(r) for p in pids for r in by_pid_k.get(p, []) if not r.get("FinishDate"))
+        d = drop_by_id.get(mk_id)
+        serving = bool(d and d.get("IsCurrent")) or (in_latest and any(
+            is_mk_row(r) for p in pids for r in by_pid_k.get(p, []) if not r.get("FinishDate")))
 
-        since = k_start.get(first_k.get(key)) or None
+        since = k_start.get(first_k.get(mk_id)) or None
         starts = [year_of(r.get("StartDate")) for r in rows if year_of(r.get("StartDate"))]
         if starts:
             since = min([since] + starts) if since else min(starts)
         until = None
         if not serving:
             ends = [year_of(r.get("FinishDate")) for r in rows if year_of(r.get("FinishDate"))]
-            until = max(ends) if ends else (k_end.get(latest) or None)
+            until = max(ends) if ends else (k_end.get(m["_lastK"]) or None)
 
         photo = world["photos"].get(str(mk_id)) or None
         if not photo:
@@ -625,20 +689,21 @@ def build(relay, world):
             "id": mk_id, "pids": pids,
             "he": he, "en": en, "slugHe": slug_he(he), "slugEn": slug_en(en),
             "photo": photo, "current": serving,
-            "role": current_role(rows),
+            "role": current_role(rows) if in_latest else "",   # an open row of someone long gone is not a role
             "faction": faction_short(f_name.get(m.get("faction_id"))),
             "since": since, "until": until,
-            "knessets": sorted(knessets_of.get(key) or []),
+            "knessets": sorted(knessets_of.get(mk_id) or []),
             "bills": m["_bills"],
-            "positions": highlights(rows),
+            "positions": highlights(rows, open_ok=in_latest),
         }
 
-    counted = [c["bills"] for c in cards.values() if c["bills"]]
-    stats = {"count": len(cards),
+    now_k = [c for c in cards.values() if latest in c["knessets"]]
+    counted = [c["bills"] for c in now_k if c["bills"]]
+    stats = {"count": len(now_k), "all": len(cards),   # averages: the current Knesset's yardstick
              "avgProposed": round(sum(b["proposed"] for b in counted) / len(counted), 1) if counted else None,
              "avgPassed": round(sum(b["passed"] for b in counted) / len(counted), 1) if counted else None}
     data = {"knesset": latest, "stats": stats, "members": cards}
-    problems = {"unresolved": unresolved, "missing_en": missing_en,
+    problems = {"unresolved": unresolved, "missing_en": missing_en, "shared": shared,
                 "bill_failures": bill_failures, "no_photo": no_photo}
     return data, problems
 
@@ -657,11 +722,14 @@ def gates(data, problems, partial):
         full_list("members with NO PersonID — their pages would be empty", problems["unresolved"])
     if problems["missing_en"]:
         full_list("members with no English name — the /en/ URL cannot exist", problems["missing_en"])
+    if problems.get("shared"):
+        full_list("one PersonID claimed by two members — namesakes merged", problems["shared"])
     if len(problems["bill_failures"]) > MAX_BILL_FAILURES:
         full_list("bill counts failed for too many members", problems["bill_failures"])
-    if not partial and len(data["members"]) < 120:
-        bad.append("only %d members built — a Knesset seats 120; the source answered short"
-                   % len(data["members"]))
+    now_k = sum(1 for c in data["members"].values() if data["knesset"] in c["knessets"])
+    if not partial and now_k < 120:
+        bad.append("only %d members of K%d built — a Knesset seats 120; the source answered short"
+                   % (now_k, data["knesset"]))
     if partial:
         bad.append("--limit run: a slice is not the Knesset")
     return bad
@@ -675,7 +743,7 @@ def publish(data):
     ns = cf_kv.namespace_id(cred)
     value = cf_kv.envelope(data)
     if len(value.encode("utf-8")) > 2 * 1024 * 1024:
-        sys.exit("snapshot is %.1f MB — that is not 151 cards; refusing to publish"
+        sys.exit("snapshot is %.1f MB — that is not ~500 cards; refusing to publish"
                  % (len(value.encode("utf-8")) / 1e6))
     log("publishing %s (%.0f KB)…" % (KEY, len(value.encode("utf-8")) / 1024))
     cf_kv.bulk_put(cred, ns, [(KEY, value)])
