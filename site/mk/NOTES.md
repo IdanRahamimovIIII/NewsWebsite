@@ -155,8 +155,8 @@ a `$count` refusing unfiltered counts, dirty doc paths, CMS entities, the
 photo manifest, the build race, Back/Forward, the caret.
 
 ## Open
-- `/data/mkcards` relay snapshot (role, laws passed, a Knesset-average
-  yardstick for "6 of 31") — pipeline work.
+- `/data/mkcards` is live (`pipeline\mkcards\NOTES.md`): directory cards
+  read it + link to the entity URLs (phase 4).
 - Coalition/opposition: a DevTools capture or a curated per-Knesset file.
 - Tooltips are hover-only (tap-to-reveal if Mercy wants).
 - Attendance score · ministry budget under a minister's term · שאילתות ·

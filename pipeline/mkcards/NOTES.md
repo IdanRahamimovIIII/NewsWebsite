@@ -36,11 +36,7 @@ CF_ACCOUNT_ID (CI: `workflows\update-mkcards.yml`, monthly), relay URL from
   lambdas — navigation paths only). Pages cap at 100 rows whatever `$top`.
 
 ## Open
-- First publish: Mercy runs `build-mkcards.bat` → green gates → check
-  `https://api.ourmoneyil.com/data/mkcards?fresh=1` shows 151 members.
-- After that green run: add the mkcards row + `pub:mkcards` interface line
-  to `pipeline\shared\CLAUDE.md`, drop its Open item, and update the
-  `/data/mkcards` Open items in `site\mk\NOTES.md`; enable the monthly
-  workflow (install-workflows.bat, commit both, one manual dispatch).
+- Live: 152 cards (120 serving). Monthly workflow installed — commit it +
+  one green manual dispatch, then drop this line.
 - Point the MK page's directory cards at the snapshot (frees ~300 live
-  requests) — phase 4 of the plan, with the entity-URL links.
+  requests) — phase 4, with the entity-URL links.

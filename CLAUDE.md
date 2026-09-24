@@ -47,8 +47,12 @@ The roadmap lives in each notes file's "Open" section.
 - Usually right about the cause. "Fundamentally wrong" → stop patching,
   re-examine the model. Answer "what is the correct way?" first.
 - Product mind: present options, she decides. Plain explanations.
+- Never edits NOTES/CLAUDE files — they're Claude's memory: update them
+  unasked, keep them short.
 - Windows, runs .bat files, edits in Notepad, NO node on PATH → zero-install.
 - Git via GitHub Desktop (no git CLI) — describe commit/push steps in its terms.
+  `main` holds everything (work lands here); `release` = a copy of main
+  that the live site deploys. Commit on main, then bring release up to it.
 - She pastes logs/screenshots, and does DevTools captures
   (F12 → Network → Copy as cURL) for bot-protected sites.
 
