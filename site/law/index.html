@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הכסף שלנו — החוק: מה חל היום ומה עומד להשתנות | Our Money — The Law</title>
+<meta name="description" content="חוקי מדינת ישראל: אילו חוקים ביטל או הקפיא בית המשפט העליון, מה עומד להיכנס לתוקף או לפקוע, ועל אילו הצעות חוק עובדות ועדות הכנסת עכשיו — מנתונים רשמיים.">
+<!-- who we are to search engines and social cards (share.png is the shared card image) -->
+<link rel="canonical" href="https://ourmoneyil.com/law/">
+<link rel="alternate" type="text/plain" href="https://ourmoneyil.com/llms.txt" title="Guide for AI systems (llms.txt)">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="הכסף שלנו — Our Money">
+<meta property="og:title" content="הכסף שלנו — החוק: מה חל היום ומה עומד להשתנות | Our Money — The Law">
+<meta property="og:description" content="חוקי מדינת ישראל: אילו חוקים ביטל או הקפיא בית המשפט העליון, מה עומד להיכנס לתוקף או לפקוע, ועל אילו הצעות חוק עובדות ועדות הכנסת עכשיו — מנתונים רשמיים.">
+<meta property="og:url" content="https://ourmoneyil.com/law/">
+<meta property="og:image" content="https://ourmoneyil.com/shared/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="he_IL">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../shared/style.css">
+<link rel="stylesheet" href="law.css">
+</head>
+<body>
+<header class="topbar"><div class="tbwrap">
+      <a class="brand" href="../budget/" data-i18n="title">הכסף שלנו</a>
+      <nav class="tabs"><a href="../budget/" class="" data-i18n="navBudget">התקציב</a><a href="../law/" class="active" data-i18n="navLaw">החוק</a><a href="../mk/" class="" data-i18n="navMk">חברי הכנסת</a></nav>
+      <button class="langbtn" id="langbtn" onclick="toggleLang()">English</button>
+    </div></header>
+
+<!-- the law section has four pages; this bar is how you move between them -->
+<nav class="subnav">
+  <div class="subnav-in">
+    <a href="../law/" class="active" aria-current="page" data-i18n="subLawHome">ראשי</a>
+    <a href="../law/laws.html" data-i18n="subLaws">חוקים</a>
+    <a href="../votes/" data-i18n="subBills">הצעות חוק והצבעות</a>
+    <a href="../court/" data-i18n="subRulings">פסיקה</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <p class="tagline" data-i18n="tagline">חוקי המדינה: מה חל היום, ומה עומד להשתנות</p>
+
+  <!-- the court: voided, partly voided, frozen, deferred -->
+  <div class="card">
+    <h2><span data-i18n="courtTitle">אילו חוקים ביטל או הקפיא בית המשפט העליון?</span><span class="count" id="courtN"></span></h2>
+    <p class="hint" data-i18n="courtHint">בית המשפט לא מוחק חוק מספר החוקים: הוא מכריז שהחוק, או חלק ממנו, בטל. לכן ברשומות הכנסת רבים מהחוקים האלה עדיין מופיעים כ״תקפים״.</p>
+    <div id="court"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
+    <p class="srcnote"><span data-i18n="courtSrc">הרשימה נאספת ידנית (מוויקיטקסט ומוויקיפדיה), והתאריך והקישור של כל פסק דין נלקחים מאתר בית המשפט. היא עשויה להיות חסרה.</span> <span id="courtRev"></span><br>
+      <span data-i18n="suggest">מכירים פסק דין שחסר כאן?</span> <a id="suggest" href="mailto:contact@ourmoneyil.com" data-i18n="suggestLink">כתבו לנו</a></p>
+  </div>
+
+  <!-- change first: what is about to start -->
+  <div class="card">
+    <h2><span data-i18n="soonTitle">אילו חוקים עומדים להיכנס לתוקף?</span><span class="count" id="soonN"></span></h2>
+    <p class="hint" data-i18n="soonHint">חוקים שהכנסת כבר העבירה, אבל עוד לא התחילו לחול.</p>
+    <div id="soon"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
+  </div>
+
+  <div class="card">
+    <h2><span data-i18n="startedTitle">אילו חוקים התחילו לחול בשלושת החודשים האחרונים?</span><span class="count" id="startedN"></span></h2>
+    <p class="hint" data-i18n="startedHint">לפי תאריך תחילת התוקף שרשמה הכנסת (ובהיעדרו: תאריך הפרסום ברשומות). ללא חוקי תקציב.</p>
+    <div id="started"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
+  </div>
+
+  <div class="card">
+    <h2><span data-i18n="expireTitle">אילו חוקים עומדים לפקוע?</span><span class="count" id="expiringN"></span></h2>
+    <p class="hint" data-i18n="expireHint">חוקים זמניים שתאריך הסיום שלהם בשלושת החודשים הקרובים.</p>
+    <div id="expiring"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
+  </div>
+
+  <div class="card">
+    <h2><span data-i18n="tempTitle">אילו חוקים זמניים חלים היום?</span><span class="count" id="tempN"></span></h2>
+    <p class="hint" data-i18n="tempHint">הוראות שעה וחוקים עם תאריך סיום — מהקרוב לפקוע ועד הרחוק. ללא חוקי תקציב.</p>
+    <div id="temp"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
+  </div>
+
+  <!-- bills a committee is working on -->
+  <div class="card">
+    <h2><span data-i18n="billsTitle">על אילו הצעות חוק עובדות ועדות הכנסת עכשיו?</span><span class="count" id="billsN"></span></h2>
+    <p class="hint" data-i18n="billsHint">הצעות שוועדה של הכנסת דנה בהן בשלושת החודשים האחרונים ועוד לא הוכרעו. הצעות זהות שהוגשו בנפרד מוצגות בשורה אחת.</p>
+    <div id="bills"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
+  </div>
+
+  <div class="card explain">
+    <h2 data-i18n="explainTitle">איך לקרוא את הדף?</h2>
+    <p data-i18n="explain1">״חל היום״ הוא הסטטוס שהכנסת רושמת לכל חוק. חוק ״בוטל בחוק״ כשהכנסת עצמה ביטלה אותו, ״פקע״ כשחוק זמני הגיע לסופו, ו״נושן״ כשסיים את תפקידו ואיש לא ביטל אותו. ביטול של בית המשפט לא מופיע ברשומות הכנסת — לכן הוא מוצג כאן בנפרד.</p>
+    <p data-i18n="explain2">הדף עוזר להבין, ואינו ייעוץ משפטי. לפני החלטה שנוגעת לכם — בדקו את נוסח החוק ואת פסק הדין המלא, או היוועצו בעורך דין.</p>
+    <p data-i18n="explain3">מקורות: מאגר הנתונים הפתוח של הכנסת (חוקים, הצעות חוק, ועדות), אתר פסקי הדין של בית המשפט העליון, וספר החוקים הפתוח בוויקיטקסט.</p>
+  </div>
+
+  <footer>
+    <p class="aboutpara" data-i18n="aboutBody">״הכסף שלנו״ הוא אתר עצמאי, ללא קשר לגוף ממשלתי, למפלגה או לארגון, שנועד להעניק לאזרחי ישראל מבט נקי ומסודר על פעילות המדינה ועל האופן שבו היא משתמשת בכסף שלנו. כל הנתונים מגיעים ישירות מהמקורות הרשמיים ומוצגים כפי שהם, עם קישור למקור. מצאתם טעות או נתון חסר? כתבו לנו ונתקן:</p>
+    <p class="aboutmail"><span data-i18n="contactLabel">אמצעי תקשורת - </span><a href="mailto:contact@ourmoneyil.com">contact@ourmoneyil.com</a></p>
+    <p class="aboutmail"><span data-i18n="devLabel">למפתחים: </span><a href="https://ourmoneyil.com/api/">https://ourmoneyil.com/api</a></p>
+    <span data-i18n="credit">מקורות המידע: </span>
+    <a href="https://main.knesset.gov.il/Activity/Info/Pages/databases.aspx" target="_blank" rel="noopener">Knesset OData</a> ·
+    <a href="https://supremedecisions.court.gov.il/" target="_blank" rel="noopener">supremedecisions.court.gov.il</a> ·
+    <a href="https://he.wikisource.org/wiki/ספר_החוקים_הפתוח" target="_blank" rel="noopener">ספר החוקים הפתוח</a>
+    <div id="debug" style="margin-top:6px"></div>
+  </footer>
+</div>
+
+<script src="../shared/config.js"></script>
+<script src="law.strings.js"></script>
+<script src="../shared/common.js"></script>
+<script src="law.data.js"></script>
+<script src="law.view.js"></script>
+</body>
+</html>

@@ -34,13 +34,15 @@ const CHECK = process.argv.includes("--check");
 // a written file keeps the line endings it had
 const lf = s => s.replace(/\r\n/g, "\n");
 
-/* ---------- the five pages ---------- */
+/* ---------- the pages ---------- */
 const PAGES = [
   { html: "budget/index.html",      strings: "budget/budget.strings.js" },
   { html: "budget/contractors.html",strings: "budget/contractors.strings.js" },
   { html: "votes/index.html",       strings: "votes/votes.strings.js" },
   { html: "mk/index.html",          strings: "mk/mk.strings.js", json: "mk/mk.i18n.json" },
   { html: "court/index.html",       strings: null /* inline in the HTML */ },
+  { html: "law/index.html",         strings: "law/law.strings.js" },
+  { html: "law/laws.html",          strings: ["law/law.strings.js", "law/laws.strings.js"] },
 ];
 
 /* ---------- load COMMON_STR from shared/common.js ---------- */
@@ -61,15 +63,14 @@ const COMMON_STR = extractObject(commonSrc, "const COMMON_STR");
 
 /* ---------- load a page's strings + PAGE id ---------- */
 function loadPage(p) {
-  const src = p.strings
-    ? fs.readFileSync(path.join(SITE, p.strings), "utf8")
-    : fs.readFileSync(path.join(SITE, p.html), "utf8");
   const sandbox = { window: {} };
-  // strings files only assign window.PAGE / window.PAGE_STR; for the court
+  // strings files only assign window.PAGE / window.PAGE_STR (a page may load
+  // two, in order: a section's shared words, then its own); for the court
   // page (inline strings) evaluate just those two assignments.
   if (p.strings) {
-    vm.runInNewContext(src, sandbox);
+    for (const f of [].concat(p.strings)) vm.runInNewContext(fs.readFileSync(path.join(SITE, f), "utf8"), sandbox);
   } else {
+    const src = fs.readFileSync(path.join(SITE, p.html), "utf8");
     const pageM = /window\.PAGE\s*=\s*"([^"]+)"/.exec(src);
     sandbox.window.PAGE = pageM ? pageM[1] : "";
     sandbox.window.PAGE_STR = extractObject(src, "window.PAGE_STR");
@@ -91,13 +92,12 @@ function makeT(pageStr, file) {
 function chromeHtml(activePage, t) {
   const BASE = "../";
   const tabs = [
-    ["budget", "budget/", "navBudget"],
-    ["votes", "votes/", "navVotes"],
-    ["mk", "mk/", "navMk"],
-    ["court", "court/", "navCourt"],
+    ["budget", "budget/", "navBudget", ["budget"]],
+    ["law", "law/", "navLaw", ["law", "votes", "court"]],
+    ["mk", "mk/", "navMk", ["mk"]],
   ];
-  const tabsHtml = tabs.map(([id, href, key]) =>
-    `<a href="${BASE}${href}" class="${activePage === id ? "active" : ""}" data-i18n="${key}">${t(key)}</a>`).join("");
+  const tabsHtml = tabs.map(([id, href, key, pages]) =>
+    `<a href="${BASE}${href}" class="${pages.includes(activePage) ? "active" : ""}" data-i18n="${key}">${t(key)}</a>`).join("");
   return `<header class="topbar"><div class="tbwrap">
       <a class="brand" href="${BASE}budget/" data-i18n="title">${t("title")}</a>
       <nav class="tabs">${tabsHtml}</nav>

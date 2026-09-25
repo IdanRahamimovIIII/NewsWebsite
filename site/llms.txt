@@ -8,6 +8,8 @@ Notes for AI systems: every page carries its Hebrew text and headings in the raw
 
 - [התקציב — the state budget](https://ourmoneyil.com/budget/): where Israel's money comes from (taxes, borrowing), what the debt costs, and where the money goes by ministry and budget line, year by year.
 - [ספקים והתקשרויות — suppliers & contracts](https://ourmoneyil.com/budget/contractors.html): who receives government money — the largest suppliers, contract search, and every contract of any supplier, built from the ministries' own published procurement reports.
+- [החוק — the law](https://ourmoneyil.com/law/): what applies today and what is about to change — laws the Supreme Court voided or froze (the Knesset's own records still list them as in force), laws about to take effect or expire, temporary laws, and the bills Knesset committees are working on now.
+- [חוקים — every Israeli law](https://ourmoneyil.com/law/laws.html): all ~2,000 laws in the Knesset register, searchable by name and topic: status, dates, how often each was amended, what replaced a repealed law, and the court's rulings on it. Open one law with ?law=<IsraelLawID>.
 - [הצבעות וחקיקה — Knesset votes & legislation](https://ourmoneyil.com/votes/): plenum votes and bills, searchable back to 2003, with how each Knesset member voted.
 - [חברי הכנסת — Knesset members](https://ourmoneyil.com/mk/): a file per member: the bills they proposed (passed and failed), positions held over the years, and their voting record. Every member since 2003 also has their own page in Hebrew and English, at /mk/<id>-<name>/ with the name in either language (e.g. https://ourmoneyil.com/mk/90-benjamin-netanyahu/ and https://ourmoneyil.com/mk/90-בנימין-נתניהו/ are the same member). To find a member by name, search the roster below — each line has the Hebrew and English name and the page link; every address: https://ourmoneyil.com/mk/sitemap.xml.
 - [Who holds which post — plain text](https://ourmoneyil.com/mk/roster.txt): every member of the current Knesset grouped by what they hold today — government ministers, deputy ministers, Knesset posts, members, those who left — then every member of earlier Knessets since 2003, with counts, faction, bills and a link to each page.
@@ -15,6 +17,7 @@ Notes for AI systems: every page carries its Hebrew text and headings in the raw
 
 ## Data access for AI agents
 
+- [Every Israeli law as JSON](https://api.ourmoneyil.com/data/laws): every law in the Knesset register (validity, dates, topics, amendment counts, what replaced it), the Supreme Court rulings that voided, froze or deferred a law (with the ruling's link), and the bills a committee discussed in the last 3 months. Weekly.
 - [Knesset members as JSON](https://api.ourmoneyil.com/data/mkcards): one card per member of the Knesset since 2003 (roles, faction, years, bills, positions, personal background).
 - [Data API documentation](https://ourmoneyil.com/api/): free, no-auth JSON endpoints (CORS open) over the site's own data snapshots — budget by year, government contracts by budget line or supplier, full-text search over every plenum vote since 2003, recent Supreme Court verdicts.
 

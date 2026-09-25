@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הכסף שלנו — כל חוקי מדינת ישראל | Our Money — Every Israeli Law</title>
+<meta name="description" content="כל חוקי מדינת ישראל במקום אחד: מה חל היום, מה בוטל ומתי, כמה פעמים כל חוק תוקן, ואילו חוקים ביטל בית המשפט העליון — מנתוני הכנסת, עם קישור למקור.">
+<!-- who we are to search engines and social cards (share.png is the shared card image) -->
+<link rel="canonical" href="https://ourmoneyil.com/law/laws.html">
+<link rel="alternate" type="text/plain" href="https://ourmoneyil.com/llms.txt" title="Guide for AI systems (llms.txt)">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="הכסף שלנו — Our Money">
+<meta property="og:title" content="הכסף שלנו — כל חוקי מדינת ישראל | Our Money — Every Israeli Law">
+<meta property="og:description" content="כל חוקי מדינת ישראל במקום אחד: מה חל היום, מה בוטל ומתי, כמה פעמים כל חוק תוקן, ואילו חוקים ביטל בית המשפט העליון — מנתוני הכנסת, עם קישור למקור.">
+<meta property="og:url" content="https://ourmoneyil.com/law/laws.html">
+<meta property="og:image" content="https://ourmoneyil.com/shared/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="he_IL">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../shared/style.css">
+<link rel="stylesheet" href="law.css">
+</head>
+<body>
+<header class="topbar"><div class="tbwrap">
+      <a class="brand" href="../budget/" data-i18n="title">הכסף שלנו</a>
+      <nav class="tabs"><a href="../budget/" class="" data-i18n="navBudget">התקציב</a><a href="../law/" class="active" data-i18n="navLaw">החוק</a><a href="../mk/" class="" data-i18n="navMk">חברי הכנסת</a></nav>
+      <button class="langbtn" id="langbtn" onclick="toggleLang()">English</button>
+    </div></header>
+
+<!-- the law section has four pages; this bar is how you move between them -->
+<nav class="subnav">
+  <div class="subnav-in">
+    <a href="../law/" data-i18n="subLawHome">ראשי</a>
+    <a href="../law/laws.html" class="active" aria-current="page" data-i18n="subLaws">חוקים</a>
+    <a href="../votes/" data-i18n="subBills">הצעות חוק והצבעות</a>
+    <a href="../court/" data-i18n="subRulings">פסיקה</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <p class="tagline" data-i18n="tagline">כל חוקי מדינת ישראל, במקום אחד</p>
+
+  <div class="card">
+    <h2 data-i18n="listTitle">חיפוש בחוקים</h2>
+    <p class="hint" data-i18n="listHint">חיפוש לפי שם החוק. לחיצה על חוק פותחת את הפרטים שלו.</p>
+    <div class="searchrow">
+      <input id="q" data-i18n-ph="qPh" onkeydown="if(event.key==='Enter')applyControls()" placeholder="לדוגמה: חוק העונשין, שכירות, נכים">
+      <button onclick="applyControls()" data-i18n="searchBtn">חיפוש</button>
+    </div>
+    <div class="lawctl">
+      <select id="topic" onchange="applyControls()" aria-label="נושא"></select>
+      <label><span data-i18n="sortLabel">סדר: </span><select id="sort" onchange="applyControls()"></select></label>
+    </div>
+    <details class="adv">
+      <summary data-i18n="advanced">אפשרויות נוספות</summary>
+      <div class="advin">
+        <label><input type="checkbox" id="optBudget" onchange="applyControls()"><span data-i18n="showBudget">הצגת חוקי תקציב</span></label>
+        <label><input type="checkbox" id="optGone" onchange="applyControls()"><span data-i18n="showGone">הצגת חוקים שכבר לא חלים (בוטלו, פקעו או נושנו)</span></label>
+        <label><input type="checkbox" id="optBasic" onchange="applyControls()"><span data-i18n="onlyBasic">רק חוקי יסוד</span></label>
+        <label><input type="checkbox" id="optCourt" onchange="applyControls()"><span data-i18n="onlyCourt">רק חוקים שבית המשפט ביטל או הקפיא</span></label>
+      </div>
+    </details>
+    <p class="statline" id="stat"></p>
+    <div id="list"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
+    <p class="notadvice" data-i18n="notAdvice">הדף עוזר להבין, ואינו ייעוץ משפטי.</p>
+  </div>
+
+  <div class="card explain">
+    <h2 data-i18n="explainTitle">איך לקרוא את הדף?</h2>
+    <p data-i18n="explain1">״חל היום״ הוא הסטטוס שהכנסת רושמת לכל חוק. חוק ״בוטל בחוק״ כשהכנסת עצמה ביטלה אותו, ״פקע״ כשחוק זמני הגיע לסופו, ו״נושן״ כשסיים את תפקידו ואיש לא ביטל אותו. ביטול של בית המשפט לא מופיע ברשומות הכנסת — לכן הוא מוצג כאן בנפרד.</p>
+    <p data-i18n="explain2">הדף עוזר להבין, ואינו ייעוץ משפטי. לפני החלטה שנוגעת לכם — בדקו את נוסח החוק ואת פסק הדין המלא, או היוועצו בעורך דין.</p>
+    <p data-i18n="explain3">מקורות: מאגר הנתונים הפתוח של הכנסת (חוקים, הצעות חוק, ועדות), אתר פסקי הדין של בית המשפט העליון, וספר החוקים הפתוח בוויקיטקסט.</p>
+  </div>
+
+  <footer>
+    <p class="aboutpara" data-i18n="aboutBody">״הכסף שלנו״ הוא אתר עצמאי, ללא קשר לגוף ממשלתי, למפלגה או לארגון, שנועד להעניק לאזרחי ישראל מבט נקי ומסודר על פעילות המדינה ועל האופן שבו היא משתמשת בכסף שלנו. כל הנתונים מגיעים ישירות מהמקורות הרשמיים ומוצגים כפי שהם, עם קישור למקור. מצאתם טעות או נתון חסר? כתבו לנו ונתקן:</p>
+    <p class="aboutmail"><span data-i18n="contactLabel">אמצעי תקשורת - </span><a href="mailto:contact@ourmoneyil.com">contact@ourmoneyil.com</a></p>
+    <p class="aboutmail"><span data-i18n="devLabel">למפתחים: </span><a href="https://ourmoneyil.com/api/">https://ourmoneyil.com/api</a></p>
+    <span data-i18n="credit">מקורות המידע: </span>
+    <a href="https://main.knesset.gov.il/Activity/Info/Pages/databases.aspx" target="_blank" rel="noopener">Knesset OData</a> ·
+    <a href="https://supremedecisions.court.gov.il/" target="_blank" rel="noopener">supremedecisions.court.gov.il</a> ·
+    <a href="https://he.wikisource.org/wiki/ספר_החוקים_הפתוח" target="_blank" rel="noopener">ספר החוקים הפתוח</a>
+    <div id="debug" style="margin-top:6px"></div>
+  </footer>
+</div>
+
+<script src="../shared/config.js"></script>
+<script src="law.strings.js"></script>
+<script src="laws.strings.js"></script>
+<script src="../shared/common.js"></script>
+<script src="law.data.js"></script>
+<script src="laws.view.js"></script>
+</body>
+</html>

@@ -50,9 +50,19 @@
 <body>
 <header class="topbar"><div class="tbwrap">
       <a class="brand" href="../budget/" data-i18n="title">הכסף שלנו</a>
-      <nav class="tabs"><a href="../budget/" class="" data-i18n="navBudget">התקציב</a><a href="../votes/" class="" data-i18n="navVotes">הצבעות וחקיקה</a><a href="../mk/" class="" data-i18n="navMk">חברי הכנסת</a><a href="../court/" class="active" data-i18n="navCourt">בית המשפט העליון</a></nav>
+      <nav class="tabs"><a href="../budget/" class="" data-i18n="navBudget">התקציב</a><a href="../law/" class="active" data-i18n="navLaw">החוק</a><a href="../mk/" class="" data-i18n="navMk">חברי הכנסת</a></nav>
       <button class="langbtn" id="langbtn" onclick="toggleLang()">English</button>
     </div></header>
+
+<!-- the law section has four pages; this bar is how you move between them -->
+<nav class="subnav">
+  <div class="subnav-in">
+    <a href="../law/" data-i18n="subLawHome">ראשי</a>
+    <a href="../law/laws.html" data-i18n="subLaws">חוקים</a>
+    <a href="../votes/" data-i18n="subBills">הצעות חוק והצבעות</a>
+    <a href="../court/" class="active" aria-current="page" data-i18n="subRulings">פסיקה</a>
+  </div>
+</nav>
 <div class="wrap">
   <p class="tagline" data-i18n="tagline">מה החליט בית המשפט העליון? המסמכים הרשמיים, בשפה פשוטה.</p>
 

@@ -1,0 +1,53 @@
+# Rebuilds the laws snapshot weekly — every Israeli law (validity, topics,
+# amendments), the hand-kept court list (pipeline/laws/court.csv) and the
+# bills a committee discussed in the last 3 months — and publishes KV
+# pub:laws (served as /data/laws by the relay). The "החוק" pages read it.
+# Same collector as Mercy's build-laws.bat; gates refuse a short or broken
+# snapshot loudly — nothing half-built is ever published.
+# Commits NOTHING to git. Credentials: repo secrets CF_API_TOKEN +
+# CF_ACCOUNT_ID (same as update-mkcards).
+name: update laws
+
+on:
+  schedule:
+    - cron: "53 3 * * 1"      # Mondays; committees meet Sun–Wed
+  workflow_dispatch:
+    inputs:
+      recess_ok:
+        description: "publish even if no committee met in 3 months (a recess)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read              # commits nothing
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # zero-install: the collector is standard library only
+
+      - name: the rules must still hold
+        run: python3 laws/test_laws.py
+        working-directory: pipeline
+
+      - name: build + publish the snapshot
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: python3 pipeline/laws/build_laws.py ${{ inputs.recess_ok && '--recess-ok' || '' }}
+
+      - name: keep the built snapshot as an artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: laws-snapshot
+          path: pipeline/laws/out/laws.json
+          retention-days: 90
+          if-no-files-found: warn

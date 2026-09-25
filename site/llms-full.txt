@@ -40,6 +40,26 @@ from the procurement/engagement reports the ministries themselves publish,
 from BudgetKey, and from the tenders and exemptions registries — every
 contract lists its sources.
 
+### https://ourmoneyil.com/law/ — החוק (the law)
+What applies today and what is about to change: laws the Supreme Court
+voided in full or in part, froze, or deferred (the Knesset's records never
+record a court annulment, so these laws still read "in force" there — each
+item links to the ruling on the court's site), laws passed but not yet in
+force, laws that started to apply in the last three months, temporary laws
+and those about to expire, and the bills a Knesset committee discussed in
+the last three months (identical bills filed separately shown once). The
+section also holds the votes and court pages below. It gives understanding,
+never legal advice.
+
+### https://ourmoneyil.com/law/laws.html — חוקים (every Israeli law)
+All ~2,000 laws in the Knesset register, searchable by name and topic
+(51 topics). Per law: status, validity dates, first and latest gazette
+publication, how often it was amended (direct / inside another law), the
+law that replaced it, and the court's rulings on it, with links to the
+full current text (Wikisource's open statute book) and the Knesset record.
+Budget laws and laws no longer in force are folded by default. One law:
+https://ourmoneyil.com/law/laws.html?law=<IsraelLawID>
+
 ### https://ourmoneyil.com/votes/ — הצבעות וחקיקה (Knesset votes & legislation)
 Every Knesset plenum vote from 2003 to today (tens of thousands),
 searchable by free text and date range, with totals and — per vote — how
@@ -97,6 +117,20 @@ General rules:
   rows). Row fields include: Id, CaseId, CaseNum, CaseDesc (e.g. "עע״מ
   38750-12-25"), CaseName (the parties), Type (פסק דין / החלטה),
   VerdictsDtString (DD/MM/YYYY), Pages, PathForWeb, DocName.
+- /data/laws — every law in the Knesset register + the court's effects on
+  them + the bills in committee now. Weekly. Fields: knesset, nextStart,
+  asOf, courtReviewed, topics {id: name};
+  laws[]: i IsraelLawID, n name, st the Knesset's validity text (תקף / בטל /
+  נושן / פקע / טרם נכנס לתוקף), s/e validity start/end, p first gazette
+  publication, lp latest, f flags (b Basic Law, u budget, t temporary),
+  t topic ids, a amendments (ad direct), r IsraelLawID that replaced it;
+  court[]: l law id, k void | partial | frozen | deferred, c case, d date,
+  w what was cut (Hebrew), u the ruling on the court's site, src where the
+  row came from, pn/ds panel size and dissenters (when read), ck date read;
+  bills[]: i BillID, n, ty type, st stage, d last committee discussion,
+  cm committee, by sponsors, am amends an existing law, twins identical
+  bills, pieces (parts of a budget package).
+  https://api.ourmoneyil.com/data/laws
 - /data/persons — master list of Knesset members.
 - /data/mkcards — one card per member of the Knesset since 2003 (the 16th
   onward): names (he/en), today's role, faction, years, Knessets served,

@@ -3,7 +3,7 @@
    Our Money — shared code for all pages
    Load order in every page:  config.js → common.js → the page's script.
    Each page defines:
-     window.PAGE = "budget" | "votes" | "court"   (which nav tab is active)
+     window.PAGE = "budget" | "law" | "votes" | "court" | "mk"   (which nav tab is active)
      window.PAGE_STR = { he: {...}, en: {...} }   (page-specific strings)
      window.onLangChange = () => { ...re-render data-driven parts... }
    ===================================================================== */
@@ -13,9 +13,15 @@ const COMMON_STR = {
   he: {
     title: "הכסף שלנו",
     navBudget: "התקציב",
+    navLaw: "החוק",
     navVotes: "הצבעות וחקיקה",
     navMk: "חברי הכנסת",
     navCourt: "בית המשפט העליון",
+    // the law section's sub-menu (law/, law/laws.html, votes/, court/)
+    subLawHome: "ראשי",
+    subLaws: "חוקים",
+    subBills: "הצעות חוק והצבעות",
+    subRulings: "פסיקה",
     loading: "טוען נתונים…",
     searchBtn: "חיפוש",
     empty: "לא נמצאו תוצאות.",
@@ -31,9 +37,14 @@ const COMMON_STR = {
   en: {
     title: "Our Money",
     navBudget: "The Budget",
+    navLaw: "The Law",
     navVotes: "Votes & Legislation",
     navMk: "Knesset Members",
     navCourt: "Supreme Court",
+    subLawHome: "Overview",
+    subLaws: "Laws",
+    subBills: "Bills & votes",
+    subRulings: "Rulings",
     loading: "Loading data…",
     searchBtn: "Search",
     empty: "No results found.",
@@ -62,14 +73,15 @@ function buildChrome() {
   // so from any of them the site root is one level up. A page that lives
   // deeper can set window.BASE (e.g. "../../") before loading this file.
   const BASE = window.BASE || "../";
+  // [tab, link, label, the PAGE ids it lights up for] — bills (votes/) and
+  // rulings (court/) live under "the law"; their addresses never changed
   const tabs = [
-    ["budget", "budget/", "navBudget"],
-    ["votes", "votes/", "navVotes"],
-    ["mk", "mk/", "navMk"],
-    ["court", "court/", "navCourt"],
+    ["budget", "budget/", "navBudget", ["budget"]],
+    ["law", "law/", "navLaw", ["law", "votes", "court"]],
+    ["mk", "mk/", "navMk", ["mk"]],
   ];
-  const tabsHtml = tabs.map(([id, href, key]) =>
-    `<a href="${BASE}${href}" class="${window.PAGE === id ? "active" : ""}" data-i18n="${key}"></a>`).join("");
+  const tabsHtml = tabs.map(([id, href, key, pages]) =>
+    `<a href="${BASE}${href}" class="${pages.includes(window.PAGE) ? "active" : ""}" data-i18n="${key}"></a>`).join("");
 
   const bar = document.querySelector("header.topbar");
   if (bar && !bar.childElementCount) {

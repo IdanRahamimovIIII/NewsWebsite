@@ -97,6 +97,10 @@
       <p>Supreme Court decisions from the last 90 days, up to 50 rows. Row fields include <code>Id</code>, <code>CaseId</code>, <code>CaseNum</code>, <code>CaseDesc</code> (e.g. <span dir="rtl">״עע״מ 38750-12-25״</span>), <code>CaseName</code> (the parties), <code>Type</code> (פסק דין / החלטה), <code>VerdictsDtString</code> (DD/MM/YYYY), <code>Pages</code>, <code>PathForWeb</code>, <code>DocName</code>.</p>
     </div>
     <div class="ep">
+      <code class="route"><a href="https://api.ourmoneyil.com/data/laws">GET /data/laws</a></code>
+      <p>Every law in the Knesset register, the Supreme Court's effects on them, and the bills a committee discussed in the last 3 months. Rebuilt weekly. <code>laws[]</code>: <code>i</code> IsraelLawID, <code>n</code> name, <code>st</code> the Knesset's validity text, <code>s</code>/<code>e</code> validity start/end, <code>p</code>/<code>lp</code> first/latest gazette publication, <code>f</code> flags (b Basic Law, u budget, t temporary), <code>t</code> topic ids (names in <code>topics</code>), <code>a</code> amendments (<code>ad</code> direct), <code>r</code> the law that replaced it. <code>court[]</code>: <code>l</code> law id, <code>k</code> void / partial / frozen / deferred, <code>c</code> case, <code>d</code> date, <code>w</code> what was cut, <code>u</code> the ruling on the court's site — kept by hand, since no official source records a court annulment. <code>bills[]</code>: <code>i</code> BillID, <code>n</code>, <code>st</code> stage, <code>d</code> last committee discussion, <code>by</code> sponsors, <code>am</code> amends an existing law, <code>twins</code> identical bills.</p>
+    </div>
+    <div class="ep">
       <code class="route">GET /data/persons</code>
       <p>Master list of Knesset members.</p>
     </div>
