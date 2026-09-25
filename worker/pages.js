@@ -114,7 +114,8 @@ function billsHtml(bills, S) {
   return PILES.map(([key, label]) => {
     const rows = bills.filter(b => pileOf(b) === key);
     if (!rows.length) return "";
-    return `<details class="bakedpile"><summary>${esc(S[label])} (${rows.length})</summary><ul class="bakedbills">` +
+    const why = key === "unfinished" && S.unfinishedInfoB ? `<p class="names">${esc(S.unfinishedInfoB)}</p>` : "";
+    return `<details class="bakedpile"><summary>${esc(S[label])} (${rows.length})</summary>${why}<ul class="bakedbills">` +
       rows.map(b => `<li>${esc(b.n)}${b.s ? ` <span class="names">· ${key === "unfinished" ? esc(S.bStoppedAt) : ""}${esc(b.s)}</span>` : ""}</li>`).join("") +
       `</ul></details>`;
   }).join("");

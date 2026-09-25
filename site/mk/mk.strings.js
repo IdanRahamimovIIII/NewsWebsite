@@ -6,7 +6,7 @@
 window.PAGE = "mk";
 window.PAGE_STR = {
   he: {
-    tagline: "מי האנשים שמצביעים בשמכם — ומה הם עשו עם זה",
+    tagline: "מי מצביע בשמנו",   /* Mercy */
 
     /* the search card */
     pageTitle: "תיק חבר/ת כנסת",
@@ -52,6 +52,8 @@ window.PAGE_STR = {
     bPending: "בתהליך",        /* of THIS Knesset, no verdict yet */
     bUnfinished: "לא הושלמו לפני הבחירות",   /* of an earlier Knesset: it ended (elections) before the final vote (Mercy: plain words, same name as the data) */
     bStoppedAt: "הגיעה עד שלב: ",
+    unfinishedInfoT: "מה זה ״לא הושלמו לפני הבחירות״?",
+    unfinishedInfoB: "כל כנסת מכהנת עד הבחירות הבאות. כדי להפוך לחוק, הצעה צריכה לעבור כמה שלבים: הנחה על שולחן הכנסת, קריאה טרומית, דיון בוועדה ושלוש קריאות. הצעה שלא עברה את כל השלבים עד שהכנסת הסתיימה — נעצרת. בכל שורה כתוב עד איזה שלב הגיעה. אפשר להגיש אותה מחדש בכנסת הבאה, והצעה שעברה קריאה ראשונה יכולה לפעמים להמשיך מאותו שלב (״דין רציפות״).",
     /* what each pile means — on hover, in the hero counts and on the check-circles */
     tipPassed: "הצעות שאושרו בקריאה שלישית והפכו לחוק.",
     tipRejected: "הצעות שהכנסת דחתה, הסירה מסדר היום או עצרה.",
@@ -104,7 +106,7 @@ window.PAGE_STR = {
     votesHint: "באילו הצבעות במליאה הם השתתפו, ומה הם הצביעו. לחצו על הצבעה לפרטים.",
   },
   en: {
-    tagline: "The people who vote in your name — and what they did with it",
+    tagline: "Who votes in our name",
 
     pageTitle: "Knesset member portfolio",
     pageHint: "Search by name, role or faction — past Knessets included — and see what they proposed, how they voted, and which positions they held.",
@@ -144,6 +146,8 @@ window.PAGE_STR = {
     bPending: "In process",
     bUnfinished: "Unfinished at the election",
     bStoppedAt: "got as far as: ",
+    unfinishedInfoT: "What does “Unfinished at the election” mean?",
+    unfinishedInfoB: "Each Knesset serves until the next election. To become law, a bill has to pass several stages: being tabled, a preliminary reading, committee work and three readings. A bill that had not passed them all when its Knesset ended stops there — each row says how far it got. It can be filed again in the next Knesset, and one that passed its first reading can sometimes continue from where it stopped (the “continuity rule”).",
     tipPassed: "Bills approved in the third reading — they became law.",
     tipRejected: "Bills the Knesset voted down, removed from the agenda, or stopped.",
     tipPending: "Bills of the current Knesset with no verdict yet — they can still pass.",

@@ -73,7 +73,7 @@ console.log('\nforwarders at the old addresses:');
 for (const [stub, target] of Object.entries(FORWARDERS)) {
   const src = fs.existsSync(path.join(DIR, stub)) ? fs.readFileSync(path.join(DIR, stub), 'utf8') : '';
   ok(`${stub} forwards to ${target}`,
-     src.includes(`url=${target}`) && fs.existsSync(path.join(DIR, target, 'index.html')));
+     (src.includes(`url=${target}`) || src.includes(`url=/${target}`)) && fs.existsSync(path.join(DIR, target, 'index.html')));
 }
 
 await browser.close();

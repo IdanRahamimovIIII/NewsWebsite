@@ -123,7 +123,7 @@ ok(/window\.MK_ENTITY=\{"id":30/.test(h) && h.includes(JSON.parse(I18N).he.bills
   const box = /<div id="bills">([\s\S]*?)<\/div>\s*<\/div>/.exec(h)[1];
   ok(box.includes(`<summary>${HE.bPassed} (1)</summary>`) && box.includes(`<summary>${HE.bRejected} (2)</summary>`) &&
      box.includes(`<summary>${HE.bPending} (1)</summary>`) && box.includes(`<summary>${HE.bUnfinished} (2)</summary>`) &&
-     box.includes(`${HE.bStoppedAt}הונחה על שולחן הכנסת`), "bills: four piles, counted; old \"stale\" lists still land in לא הושלמו");
+     box.includes(`${HE.bStoppedAt}הונחה על שולחן הכנסת`) && box.includes(HE.unfinishedInfoB.slice(0, 30)), "bills: four piles, counted; old \"stale\" lists still land in לא הושלמו");
   ok((box.match(/<li>/g) || []).length === 6, "bills: every bill listed");
   ok(box.indexOf(HE.bPassed) < box.indexOf(HE.bRejected) && box.indexOf(HE.bRejected) < box.indexOf(HE.bPending), "bills: the page's pile order");
   ok(box.includes("חוק &lt;b&gt;&quot;ב&quot;&lt;/b&gt; &amp; ג") && !box.includes("<b>"), "bills: names escaped");

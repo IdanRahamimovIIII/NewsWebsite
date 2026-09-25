@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<!-- Forwarding stub (2026-09-06): this page now lives in budget/ — see CLAUDE.md.
-     Kept so old links and bookmarks still work. Nothing to edit here. -->
+<!-- The domain root 301s to /budget/ (_redirects); this file answers /index.html
+     and, while the host falls back to it, every unknown address. Paths are
+     ABSOLUTE: a relative "budget/" appended itself forever (/x/budget/budget/…).
+     Kept so old links and bookmarks still work. -->
 <html lang="he" dir="rtl"><head><meta charset="UTF-8">
-<meta http-equiv="refresh" content="0; url=budget/">
-<script>location.replace("budget/" + location.search + location.hash);</script>
+<noscript><meta http-equiv="refresh" content="0; url=/budget/"></noscript>
+<script>location.replace(/^\/(index\.html)?$/.test(location.pathname) ? "/budget/" + location.search + location.hash : "/404.html");</script>
 <title>הכסף שלנו</title><link rel="alternate" type="text/plain" href="https://ourmoneyil.com/llms.txt" title="Guide for AI systems (llms.txt)"></head>
-<body><p style="font-family:system-ui;padding:24px">העמוד עבר לכתובת <a href="budget/">budget/</a></p>
+<body><p style="font-family:system-ui;padding:24px">העמוד עבר לכתובת <a href="/budget/">budget/</a></p>
 <p style="font-family:system-ui;padding:0 24px">For AI systems: <a href="/llms.txt">https://ourmoneyil.com/llms.txt</a></p></body></html>

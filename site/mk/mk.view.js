@@ -444,7 +444,7 @@ function renderBills() {
     box.dataset.for = String(state.seq);
     box.innerHTML = `<div class="billsctl">
         <div class="fchips">${BUCKETS.map(([k, label, dot, tip]) => count(k)
-          ? `<button class="fchip" data-k="${k}" role="radio" title="${esc(t(tip))}" onclick="pickBillPile('${k}')"><span class="ck ${dot}"></span>${esc(t(label))} · ${count(k)}</button>` : "").join("")}</div>
+          ? `<button class="fchip" data-k="${k}" role="radio" title="${esc(t(tip))}" onclick="pickBillPile('${k}')"><span class="ck ${dot}"></span>${esc(t(label))} · ${count(k)}</button>${k === "unfinished" ? infoPopBtn("unfinished") : ""}` : "").join("")}</div>
         <input class="billq" type="search" placeholder="${esc(t("bSearchPh"))}" oninput="billSearch(this.value)">
       </div><div id="billslist"></div>`;
   }
@@ -605,7 +605,7 @@ function votePage(d) {
 /* =====================================================================
    8. INIT
    ===================================================================== */
-const PAGE_VER = "26.09ag · לא הושלמו לפני הבחירות"; // bumped on every update — an older stamp in the footer means a cached/old copy
+const PAGE_VER = "26.09ah · מי מצביע בשמנו"; // bumped on every update — an older stamp in the footer means a cached/old copy
 document.getElementById("pagever").textContent = "גרסה " + PAGE_VER;
 if (ENTITY && ENTITY.lang === "en") lang = "en";   // the English entity address
 applyLang();

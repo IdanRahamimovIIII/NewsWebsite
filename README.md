@@ -12,15 +12,6 @@ Hebrew first, with an English toggle on every page.
 אתר עצמאי ולא מפלגתי שמסביר את המדינה בשפה פשוטה: התקציב, ההתקשרויות
 הממשלתיות, ההצבעות והחקיקה בכנסת, חברי הכנסת ופסקי הדין של בית המשפט העליון.
 
-## Principles
-
-- **Official sources only.** Every figure comes from the state's own open
-  data (the Ministry of Finance budget files via BudgetKey, the Knesset's
-  APIs, the courts' public database, data.gov.il), and every fact links to
-  its source document.
-- **No opinions.** The site selects and explains; readers judge.
-- **Nothing re-hosted.** The state's documents are linked, never copied.
-
 ## What's here
 
 | folder | what it is |
