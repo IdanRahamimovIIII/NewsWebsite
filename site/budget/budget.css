@@ -212,14 +212,7 @@ details.tabletoggle summary { cursor: pointer; font-size: 14px; color: var(--acc
 .yearbtn[aria-current="true"]:hover { background: none; }
 .tw td.yr { padding-block: 4px; }
 
-/* ---------- tooltip ---------- */
-#tip { position: fixed; z-index: 30; display: none; max-width: 300px;
-  background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.12); padding: 10px 12px; font-size: 13px; pointer-events: none; }
-#tip .t { font-weight: 600; margin-bottom: 4px; }
-#tip .r { display: flex; justify-content: space-between; gap: 16px; color: var(--ink-2); }
-#tip .r b { color: var(--ink-1); font-weight: 500; font-variant-numeric: tabular-nums; }
-#tip .r.tt { border-top: 1px solid var(--grid); margin-top: 5px; padding-top: 5px; }
+/* the tooltip (#tip): shared\style.css */
 
 /* =====================================================================
    contractors.html — ספקים והתקשרויות

@@ -229,5 +229,42 @@ function debug(msg) {
   if (d) d.textContent = msg ? "⚠ " + String(msg).slice(0, 300) : "";
 }
 
+/* ---------- the tooltip — ONE look site-wide (style.css #tip). showTip(evt,
+   html) for rich content (charts); any element with data-tip="text" gets it
+   on hover and keyboard focus. Never the browser's own title= (Mercy). ---------- */
+let tipEl = null, tipByData = false;
+function showTip(evt, html) {
+  if (!tipEl) tipEl = document.getElementById("tip") ||
+    document.body.appendChild(Object.assign(document.createElement("div"), { id: "tip" }));
+  tipByData = false;                      // a caller's own tooltip (a chart's) owns it now
+  tipEl.innerHTML = html;
+  tipEl.style.left = tipEl.style.top = "0px";   // measure with the whole width free, not squeezed at its last spot
+  tipEl.style.display = "block";
+  const pad = 14, w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+  let x = lang === "he" ? evt.clientX - w - pad : evt.clientX + pad;
+  let y = evt.clientY + pad;
+  if (x < 4) x = evt.clientX + pad;
+  if (x + w > innerWidth - 8) x = evt.clientX - w - pad;
+  if (y + h > innerHeight - 8) y = evt.clientY - h - pad;
+  tipEl.style.left = Math.max(4, x) + "px";
+  tipEl.style.top = Math.max(4, y) + "px";
+}
+function hideTip() { if (tipEl) tipEl.style.display = "none"; tipByData = false; }
+// a data-tip tooltip hides only itself — a chart's own showTip is left alone
+document.addEventListener("mousemove", e => {
+  const el = e.target.closest ? e.target.closest("[data-tip]") : null;
+  if (el) { showTip(e, esc(el.dataset.tip)); tipByData = true; }
+  else if (tipByData) hideTip();
+});
+document.addEventListener("focusin", e => {
+  const el = e.target.closest ? e.target.closest("[data-tip]") : null;
+  if (!el) return;
+  const b = el.getBoundingClientRect();
+  showTip({ clientX: b.left + b.width / 2, clientY: b.bottom }, esc(el.dataset.tip));
+  tipByData = true;
+});
+document.addEventListener("focusout", () => { if (tipByData) hideTip(); });
+addEventListener("scroll", () => { if (tipByData) hideTip(); }, { passive: true });
+
 /* ---------- boot ---------- */
 buildChrome();

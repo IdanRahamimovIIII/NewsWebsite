@@ -22,22 +22,7 @@ function fmtCompact(v) {
 const fmtBn  = v => nfmt({ maximumFractionDigits: 1 }).format((v * SCALE) / 1e9);
 const fmtPct = v => nfmt({ maximumFractionDigits: 1 }).format(v) + "%";
 
-/* ---------- tooltip (charts) ---------- */
-const tip = document.getElementById("tip");
-function showTip(evt, html) {
-  tip.innerHTML = html;
-  tip.style.display = "block";
-  const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
-  let x = lang === "he" ? evt.clientX - w - pad : evt.clientX + pad;
-  let y = evt.clientY + pad;
-  if (x < 4) x = evt.clientX + pad;
-  if (x + w > innerWidth - 8) x = evt.clientX - w - pad;
-  if (y + h > innerHeight - 8) y = evt.clientY - h - pad;
-  tip.style.left = Math.max(4, x) + "px";
-  tip.style.top = Math.max(4, y) + "px";
-}
-function hideTip() { tip.style.display = "none"; }
-
+/* ---------- tooltip (charts): showTip/hideTip live in common.js ---------- */
 function barTip(evt, el) {
   const r = el._row; if (!r) return;
   showTip(evt, `<div class="t">${esc(r.title)}</div>
@@ -396,7 +381,7 @@ function renderFlowTable() {
     const cur = f.y === state.year;
     return `<tr class="${cur ? "current" : ""}">
       <td class="yr"><button class="yearbtn" type="button" aria-current="${cur}"
-        title="${esc(cur ? t("thisYear") : fill(t("showYear"), { y: f.y }))}"
+        data-tip="${esc(cur ? t("thisYear") : fill(t("showYear"), { y: f.y }))}"
         onclick="selectYear(${f.y})">${f.y}${isPlanYear(f) ? " ★" : ""}</button></td>
       <td class="num">${fmtBn(fv(f, "tax") + fv(f, "fees"))}</td>
       <td class="num">${fmtBn(fv(f, "other"))}</td>
@@ -525,7 +510,7 @@ function treeHtml(nodes, parentV) {
     return `<button class="barrow" data-code="${esc(n.code)}"
       onmousemove="barTip(event,this)" onmouseleave="hideTip()" onfocus="barTipFocus(this)" onblur="hideTip()"
       ${dead ? "style='cursor:default'" : `onclick="toggleNode('${esc(n.code)}')"`}>
-      <span class="name" title="${esc(n.r.title)}">${caret}${esc(shortTitle(n))}</span>
+      <span class="name">${caret}${esc(shortTitle(n))}</span>
       <span class="bartrack"><span class="bar" style="width:${w}%"></span></span>
       <span class="val">${fmtCompact(v)}${pct}</span>
     </button>` + kids;

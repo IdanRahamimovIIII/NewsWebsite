@@ -161,7 +161,7 @@ function dirCardHtml(e, hit) {
   return avatarHtml(e.name, e.m.Id, "avxl") +
     `<span class="dcname">${esc(e.name)}</span>` +
     `<span class="dcrole">${role === null ? "…" : esc(role)}</span>` +
-    (e.faction ? `<span class="dcparty" title="${esc(t("factionTip"))}">${esc(e.faction)}</span>` : "") +
+    (e.faction ? `<span class="dcparty" data-tip="${esc(t("factionTip"))}">${esc(e.faction)}</span>` : "") +
     (years ? `<span class="dcyears">${esc(years)}</span>` : "") +
     (bills ? `<span class="dcbills">${esc(bills)}</span>` : "") +
     (hit && hit !== role && hit !== e.faction ? `<span class="dchit">${esc(hit)}</span>` : "");   // why this card survived the search — unless the card already says it
@@ -347,7 +347,7 @@ function renderHead() {
   // faction · how long in the Knesset. (The ever-PM spans were here and
   // came out as clutter — Mercy, 2026-09-06; the timeline below has them.)
   const story = [
-    fRow ? `<span class="factionname" title="${esc(t("factionTip"))}">${esc(fRow.FactionName.trim())}</span>` : "",
+    fRow ? `<span class="factionname" data-tip="${esc(t("factionTip"))}">${esc(fRow.FactionName.trim())}</span>` : "",
     esc(tenureLine(s, pos)),
   ].filter(Boolean);
   document.getElementById("phead").innerHTML =
@@ -383,10 +383,10 @@ function renderTiles() {
       bar = `<div class="billsbar">
           <div class="bhead">${esc(head)}</div>
           <div class="vmeta bleg">
-            <span class="chip" title="${esc(t("tipPassed"))}"><span class="dot for"></span>${esc(t("bPassed"))} ${p}</span>
-            <span class="chip" title="${esc(t("tipRejected"))}"><span class="dot against"></span>${esc(t("bRejected"))} ${r}</span>
-            ${q ? `<span class="chip" title="${esc(t("tipPending"))}"><span class="dot pending"></span>${esc(t("bPending"))} ${q}</span>` : ""}
-            ${z ? `<span class="chip" title="${esc(t("tipUndecided"))}"><span class="dot abstain"></span>${esc(t("bUndecided"))} ${z}</span>` : ""}
+            <span class="chip" data-tip="${esc(t("tipPassed"))}"><span class="dot for"></span>${esc(t("bPassed"))} ${p}</span>
+            <span class="chip" data-tip="${esc(t("tipRejected"))}"><span class="dot against"></span>${esc(t("bRejected"))} ${r}</span>
+            ${q ? `<span class="chip" data-tip="${esc(t("tipPending"))}"><span class="dot pending"></span>${esc(t("bPending"))} ${q}</span>` : ""}
+            ${z ? `<span class="chip" data-tip="${esc(t("tipUndecided"))}"><span class="dot abstain"></span>${esc(t("bUndecided"))} ${z}</span>` : ""}
           </div>
         </div>`;
     }
@@ -444,7 +444,7 @@ function renderBills() {
     box.dataset.for = String(state.seq);
     box.innerHTML = `<div class="billsctl">
         <div class="fchips">${BUCKETS.map(([k, label, dot, tip]) => count(k)
-          ? `<button class="fchip" data-k="${k}" role="radio" title="${esc(t(tip))}" onclick="pickBillPile('${k}')"><span class="ck ${dot}"></span>${esc(t(label))} · ${count(k)}</button>` : "").join("")}</div>
+          ? `<button class="fchip" data-k="${k}" role="radio" data-tip="${esc(t(tip))}" onclick="pickBillPile('${k}')"><span class="ck ${dot}"></span>${esc(t(label))} · ${count(k)}</button>` : "").join("")}</div>
         <input class="billq" type="search" placeholder="${esc(t("bSearchPh"))}" oninput="billSearch(this.value)">
       </div><div id="billslist"></div>`;
   }
@@ -460,7 +460,7 @@ function renderBills() {
   const shown = list.slice(0, state.billShown);
   state._bShown = shown;
   // each row opens to the bill's official documents (Mercy)
-  const rows = shown.map((x, i) => `<button class="brow${x._open ? " sel" : ""}" onclick="openBill(${i})"><span class="dot ${dotOf[x._bucket]}" title="${esc(t(BUCKETS.find(u => u[0] === x._bucket)[1]))}"></span><span class="bname">${x._open ? "▾" : "▸"} ${esc(x.Name)}${
+  const rows = shown.map((x, i) => `<button class="brow${x._open ? " sel" : ""}" onclick="openBill(${i})"><span class="dot ${dotOf[x._bucket]}" data-tip="${esc(t(BUCKETS.find(u => u[0] === x._bucket)[1]))}"></span><span class="bname">${x._open ? "▾" : "▸"} ${esc(x.Name)}${
       x._lead ? ` <span class="leadchip">${esc(t("bLead"))}</span>` : ""}
       <span class="names">— ${esc(x._status)}${x.KnessetNum ? ` · ${esc(t("knesset"))} ${x.KnessetNum}` : ""}</span></span></button>` +
       (x._open ? `<div class="kidsbox">${docsHtml(x._docs)}</div>` : "")).join("");
@@ -605,7 +605,7 @@ function votePage(d) {
 /* =====================================================================
    8. INIT
    ===================================================================== */
-const PAGE_VER = "26.09ai · מי מצביע בשמנו"; // bumped on every update — an older stamp in the footer means a cached/old copy
+const PAGE_VER = "26.09aj · טולטיפ אחד"; // bumped on every update — an older stamp in the footer means a cached/old copy
 document.getElementById("pagever").textContent = "גרסה " + PAGE_VER;
 if (ENTITY && ENTITY.lang === "en") lang = "en";   // the English entity address
 applyLang();

@@ -367,7 +367,7 @@ ok('the faction explanation is two short sentences', (await page.$eval('#phead .
 ok('no list of Knesset numbers anywhere in the hero', !(await page.textContent('#phead')).includes('24, 25'));
 ok('the faction name carries its explanation (no underline any more)', (await page.$eval('#phead .factionname', e => e.title)).includes('לא תמיד זהה למפלגה')
   && await page.$('#phead .term') === null);
-ok('the counts carry explanations on hover', (await page.$$eval('#ptiles .bleg .chip', els => els.every(e => e.title.length > 20))));
+ok('the counts carry explanations on hover', (await page.$$eval('#ptiles .bleg .chip', els => els.every(e => (e.dataset.tip || '').length > 20))));
 ok('the role by the name is the same size as the name', await page.$eval('#phead .mkrole', e => getComputedStyle(e).fontSize) === await page.$eval('#phead .mkname', e => getComputedStyle(e).fontSize));
 ok('no hint lines under the section titles', (await page.$$eval('#profile .hint', els => els.length)) === 0);
 
@@ -412,7 +412,7 @@ const order = await page.$$eval('#bills .brow .bname', els => els.map(e => e.fir
 ok('opens on the passed pile alone', order.join(',') === 'חוק שעבר', order.join(','));
 ok('four radio chips with counts, exactly one on (עברו)', (await page.$$eval('#bills .fchip', els => els.length)) === 4
   && (await page.$$eval('#bills .fchip.on', els => els.map(e => e.dataset.k).join(','))) === 'passed');
-ok('each check-circle explains its pile on hover', await page.$$eval('#bills .fchip', els => els.every(e => e.title.length > 20)));
+ok('each check-circle explains its pile on hover', await page.$$eval('#bills .fchip', els => els.every(e => (e.dataset.tip || '').length > 20)));
 ok('the passed pile holds the passed bill, with its status', billsText.includes('חוק שעבר') && billsText.includes('התקבלה בקריאה שלישית'));
 await page.click('#bills .fchip[data-k="rejected"]');
 const rejT = await page.textContent('#billslist');
