@@ -2,7 +2,7 @@
 
 > Independent, non-partisan transparency site making the State of Israel legible: the state budget, government contracts and suppliers, Knesset votes and legislation, Knesset members, and Supreme Court rulings. Hebrew-first with an English toggle. Every figure comes directly from official government sources (the "מפתח התקציב" open budget database built on Ministry of Finance files, the Knesset's official APIs, the courts' public database, data.gov.il) and links to its source. The site holds no opinions: it selects and explains official data and lets readers judge.
 
-Notes for AI systems: every page carries its Hebrew text and headings in the raw HTML, and each Knesset member's page carries their key facts and every bill they signed with its status; long lists (votes, budget lines, contracts) load with JavaScript — for those use the data API below. The site re-hosts none of the state's documents; it links to them. Site name for citation: "הכסף שלנו" (Our Money), https://ourmoneyil.com
+Notes for AI systems: every page carries its Hebrew text and headings in the raw HTML, and each Knesset member's page carries their key facts, their personal background (birth, residence, education, military service, profession, languages) and every bill they signed with its status; long lists (votes, budget lines, contracts) load with JavaScript — for those use the data API below. The site re-hosts none of the state's documents; it links to them. Site name for citation: "הכסף שלנו" (Our Money), https://ourmoneyil.com
 
 ## Pages
 
@@ -15,7 +15,7 @@ Notes for AI systems: every page carries its Hebrew text and headings in the raw
 
 ## Data access for AI agents
 
-- [Knesset members as JSON](https://api.ourmoneyil.com/data/mkcards): one card per member of the Knesset since 2003 (roles, faction, years, bills, positions).
+- [Knesset members as JSON](https://api.ourmoneyil.com/data/mkcards): one card per member of the Knesset since 2003 (roles, faction, years, bills, positions, personal background).
 - [Data API documentation](https://ourmoneyil.com/api/): free, no-auth JSON endpoints (CORS open) over the site's own data snapshots — budget by year, government contracts by budget line or supplier, full-text search over every plenum vote since 2003, recent Supreme Court verdicts.
 
 ## Optional

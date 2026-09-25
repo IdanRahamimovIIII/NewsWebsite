@@ -56,6 +56,7 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 PAUSE = 0.2          # politeness between relay calls — somebody else's server
 KEY = "pub:mkcards"
 MAX_BILL_FAILURES = 5   # more members without counts than this = a broken run, not a snapshot
+MAX_BIO_FAILURES = 5    # same yardstick for the personal background
 
 
 def log(*a):
@@ -185,6 +186,58 @@ def bill_bucket(desc):
     if re.search(r"נדח|הסרה|הוסר|נעצר|בוטל|מבוטל|נסגר", s):
         return "rejected"
     return "process"
+
+
+# ---- personal background (GetMkDetailsContent): the page's bioText /
+# bioClause / yearIn / bioFacts (mk.view.js), same keys, same order — the
+# baked table and the live one are the same table
+_NAMED = {"amp": "&", "lt": "<", "gt": ">", "quot": '"', "apos": "'", "nbsp": " "}
+
+
+def bio_text(v):
+    """the CMS text: entities decoded ("&#x0D;", "&amp;"), lines trimmed"""
+    s = "" if v is None else str(v)
+    s = re.sub(r"&#x([0-9a-fA-F]+);", lambda m: chr(int(m.group(1), 16)), s)
+    s = re.sub(r"&#(\d+);", lambda m: chr(int(m.group(1))), s)
+    s = re.sub(r"&([a-zA-Z]+);", lambda m: _NAMED.get(m.group(1).lower(), m.group(0)), s)
+    s = re.sub(r"\r\n?", "\n", s)
+    return "\n".join(x.strip() for x in s.split("\n") if x.strip())
+
+
+def bio_clause(v):
+    """bullets ("- …") folded into one comma run"""
+    return ", ".join(y for y in (re.sub(r"^[-–•]\s*", "", x).strip() for x in bio_text(v).split("\n")) if y)
+
+
+def year_in(v):
+    """the last 4-digit year — "כ\"ח בתשרי תש\"י , 21/10/1949" → 1949"""
+    m = re.findall(r"\d{4}", str(v or ""))
+    return m[-1] if m else ""
+
+
+def bio_facts(b):
+    """[[fact key, text], …] — only the filled fields; None/null answer → []"""
+    if not isinstance(b, dict):
+        return []
+    out = []
+    def add(key, v):
+        v = str(v or "").strip()
+        if v:
+            out.append([key, v])
+    by, dy = year_in(b.get("DateOfBirth")), year_in(b.get("DeathDate"))
+    place = re.sub(r",\s*ישראל$", "", bio_clause(b.get("PlaceOfBirth")))   # "תל-אביב, ישראל" → the city
+    add("factBorn", " · ".join(x for x in (by, place) if x))
+    if dy:
+        add("factDied", dy)
+    add("factAliyah", bio_clause(b.get("ImmigrationYear")))
+    if not dy:
+        add("factHome", bio_clause(b.get("Residence")))
+    add("factEdu", bio_clause(b.get("Education")))
+    add("factArmy", bio_clause(b.get("MilitaryService")))
+    add("factNat", bio_clause(b.get("NationalService")))
+    add("factProf", bio_clause(b.get("profession") or b.get("ProfessionsDetails")))
+    add("factLangs", bio_clause(b.get("Languages")))
+    return out
 
 
 def faction_short(name):
@@ -667,9 +720,15 @@ def build(relay, world):
     # ---- the bills: the list (published per MK) and the counts from it --
     if not any(bill_bucket(d) == "passed" for d in world["status_map"].values()):
         sys.exit("no passed statuses recognised — billBucket vs KNS_Status drifted; fix before publishing")
-    log("reading the bills of %d members…" % len(members))
-    bill_failures, world["bill_lists"] = [], {}
+    log("reading the bills + background of %d members…" % len(members))
+    bill_failures, bio_failures, world["bill_lists"] = [], [], {}
     for i, m in enumerate(members, 1):
+        try:
+            m["_bio"] = bio_facts(relay.json(
+                KAPI + "MKs/GetMkDetailsContent?mkId=%d&languageKey=he" % int(m.get("Id") or 0)))
+        except Exception as e:  # noqa: BLE001
+            m["_bio"] = None                  # unknown → the page's live loader, never a half table
+            bio_failures.append("%s — %s" % (m["Name"], e))
         try:
             rows = bill_rows(relay, m["_pids"], world["status_map"], latest)
             world["bill_lists"][int(m.get("Id") or 0)] = rows
@@ -717,6 +776,7 @@ def build(relay, world):
             "knessets": sorted(knessets_of.get(mk_id) or []),
             "bills": m["_bills"],
             "positions": highlights(rows, open_ok=in_latest),
+            "bio": m["_bio"],
         }
 
     now_k = [c for c in cards.values() if latest in c["knessets"]]
@@ -726,7 +786,7 @@ def build(relay, world):
              "avgPassed": round(sum(b["passed"] for b in counted) / len(counted), 1) if counted else None}
     data = {"knesset": latest, "stats": stats, "members": cards}
     problems = {"unresolved": unresolved, "missing_en": missing_en, "shared": shared,
-                "bill_failures": bill_failures, "no_photo": no_photo}
+                "bill_failures": bill_failures, "bio_failures": bio_failures, "no_photo": no_photo}
     return data, problems
 
 
@@ -748,6 +808,8 @@ def gates(data, problems, partial):
         full_list("one PersonID claimed by two members — namesakes merged", problems["shared"])
     if len(problems["bill_failures"]) > MAX_BILL_FAILURES:
         full_list("bill counts failed for too many members", problems["bill_failures"])
+    if len(problems.get("bio_failures") or []) > MAX_BIO_FAILURES:
+        full_list("personal background failed for too many members", problems["bio_failures"])
     now_k = sum(1 for c in data["members"].values() if data["knesset"] in c["knessets"])
     if not partial and now_k < 120:
         bad.append("only %d members of K%d built — a Knesset seats 120; the source answered short"
@@ -835,6 +897,10 @@ def main(argv=None):
     if problems["bill_failures"]:
         log("bills missing for %d members (no count, no list on their page):" % len(problems["bill_failures"]))
         for p in problems["bill_failures"]:
+            log("  - " + p)
+    if problems["bio_failures"]:
+        log("background missing for %d members (their page loads it live):" % len(problems["bio_failures"]))
+        for p in problems["bio_failures"]:
             log("  - " + p)
 
     bad = gates(data, problems, partial=bool(limit))

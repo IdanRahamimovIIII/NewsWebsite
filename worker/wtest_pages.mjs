@@ -22,7 +22,8 @@ const FIX = { t: 1790232519868, data: { knesset: 25, stats: {}, members: {
     positions: [{ role: "שר המורשת", y0: 2025, y1: null, k: 25, now: true }, { role: "שר המורשת", y0: 2022, y1: 2025, k: 25, now: false }] }),
   "1132": card({ id: 1132, he: "מוחמד אבו אל היג'א", en: "Mohammad Abu El Higa", slugHe: "מוחמד-אבו-אל-היגא",
     slugEn: "mohammad-abu-el-higa", faction: "יש עתיד", bills: null }),
-  "30": card({ id: 30, he: "אלי כהן", en: "Eli Cohen", slugHe: "אלי-כהן", slugEn: "eli-cohen", bills: { proposed: 5, passed: 1 } }),
+  "30": card({ id: 30, he: "אלי כהן", en: "Eli Cohen", slugHe: "אלי-כהן", slugEn: "eli-cohen", bills: { proposed: 5, passed: 1 },
+    bio: [["factBorn", "1949 · תל-אביב"], ["factEdu", "<b>משפטים</b> & \"כלכלה\""], ["factNoSuchKey", "x"], ["factLangs", ""]] }),
   "31": card({ id: 31, he: "אלי כהן", en: "Eli Cohen", slugHe: "אלי-כהן", slugEn: "eli-cohen", current: false,
     since: 2006, until: 2025, role: "<b>יו\"ר</b>", positions: [{ role: "יו\"ר ועדה & <x>", y0: 2006, y1: 2009, k: 17, now: false }] }),
 } } };
@@ -115,6 +116,21 @@ ok(h.includes("בכנסת 2006–2025") && /window\.MK_ENTITY=\{"id":31/.test(h)
 ok(h.includes(JSON.parse(I18N).he.billsStory.replace("{t}", 10).replace("{p}", 2)), "bills sentence");
 r = await get(`/mk/30-${enc("אלי-כהן")}/`); h = await r.text();
 ok(/window\.MK_ENTITY=\{"id":30/.test(h) && h.includes(JSON.parse(I18N).he.billsStory1.replace("{t}", 5)), "namesake by id, one law");
+
+// 4a. the personal background under the bills line
+{
+  const HE = JSON.parse(I18N).he;
+  r = await get(`/mk/30-${enc("אלי-כהן")}/`); h = await r.text();
+  const tiles = h.slice(h.indexOf('<div id="ptiles"'), h.indexOf('data-i18n="secPositions"'));   // the block, up to the next card
+  ok(tiles.includes('<div class="billsbar">') && tiles.indexOf("billsbar") < tiles.indexOf("biot") && tiles.includes(`<span class="bk">${HE.factBorn}</span><span class="bv">1949 · תל-אביב</span>`),
+     "background: baked under the bills line");
+  ok(h.includes("&lt;b&gt;משפטים&lt;/b&gt; &amp; &quot;כלכלה&quot;") && !h.includes("<b>משפטים"), "background: text escaped");
+  ok(!h.includes("factNoSuchKey") && (h.match(/class="bk"/g) || []).length === 2, "background: unknown key and empty text skipped");
+  r = await get(`/mk/30-eli-cohen/`); h = await r.text();
+  ok(h.includes(`<span class="bk">${JSON.parse(I18N).en.factBorn}</span><span class="bv">1949 · תל-אביב</span>`), "background: English labels");
+  h = await (await get(`/mk/31-${enc("אלי-כהן")}/`)).text();
+  ok(!h.includes('class="biot"'), "background: none on the card → no table");
+}
 
 // 4b. "מה ניסו להעביר?": every bill, name + status, in the page's piles
 {

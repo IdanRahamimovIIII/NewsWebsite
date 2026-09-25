@@ -254,11 +254,30 @@ PHOTOS = {"771": "771-abcd1234.jpg", "802": "802-ef567890.jpg", "803": "803-1111
 # the fake relay: understands exactly the requests the collector may make,
 # refuses what the live service refuses
 # =====================================================================
+# GetMkDetailsContent, as the live service answers (measured): entities
+# ("&#x0D;"), bullets, \r\n, a Hebrew date before the Gregorian one, a
+# leading space, "…, ישראל"; a member who died (no residence then); an
+# unknown id answers JSON null; everyone else: the fields, all empty
+BIO_EMPTY = {k: None for k in ("DateOfBirth", "DeathDate", "PlaceOfBirth", "ImmigrationYear", "Residence",
+             "Education", "MilitaryService", "NationalService", "profession", "Languages", "ProfessionsDetails")}
+BIO = {
+    771: dict(BIO_EMPTY, DateOfBirth='כ"ח בתשרי תש"י , 21/10/1949', PlaceOfBirth="תל-אביב, ישראל",
+              ImmigrationYear="", Residence="ירושלים",
+              Education="- תואר ראשון בארכיטקטורה&#x0D;\n- תואר שני במינהל עסקים&#x0D;\n",
+              MilitaryService="- שירת בסיירת מטכ”ל\r\n- לאחר מלחמת יום הכיפורים, דרגתו הועלתה לסרן",
+              NationalService="", Languages=" אנגלית, צרפתית", ProfessionsDetails=" ניהול"),
+    811: dict(BIO_EMPTY, DateOfBirth='כ"ג באייר תרפ"ט , 02/06/1929', DeathDate="י\"ב באדר ב' תשע\"ט , 19/03/2019",
+              PlaceOfBirth="אוסטריה", ImmigrationYear="1936", Residence="חיפה", Education="&lt;b&gt;משפטים&lt;/b&gt;"),
+    810: None,
+}
+
+
 class FakeWorld:
     def __init__(self):
         self.persons_published = True
         self.bills_published = True
         self.bills_fail = set()
+        self.bio_fail = set()
 
     def fetch(self, url, timeout=45):
         if url.startswith("https://relay.test/?url="):
@@ -283,6 +302,11 @@ class FakeWorld:
 
     # ---------------- upstream (knesset.gov.il through the relay) -------
     def upstream(self, url):
+        if "GetMkDetailsContent" in url:
+            mk = int(re.search(r"mkId=(\d+)", url).group(1))
+            if mk in self.bio_fail:
+                raise RuntimeError("HTTP 500 from upstream — details of %d" % mk)
+            return json.dumps(BIO.get(mk, dict(BIO_EMPTY, ID=mk)), ensure_ascii=False).encode("utf-8")
         if "GetMksDropdown" in url:
             lang = "en" if "languageKey=en" in url else "he"
             return json.dumps(DROP_EN if lang == "en" else DROP_HE, ensure_ascii=False).encode("utf-8")
@@ -546,6 +570,28 @@ class EndToEnd(unittest.TestCase):
         self.assertTrue(any(r["s"] == "" for r in rows))         # unknown StatusID: no invented text
         self.assertEqual(len(lists[811]), 130)                   # paged past 100
         self.assertEqual(lists[870], [])                         # no bills: an empty list, not a missing one
+
+    def test_background(self):
+        self.assertEqual(self.cards["771"]["bio"], [
+            ["factBorn", "1949 · תל-אביב"], ["factHome", "ירושלים"],
+            ["factEdu", "תואר ראשון בארכיטקטורה, תואר שני במינהל עסקים"],
+            ["factArmy", "שירת בסיירת מטכ”ל, לאחר מלחמת יום הכיפורים, דרגתו הועלתה לסרן"],
+            ["factProf", "ניהול"], ["factLangs", "אנגלית, צרפתית"]])
+        # died: the death year, the aliyah, no "lives in"; entities decoded to TEXT (escaped later)
+        self.assertEqual(self.cards["811"]["bio"], [
+            ["factBorn", "1929 · אוסטריה"], ["factDied", "2019"], ["factAliyah", "1936"], ["factEdu", "<b>משפטים</b>"]])
+        self.assertEqual(self.cards["810"]["bio"], [])            # null answer → nothing to show
+        self.assertEqual(self.cards["802"]["bio"], [])            # all fields empty
+        self.assertEqual(self.problems["bio_failures"], [])
+
+    def test_background_failure_is_unknown_not_empty(self):
+        fake = FakeWorld()
+        fake.bio_fail = {802}
+        data, problems, _ = build_world(fake)
+        self.assertIsNone(data["members"]["802"]["bio"])         # None = the page loads it live
+        self.assertTrue(any("גנץ" in f for f in problems["bio_failures"]))
+        problems["bio_failures"] = ["איש %d — timeout" % i for i in range(B.MAX_BIO_FAILURES + 1)]
+        self.assertTrue(any("background" in b for b in B.gates(data, problems, partial=False)))
 
     def test_bill_list_failure_is_all_or_nothing(self):
         fake = FakeWorld()

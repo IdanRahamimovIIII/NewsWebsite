@@ -80,7 +80,7 @@ function heroHtml(c, S, lang) {
     ? `<img class="avatar avxxl" src="${esc(PHOTO_BASE + c.photo)}" alt="${esc(name)}">`
     : `<span class="avatar avxxl">${esc(initials)}</span>`;
   const story = [
-    c.faction ? `<span class="factionname" title="${esc(S.factionTip)}">${esc(c.faction)}</span>` : "",
+    c.faction ? `<span class="factionname" data-tip="${esc(S.factionTip)}">${esc(c.faction)}</span>` : "",
     esc(tenure(c, S)),
   ].filter(Boolean).join(`<span class="sep"> · </span>`);
   return `<a class="backbtn" href="/mk/">${esc(S.backToDir)}</a>
@@ -90,11 +90,19 @@ function heroHtml(c, S, lang) {
        ${story ? `<div class="story">${story}</div>` : ""}
      </div>`;
 }
+/* the personal background (mk.view.js bioTableHtml): the card's
+   [[fact key, text], …] as the build read them; labels in the page's language,
+   the text is the Knesset's Hebrew. A key the words don't know is skipped. */
+function bioHtml(c, S) {
+  const f = (Array.isArray(c.bio) ? c.bio : []).filter(x => Array.isArray(x) && S[x[0]] && x[1]);
+  return f.length ? `<div class="biot">${f.map(([k, v]) =>
+    `<span class="bk">${esc(S[k])}</span><span class="bv">${esc(v)}</span>`).join("")}</div>` : "";
+}
 function tilesHtml(c, S) {
   const line = billsLine(c, S);
-  if (!line) return "";
-  return c.bills.proposed ? `<div class="billsbar"><div class="bhead">${esc(line)}</div></div>`
+  const bar = !line ? "" : c.bills.proposed ? `<div class="billsbar"><div class="bhead">${esc(line)}</div></div>`
     : `<div class="story">${esc(line)}</div>`;
+  return bar + bioHtml(c, S);   // the background rides under the bills line, as on the page
 }
 function positionsHtml(c, S) {
   return (c.positions || []).map(p => `<div class="posrow">

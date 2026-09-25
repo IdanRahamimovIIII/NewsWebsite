@@ -15,7 +15,8 @@ to its source document; the site re-hosts none of the state's documents.
 Languages: Hebrew is the primary language; every page has an English
 toggle. Each page's Hebrew text and headings are in the raw HTML, and each
 Knesset member's page carries their key facts (role, faction, years,
-positions) and every bill they signed with its status. Long lists — a
+positions, personal background) and every bill they signed with its
+status. Long lists — a
 member's votes, budget lines, contracts — load with JavaScript; read those
 through the data API below.
 
@@ -99,7 +100,11 @@ General rules:
 - /data/persons — master list of Knesset members.
 - /data/mkcards — one card per member of the Knesset since 2003 (the 16th
   onward): names (he/en), today's role, faction, years, Knessets served,
-  bills proposed/passed, up to four positions. Keyed by MkId; the
+  bills proposed/passed, up to four positions, and bio — the personal
+  background the member reported to the Knesset, [[key, text], …] in
+  Hebrew; keys factBorn (year · place), factDied, factAliyah, factHome, factEdu,
+  factArmy, factNat (national service), factProf, factLangs
+  (only filled fields; null = not read this run). Keyed by MkId; the
   member's page is https://ourmoneyil.com/mk/<id>-<slugEn>/ . Monthly.
   https://api.ourmoneyil.com/data/mkcards
 - /data/mkbills/<MkId> — every bill that member signed (lead or co-signer),
