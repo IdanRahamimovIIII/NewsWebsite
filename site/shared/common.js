@@ -27,8 +27,6 @@ const COMMON_STR = {
     aboutBody: "״הכסף שלנו״ הוא אתר עצמאי, ללא קשר לגוף ממשלתי, למפלגה או לארגון, שנועד להעניק לאזרחי ישראל מבט נקי ומסודר על פעילות המדינה ועל האופן שבו היא משתמשת בכסף שלנו. כל הנתונים מגיעים ישירות מהמקורות הרשמיים ומוצגים כפי שהם, עם קישור למקור. מצאתם טעות או נתון חסר? כתבו לנו ונתקן:",
     contactLabel: "אמצעי תקשורת - ",
     devLabel: "למפתחים: ",
-    popClose: "סגירה",
-    popInfo: "הסבר",
   },
   en: {
     title: "Our Money",
@@ -47,8 +45,6 @@ const COMMON_STR = {
     aboutBody: "Our Money is an independent site, unaffiliated with any government body, party or organization, built to give Israel's citizens a clean, clear view of the state's activity and of how it uses our money. All the data comes straight from the official sources and is shown as it is, linked to the original. Found a mistake or a missing figure? Write to us and we'll fix it:",
     contactLabel: "Contact - ",
     devLabel: "Developers: ",
-    popClose: "Close",
-    popInfo: "explain",
   },
 };
 
@@ -232,45 +228,6 @@ function debug(msg) {
   const d = document.getElementById("debug");
   if (d) d.textContent = msg ? "⚠ " + String(msg).slice(0, 300) : "";
 }
-
-/* ---------- the popup: an explanation anchored to the "?" that opened it
-   (tap, not hover — phones). infoPopBtn(key) → a "?" that shows
-   t(key+"InfoT") / t(key+"InfoB"); a second tap, Esc, a tap outside, scroll
-   or resize closes it. Own element + names: budget pages keep their #pop. ---------- */
-let sharedPopKey = null;
-function sharedPopClose() {
-  const p = document.getElementById("sharedpop");
-  if (p) p.classList.remove("open");
-  if (sharedPopKey) document.querySelectorAll(".info-i[aria-expanded='true']").forEach(b => b.setAttribute("aria-expanded", "false"));
-  sharedPopKey = null;
-}
-function sharedPop(btn, key, title, bodyHtml) {
-  if (sharedPopKey === key) { sharedPopClose(); btn.focus(); return; }
-  sharedPopClose();
-  let p = document.getElementById("sharedpop");
-  if (!p) {
-    p = document.createElement("div");
-    p.id = "sharedpop"; p.className = "pop"; p.setAttribute("role", "dialog"); p.tabIndex = -1;
-    document.body.appendChild(p);
-  }
-  sharedPopKey = key;
-  p.innerHTML = `<button class="popx" type="button" aria-label="${esc(t("popClose"))}" onclick="sharedPopClose()">✕</button>
-    <div class="popq">${esc(title)}</div><div class="popa">${bodyHtml}</div>`;
-  p.classList.add("open");
-  btn.setAttribute("aria-expanded", "true");
-  const b = btn.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight;
-  p.style.left = Math.min(Math.max(8, b.left + b.width / 2 - w / 2), innerWidth - w - 8) + "px";
-  let y = b.bottom + 8;
-  if (y + h > innerHeight - 8) y = Math.max(8, b.top - h - 8);
-  p.style.top = y + "px";
-  p.focus();
-}
-const infoPopBtn = key => `<button class="info-i" type="button" aria-haspopup="dialog" aria-expanded="false"
-  aria-label="${esc(t("popInfo"))}" onclick="event.stopPropagation();sharedPop(this,'${key}',t('${key}InfoT'),esc(t('${key}InfoB')))">?</button>`;
-document.addEventListener("keydown", e => { if (e.key === "Escape" && sharedPopKey) sharedPopClose(); });
-document.addEventListener("click", e => { if (sharedPopKey && !e.target.closest("#sharedpop, .info-i")) sharedPopClose(); });
-addEventListener("scroll", () => { if (sharedPopKey) sharedPopClose(); }, { passive: true });
-addEventListener("resize", () => { if (sharedPopKey) sharedPopClose(); });
 
 /* ---------- boot ---------- */
 buildChrome();

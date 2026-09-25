@@ -526,7 +526,7 @@ def bill_rows(relay, pids, status_map, latest):
     """every bill this person signed (lead or co-signer), deduped by BillID,
     newest first — the page's list (loadBills): name, exact status text,
     Knesset, pile. The undecided split like the page: this Knesset →
-    "pending", an earlier one → "unfinished" (it ended before the vote). $expand is a navigation path (the
+    "pending", an earlier one → "undecided" (the page's לא הוכרעו). $expand is a navigation path (the
     WAF allows those); pages cap at 100 rows, so od_paged pages by $skip."""
     seen = {}
     for pid in pids:
@@ -539,7 +539,7 @@ def bill_rows(relay, pids, status_map, latest):
             pile = bill_bucket(status)
             k = int(b.get("KnessetNum") or 0) or None
             if pile == "process":
-                pile = "pending" if k == latest else "unfinished"
+                pile = "pending" if k == latest else "undecided"
             seen[r["BillID"]] = (date_ms(b.get("LastUpdatedDate")) or 0,
                                  {"n": str(b.get("Name") or "").strip(), "s": status, "k": k, "b": pile})
     return [row for _, row in sorted(seen.values(), key=lambda x: -x[0])]

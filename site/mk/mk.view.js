@@ -372,7 +372,7 @@ function renderTiles() {
   if (!b) bar = `<div class="loading">${esc(t("loading"))}</div>`;
   else {
     const n = k => b.bills.filter(x => x._bucket === k).length;
-    const p = n("passed"), r = n("rejected"), q = n("pending"), z = n("unfinished"), total = b.total || b.bills.length;
+    const p = n("passed"), r = n("rejected"), q = n("pending"), z = n("undecided"), total = b.total || b.bills.length;
     if (!total) bar = `<div class="story">${esc(t("bNoBills"))}</div>`;
     else {
       const head = p === 0 ? t("billsStory0").replace("{t}", total)
@@ -386,7 +386,7 @@ function renderTiles() {
             <span class="chip" title="${esc(t("tipPassed"))}"><span class="dot for"></span>${esc(t("bPassed"))} ${p}</span>
             <span class="chip" title="${esc(t("tipRejected"))}"><span class="dot against"></span>${esc(t("bRejected"))} ${r}</span>
             ${q ? `<span class="chip" title="${esc(t("tipPending"))}"><span class="dot pending"></span>${esc(t("bPending"))} ${q}</span>` : ""}
-            ${z ? `<span class="chip" title="${esc(t("tipUnfinished"))}"><span class="dot abstain"></span>${esc(t("bUnfinished"))} ${z}</span>` : ""}
+            ${z ? `<span class="chip" title="${esc(t("tipUndecided"))}"><span class="dot abstain"></span>${esc(t("bUndecided"))} ${z}</span>` : ""}
           </div>
         </div>`;
     }
@@ -427,10 +427,10 @@ function renderPositions() {
 
 /* ---- the bills: one list, newest Knesset first, with the reader in
    control (Mercy, 2026-09-06/07) — ONE pile at a time (עברו · נפלו · בתהליך ·
-   לא הושלמו לפני הבחירות, radio-style; עברו by default, else the first pile that has
+   לא הוכרעו, radio-style; עברו by default, else the first pile that has
    anything), and a name search inside it ---- */
 const BUCKETS = [["passed", "bPassed", "for", "tipPassed"], ["rejected", "bRejected", "against", "tipRejected"],
-                 ["pending", "bPending", "pending", "tipPending"], ["unfinished", "bUnfinished", "abstain", "tipUnfinished"]];
+                 ["pending", "bPending", "pending", "tipPending"], ["undecided", "bUndecided", "abstain", "tipUndecided"]];
 function renderBills() {
   const box = document.getElementById("bills");
   const b = state.bills;
@@ -444,7 +444,7 @@ function renderBills() {
     box.dataset.for = String(state.seq);
     box.innerHTML = `<div class="billsctl">
         <div class="fchips">${BUCKETS.map(([k, label, dot, tip]) => count(k)
-          ? `<button class="fchip" data-k="${k}" role="radio" title="${esc(t(tip))}" onclick="pickBillPile('${k}')"><span class="ck ${dot}"></span>${esc(t(label))} · ${count(k)}</button>${k === "unfinished" ? infoPopBtn("unfinished") : ""}` : "").join("")}</div>
+          ? `<button class="fchip" data-k="${k}" role="radio" title="${esc(t(tip))}" onclick="pickBillPile('${k}')"><span class="ck ${dot}"></span>${esc(t(label))} · ${count(k)}</button>` : "").join("")}</div>
         <input class="billq" type="search" placeholder="${esc(t("bSearchPh"))}" oninput="billSearch(this.value)">
       </div><div id="billslist"></div>`;
   }
@@ -462,7 +462,7 @@ function renderBills() {
   // each row opens to the bill's official documents (Mercy)
   const rows = shown.map((x, i) => `<button class="brow${x._open ? " sel" : ""}" onclick="openBill(${i})"><span class="dot ${dotOf[x._bucket]}" title="${esc(t(BUCKETS.find(u => u[0] === x._bucket)[1]))}"></span><span class="bname">${x._open ? "▾" : "▸"} ${esc(x.Name)}${
       x._lead ? ` <span class="leadchip">${esc(t("bLead"))}</span>` : ""}
-      <span class="names">— ${x._bucket === "unfinished" ? esc(t("bStoppedAt")) : ""}${esc(x._status)}${x.KnessetNum ? ` · ${esc(t("knesset"))} ${x.KnessetNum}` : ""}</span></span></button>` +
+      <span class="names">— ${esc(x._status)}${x.KnessetNum ? ` · ${esc(t("knesset"))} ${x.KnessetNum}` : ""}</span></span></button>` +
       (x._open ? `<div class="kidsbox">${docsHtml(x._docs)}</div>` : "")).join("");
   const more = list.length > shown.length
     ? `<div style="margin:8px 0 0"><button class="votechip" onclick="state.billShown+=${BILLS_PAGE};renderBills()">${
@@ -605,7 +605,7 @@ function votePage(d) {
 /* =====================================================================
    8. INIT
    ===================================================================== */
-const PAGE_VER = "26.09ah · מי מצביע בשמנו"; // bumped on every update — an older stamp in the footer means a cached/old copy
+const PAGE_VER = "26.09ai · מי מצביע בשמנו"; // bumped on every update — an older stamp in the footer means a cached/old copy
 document.getElementById("pagever").textContent = "גרסה " + PAGE_VER;
 if (ENTITY && ENTITY.lang === "en") lang = "en";   // the English entity address
 applyLang();

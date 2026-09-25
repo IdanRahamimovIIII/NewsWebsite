@@ -66,11 +66,26 @@
   border-bottom: 1px dotted currentColor; }
 .kpi .ask:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; border-radius: 2px; }
 
-/* the popover (.pop, .popq/.popa/.popsrc/.popx) and .info-i: shared\style.css */
+/* the popover — a real popup, anchored to the question that opened it */
+.pop { position: fixed; z-index: 40; display: none; max-width: 340px;
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-top: 3px solid var(--series-1); border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.16); padding: 14px 16px 15px; }
+.pop.open { display: block; }
+.pop.red { border-top-color: var(--danger); }
+.pop .popq { font-weight: 700; font-size: 15px; margin: 0 0 6px; padding-inline-end: 20px; }
+.pop .popa { font-size: 15px; color: var(--ink-2); line-height: 1.6; }
 .pop .poppurpose { font-size: 15px; color: var(--ink-1); line-height: 1.55; margin-bottom: 10px; }
 .pop .poprow { display: flex; justify-content: space-between; gap: 16px;
   font-size: 13.5px; color: var(--ink-2); padding: 3px 0; border-top: 1px solid var(--grid); }
 .pop .poprow b { color: var(--ink-1); font-weight: 600; text-align: end; }
+.pop .popsrc { font-size: 12.5px; color: var(--ink-3); margin-top: 9px;
+  padding-top: 8px; border-top: 1px solid var(--grid); line-height: 1.45; }
+.pop .popx { position: absolute; inset-block-start: 8px; inset-inline-end: 10px;
+  font: inherit; font-size: 14px; line-height: 1; color: var(--ink-3);
+  background: none; border: 0; cursor: pointer; padding: 3px 4px; border-radius: 4px; }
+.pop .popx:hover { color: var(--ink-1); }
+.pop .popx:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
 
 .flowsnote { color: var(--ink-3); font-size: 13.5px; margin: 10px 0 0; }
 .reads { color: var(--ink-2); font-size: 14.5px; margin: 14px 0 0; }
@@ -164,6 +179,12 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; direct
 .purposebtn:hover { border-color: var(--accent-ink); }
 .purposebtn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
 .ekind { color: var(--ink-3); font-size: 11.5px; white-space: nowrap; }
+.info-i { font: inherit; font-size: 11px; font-weight: 700; line-height: 1;
+  color: var(--ink-3); background: none; border: 1px solid var(--baseline);
+  border-radius: 50%; width: 15px; height: 15px; padding: 0; cursor: pointer;
+  vertical-align: 1px; }
+.info-i:hover { color: var(--accent-ink); border-color: var(--accent-ink); }
+.info-i:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
 .method { font-size: 11.5px; color: var(--ink-2); background: var(--surface-2, var(--grid));
   border-radius: 4px; padding: 1px 6px; display: inline-block; white-space: nowrap; }
 /* bought without a tender — marked, but with words, never colour alone */
@@ -259,6 +280,7 @@ details.tabletoggle summary { cursor: pointer; font-size: 14px; color: var(--acc
   .bar { height: 12px; top: 1px; }
   .barrow .val { font-size: 12px; }
   .kids { margin-inline-start: 8px; padding-inline-start: 8px; }
+  .pop { max-width: calc(100vw - 24px); }
   /* the bleed must equal .wrap's padding, which drops to 14px here — at -20px
      the bar hung 6px past each edge and the WHOLE PAGE scrolled sideways */
   .yearbar { margin-inline: -14px; }
