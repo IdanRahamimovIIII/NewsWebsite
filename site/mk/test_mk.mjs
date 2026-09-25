@@ -420,8 +420,8 @@ ok('picking נפלו swaps the list — one pile at a time', rejT.includes('חו
   && (await page.$$eval('#bills .fchip.on', els => els.length)) === 1);
 await page.click('#bills .fchip[data-k="pending"]');
 ok('an undecided bill of THIS Knesset is "בתהליך" (blue dot)', await page.$$eval('#billslist .brow', els => els.length === 1 && els[0].textContent.includes('חוק בדרך') && !!els[0].querySelector('.dot.pending')));
-await page.click('#bills .fchip[data-k="stale"]');
-ok('an undecided bill of an old Knesset is "לא הוכרעו" (gray dot)', await page.$$eval('#billslist .brow', els => els.length === 1 && els[0].textContent.includes('חוק שנשכח') && !!els[0].querySelector('.dot.abstain')));
+await page.click('#bills .fchip[data-k="unfinished"]');
+ok('an undecided bill of an old Knesset is "לא הושלמו לפני הבחירות", "הגיעה עד שלב:" (gray dot)', await page.$$eval('#billslist .brow', els => els.length === 1 && els[0].textContent.includes('חוק שנשכח') && els[0].textContent.includes('הגיעה עד שלב:') && !!els[0].querySelector('.dot.abstain')));
 await page.fill('#bills .billq', 'שנשכח');
 ok('the name search narrows the list', (await page.$$eval('#billslist .brow', els => els.length)) === 1 && (await page.textContent('#billslist')).includes('חוק שנשכח'));
 ok('…and typing kept the caret in the box', await page.evaluate(() => document.activeElement && document.activeElement.classList.contains('billq')));
@@ -452,7 +452,7 @@ const bhead = await page.textContent('#ptiles .bhead');
 ok('one sentence instead of four tiles: "4 הצעות חוק — אחת הפכה לחוק"', bhead === '4 הצעות חוק — אחת הפכה לחוק', bhead);
 const legT = await page.textContent('#ptiles .bleg');
 ok('no bar — the counts, named like the piles below', await page.$('#ptiles .bbar') === null
-  && legT.includes('עברו 1') && legT.includes('נפלו 1') && legT.includes('בתהליך 1') && legT.includes('לא הוכרעו 1'), legT);
+  && legT.includes('עברו 1') && legT.includes('נפלו 1') && legT.includes('בתהליך 1') && legT.includes('לא הושלמו לפני הבחירות 1'), legT);
 
 console.log('\nthe voting record:');
 await page.waitForSelector('#mkvotes .vote');

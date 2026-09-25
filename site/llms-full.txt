@@ -51,9 +51,13 @@ and those that failed), the positions they have held over the years
 (minister, committee chair, faction), and their voting record. Source: the
 Knesset's official APIs.
 Every member of the Knesset since 2003 also has their own address, in
-Hebrew and English, with the key facts in the raw HTML — e.g.
-https://ourmoneyil.com/mk/1096-amichay-eliyahu/ . The full list:
-https://ourmoneyil.com/mk/sitemap.xml
+Hebrew and English, with the key facts in the raw HTML, at
+/mk/<id>-<name>/ with the name in either language — e.g.
+https://ourmoneyil.com/mk/90-benjamin-netanyahu/ and
+https://ourmoneyil.com/mk/90-בנימין-נתניהו/ are the same member (any
+other spelling redirects to the right one). To find a member by name,
+search roster.txt below: each line carries the Hebrew and English name and
+the page link. Every address: https://ourmoneyil.com/mk/sitemap.xml
 Who holds which post today, as plain text (ministers, deputy ministers,
 Knesset posts, members, leavers, then earlier Knessets — counted, with links):
 https://ourmoneyil.com/mk/roster.txt
@@ -100,7 +104,8 @@ General rules:
   https://api.ourmoneyil.com/data/mkcards
 - /data/mkbills/<MkId> — every bill that member signed (lead or co-signer),
   newest first: n name, s status text, k Knesset, b passed / rejected /
-  pending / stale. Each member's page also lists them under "מה ניסו להעביר?".
+  pending (current Knesset) / unfinished (an earlier Knesset ended before
+  its final vote; s is the stage it reached). Each member's page also lists them under "מה ניסו להעביר?".
 - /data/votesmeta — status of the plenum-vote index behind /search/votes:
   years covered with per-year vote counts, total rows, last update time.
   For judging coverage and freshness, not a data endpoint.

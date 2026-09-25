@@ -103,18 +103,19 @@ function positionsHtml(c, S) {
     </div>`).join("");
 }
 /* "מה ניסו להעביר?": EVERY bill, name + exact status, in the page's piles
-   (עברו · נפלו · בתהליך · לא הוכרעו) with counts, each pile folded — the
+   (עברו · נפלו · בתהליך · לא הושלמו לפני הבחירות) with counts, each pile folded — the
    text is in the HTML for crawlers, and people get the live list on top.
    No list (not built / fetch failed) → the page's loader stays. */
-const PILES = [["passed", "bPassed"], ["rejected", "bRejected"], ["pending", "bPending"], ["stale", "bStale"]];
+const PILES = [["passed", "bPassed"], ["rejected", "bRejected"], ["pending", "bPending"], ["unfinished", "bUnfinished"]];
+const pileOf = b => b.b === "stale" ? "unfinished" : b.b;   // lists built before the rename said "stale"
 function billsHtml(bills, S) {
   if (!Array.isArray(bills)) return "";
   if (!bills.length) return `<div class="loading">${esc(S.bNoBills)}</div>`;
   return PILES.map(([key, label]) => {
-    const rows = bills.filter(b => b.b === key);
+    const rows = bills.filter(b => pileOf(b) === key);
     if (!rows.length) return "";
     return `<details class="bakedpile"><summary>${esc(S[label])} (${rows.length})</summary><ul class="bakedbills">` +
-      rows.map(b => `<li>${esc(b.n)}${b.s ? ` <span class="names">· ${esc(b.s)}</span>` : ""}</li>`).join("") +
+      rows.map(b => `<li>${esc(b.n)}${b.s ? ` <span class="names">· ${key === "unfinished" ? esc(S.bStoppedAt) : ""}${esc(b.s)}</span>` : ""}</li>`).join("") +
       `</ul></details>`;
   }).join("");
 }

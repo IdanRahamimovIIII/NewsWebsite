@@ -40,3 +40,8 @@ pipeline/tests/*.png
 
 # Claude's working notes and drafts — never published with the repo
 Claude outputs/
+
+# Claude's notes (CLAUDE.md, NOTES.md, …) are its memory on this computer
+# only — the repository publishes README.md alone (Mercy)
+*.md
+!/README.md

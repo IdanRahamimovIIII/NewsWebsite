@@ -540,9 +540,9 @@ class EndToEnd(unittest.TestCase):
         self.assertEqual(sum(r["b"] == "passed" for r in rows), 6)
         self.assertTrue(all(set(r) == {"n", "s", "k", "b"} for r in rows))
         piles = {r["b"] for r in rows}
-        self.assertLessEqual(piles, {"passed", "rejected", "pending", "stale"})
-        self.assertTrue(all(r["b"] == "pending" for r in rows if r["b"] in ("pending", "stale") and r["k"] == 25))
-        self.assertTrue(all(r["b"] == "stale" for r in rows if r["b"] in ("pending", "stale") and r["k"] == 20))
+        self.assertLessEqual(piles, {"passed", "rejected", "pending", "unfinished"})
+        self.assertTrue(all(r["b"] == "pending" for r in rows if r["b"] in ("pending", "unfinished") and r["k"] == 25))
+        self.assertTrue(all(r["b"] == "unfinished" for r in rows if r["b"] in ("pending", "unfinished") and r["k"] == 20))
         self.assertTrue(any(r["s"] == "" for r in rows))         # unknown StatusID: no invented text
         self.assertEqual(len(lists[811]), 130)                   # paged past 100
         self.assertEqual(lists[870], [])                         # no bills: an empty list, not a missing one

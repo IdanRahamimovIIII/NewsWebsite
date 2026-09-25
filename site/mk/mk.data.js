@@ -847,12 +847,12 @@ async function loadBills(sel, seq) {
     const statuses = await stP;
     // the undecided split by Knesset (Mercy): a bill of THIS
     // Knesset with no verdict is "בתהליך"; one from an earlier Knesset never
-    // got a verdict and never will — "לא הוכרעו", not "still pending"
+    // got a verdict and never will — "לא הושלמו לפני הבחירות", not "still pending"
     const latestK = Math.max(...(((state.cmb && state.cmb.MKS) || []).map(m => +m.KnessetId || 0)), 0);
     bills.forEach(b => {
       b._status = statuses[b.StatusID] || "";
       b._bucket = billBucket(b._status);
-      if (b._bucket === "process") b._bucket = (latestK && +b.KnessetNum === latestK) ? "pending" : "stale";
+      if (b._bucket === "process") b._bucket = (latestK && +b.KnessetNum === latestK) ? "pending" : "unfinished";
       b._lead = !!lead[b.BillID];
     });
     bills.sort((a, b) => (dateOf(b.LastUpdatedDate) || 0) - (dateOf(a.LastUpdatedDate) || 0));

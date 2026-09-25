@@ -372,7 +372,7 @@ function renderTiles() {
   if (!b) bar = `<div class="loading">${esc(t("loading"))}</div>`;
   else {
     const n = k => b.bills.filter(x => x._bucket === k).length;
-    const p = n("passed"), r = n("rejected"), q = n("pending"), z = n("stale"), total = b.total || b.bills.length;
+    const p = n("passed"), r = n("rejected"), q = n("pending"), z = n("unfinished"), total = b.total || b.bills.length;
     if (!total) bar = `<div class="story">${esc(t("bNoBills"))}</div>`;
     else {
       const head = p === 0 ? t("billsStory0").replace("{t}", total)
@@ -386,7 +386,7 @@ function renderTiles() {
             <span class="chip" title="${esc(t("tipPassed"))}"><span class="dot for"></span>${esc(t("bPassed"))} ${p}</span>
             <span class="chip" title="${esc(t("tipRejected"))}"><span class="dot against"></span>${esc(t("bRejected"))} ${r}</span>
             ${q ? `<span class="chip" title="${esc(t("tipPending"))}"><span class="dot pending"></span>${esc(t("bPending"))} ${q}</span>` : ""}
-            ${z ? `<span class="chip" title="${esc(t("tipStale"))}"><span class="dot abstain"></span>${esc(t("bStale"))} ${z}</span>` : ""}
+            ${z ? `<span class="chip" title="${esc(t("tipUnfinished"))}"><span class="dot abstain"></span>${esc(t("bUnfinished"))} ${z}</span>` : ""}
           </div>
         </div>`;
     }
@@ -427,10 +427,10 @@ function renderPositions() {
 
 /* ---- the bills: one list, newest Knesset first, with the reader in
    control (Mercy, 2026-09-06/07) — ONE pile at a time (עברו · נפלו · בתהליך ·
-   לא הוכרעו, radio-style; עברו by default, else the first pile that has
+   לא הושלמו לפני הבחירות, radio-style; עברו by default, else the first pile that has
    anything), and a name search inside it ---- */
 const BUCKETS = [["passed", "bPassed", "for", "tipPassed"], ["rejected", "bRejected", "against", "tipRejected"],
-                 ["pending", "bPending", "pending", "tipPending"], ["stale", "bStale", "abstain", "tipStale"]];
+                 ["pending", "bPending", "pending", "tipPending"], ["unfinished", "bUnfinished", "abstain", "tipUnfinished"]];
 function renderBills() {
   const box = document.getElementById("bills");
   const b = state.bills;
@@ -462,7 +462,7 @@ function renderBills() {
   // each row opens to the bill's official documents (Mercy)
   const rows = shown.map((x, i) => `<button class="brow${x._open ? " sel" : ""}" onclick="openBill(${i})"><span class="dot ${dotOf[x._bucket]}" title="${esc(t(BUCKETS.find(u => u[0] === x._bucket)[1]))}"></span><span class="bname">${x._open ? "▾" : "▸"} ${esc(x.Name)}${
       x._lead ? ` <span class="leadchip">${esc(t("bLead"))}</span>` : ""}
-      <span class="names">— ${esc(x._status)}${x.KnessetNum ? ` · ${esc(t("knesset"))} ${x.KnessetNum}` : ""}</span></span></button>` +
+      <span class="names">— ${x._bucket === "unfinished" ? esc(t("bStoppedAt")) : ""}${esc(x._status)}${x.KnessetNum ? ` · ${esc(t("knesset"))} ${x.KnessetNum}` : ""}</span></span></button>` +
       (x._open ? `<div class="kidsbox">${docsHtml(x._docs)}</div>` : "")).join("");
   const more = list.length > shown.length
     ? `<div style="margin:8px 0 0"><button class="votechip" onclick="state.billShown+=${BILLS_PAGE};renderBills()">${
@@ -605,7 +605,7 @@ function votePage(d) {
 /* =====================================================================
    8. INIT
    ===================================================================== */
-const PAGE_VER = "26.09af · הצעות החוק אפויות"; // bumped on every update — an older stamp in the footer means a cached/old copy
+const PAGE_VER = "26.09ag · לא הושלמו לפני הבחירות"; // bumped on every update — an older stamp in the footer means a cached/old copy
 document.getElementById("pagever").textContent = "גרסה " + PAGE_VER;
 if (ENTITY && ENTITY.lang === "en") lang = "en";   // the English entity address
 applyLang();

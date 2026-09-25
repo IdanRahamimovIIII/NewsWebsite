@@ -1,10 +1,40 @@
-# הכסף שלנו / Our Money — Israeli government transparency
+# הכסף שלנו · Our Money
 
-Bilingual site: where the state budget goes, who gets government contracts,
-Knesset votes and bills, MK portfolios, Supreme Court rulings — from open
-sources, through our Cloudflare relay and our own datasets.
+**https://ourmoneyil.com**
 
-- `site\` the website · `pipeline\` the data factory · `worker\` the relay
-  (paste worker.js into Cloudflare → Deploy) · `scripts\serve.bat` preview.
-- Each folder's notes list its double-click .bat files.
-- Folder map and rules for Claude: `CLAUDE.md` (repo root).
+An independent, non-partisan website that makes the State of Israel easier
+to understand: where the budget comes from and where it goes, who receives
+government contracts, how the Knesset votes and legislates, what each
+member of Knesset has done, and what the Supreme Court decides.
+
+Hebrew first, with an English toggle on every page.
+
+אתר עצמאי ולא מפלגתי שמסביר את המדינה בשפה פשוטה: התקציב, ההתקשרויות
+הממשלתיות, ההצבעות והחקיקה בכנסת, חברי הכנסת ופסקי הדין של בית המשפט העליון.
+
+## Principles
+
+- **Official sources only.** Every figure comes from the state's own open
+  data (the Ministry of Finance budget files via BudgetKey, the Knesset's
+  APIs, the courts' public database, data.gov.il), and every fact links to
+  its source document.
+- **No opinions.** The site selects and explains; readers judge.
+- **Nothing re-hosted.** The state's documents are linked, never copied.
+
+## What's here
+
+| folder | what it is |
+|---|---|
+| `site/` | the website: plain HTML, CSS and JavaScript, no build step |
+| `worker/` | the Cloudflare workers: a read-only relay and data API (`api.ourmoneyil.com`), and the per-member pages at `/mk/` |
+| `pipeline/` | the data collection: scripts and scheduled GitHub workflows that gather, merge and publish the datasets |
+| `scripts/` | local helpers (preview server, text bake) |
+
+## For developers and AI agents
+
+- Free JSON API, no key needed: https://ourmoneyil.com/api/
+- A guide for AI systems: https://ourmoneyil.com/llms.txt
+
+## Contact
+
+Found a wrong or missing figure? Write to contact@ourmoneyil.com.
