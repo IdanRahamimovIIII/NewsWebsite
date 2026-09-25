@@ -110,6 +110,9 @@ re-derive a number here. Same discipline as v8, same CONTRACTS binding.
   the CURRENT Knesset's cards only (`inKnesset`), as `<a>`, order ≈
   dirRank; any failure → the site's page as is. Pages + sitemap: everyone. Today's role
   = `nowRole` (a minister outside the Knesset has an ongoing position only).
+- MK page "מה ניסו להעביר?": `/data/mkbills/<id>` baked as folded piles
+  (all bills, name + status, counted); fetched per page, edge-cached, NOT
+  memoised (500 lists × ≤300 KB); missing/failed → the page's loader.
 - `/mk/roster.txt`: every card in exactly one group (gov · deputy · Knesset
   post · member · left this term · earlier Knessets only), counted — AI agents' one-fetch answer. Hebrew
   regexes: "סגן" ends in a FINAL nun (ן); "סגן שר במשרד ראש הממשלה" is a

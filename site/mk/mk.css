@@ -138,3 +138,6 @@
   .mkname { font-size: 20px; }
   .posdates { flex-basis: 120px; }
 }
+/* the worker's pre-built bill list (worker\pages.js billsHtml) — shown until the live list replaces it */
+.bakedpile { margin: 6px 0; } .bakedpile summary { cursor: pointer; font-weight: 600; }
+.bakedbills { margin: 4px 0 10px; padding-inline-start: 20px; font-size: 13.5px; line-height: 1.6; }

@@ -605,7 +605,7 @@ function votePage(d) {
 /* =====================================================================
    8. INIT
    ===================================================================== */
-const PAGE_VER = "26.09ae · כל חברי הכנסת מ-2003"; // bumped on every update — an older stamp in the footer means a cached/old copy
+const PAGE_VER = "26.09af · הצעות החוק אפויות"; // bumped on every update — an older stamp in the footer means a cached/old copy
 document.getElementById("pagever").textContent = "גרסה " + PAGE_VER;
 if (ENTITY && ENTITY.lang === "en") lang = "en";   // the English entity address
 applyLang();

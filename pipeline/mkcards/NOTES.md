@@ -7,7 +7,7 @@ read the same counts instead of its live `$count`s.
 
 | file | role |
 |---|---|
-| `build-mkcards.bat` → `build_mkcards.py` | collect via relay → build → gates → publish KV `pub:mkcards`, read back, check the public relay. `--no-publish` builds `out\mkcards.json` only; `--limit N` dev slice (publishing refused) |
+| `build-mkcards.bat` → `build_mkcards.py` | collect via relay → build → gates → publish KV `pub:mkcards` + `pub:mkbills/<MkId>` (one per MK), read back, check the public relay. `--no-publish` builds `out\mkcards.json` only; `--limit N` dev slice (publishing refused) |
 | `test_mkcards.py` | fake relay+world, every live trap armed; `python3 mkcards/test_mkcards.py` from `pipeline\` |
 
 Uses `..\shared\cf_kv.py`, `..\d1-config.json` (local) / CF_API_TOKEN +
@@ -27,8 +27,13 @@ directory, and the MK page can't open them.
   always "" outside the current Knesset — the register leaves rows open),
   `faction` (short form), `since`/`until` (years; until null while serving),
   `knessets` [ints], `bills` {proposed, passed} or null (null = hide the
-  line, never "0"), `positions` (≤4 highlights: {role, y0, y1, k, now};
+  line, never "0"; counted FROM the bill list), `positions` (≤4 highlights: {role, y0, y1, k, now};
   `now` never true outside the current Knesset).
+
+`pub:mkbills/<MkId>` → `/data/mkbills/<MkId>`, `{t, data:[{n name, s status
+text ("" = unknown StatusID), k Knesset, b passed|rejected|pending|stale}]}`,
+newest first, deduped by BillID — the page's loadBills list (lead + co-signed),
+uncapped. Fetch failed → no count AND no list (never half). ~150k rows/run.
 
 Consumers: worker `pages.js` (MK pages, `/mk/` list, `/mk/roster.txt`) ·
 documented on site `api\` + llms files → a shape change updates them.

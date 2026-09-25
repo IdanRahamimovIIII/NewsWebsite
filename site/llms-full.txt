@@ -14,9 +14,10 @@ to its source document; the site re-hosts none of the state's documents.
 
 Languages: Hebrew is the primary language; every page has an English
 toggle. Each page's Hebrew text and headings are in the raw HTML, and each
-Knesset member's page carries their key facts (role, faction, years, bills
-count, positions). Long lists — a member's bills and votes, budget lines,
-contracts — load with JavaScript; read those through the data API below.
+Knesset member's page carries their key facts (role, faction, years,
+positions) and every bill they signed with its status. Long lists — a
+member's votes, budget lines, contracts — load with JavaScript; read those
+through the data API below.
 
 Errors: if you find a wrong or missing figure, write to
 contact@ourmoneyil.com and it will be fixed.
@@ -97,6 +98,9 @@ General rules:
   bills proposed/passed, up to four positions. Keyed by MkId; the
   member's page is https://ourmoneyil.com/mk/<id>-<slugEn>/ . Monthly.
   https://api.ourmoneyil.com/data/mkcards
+- /data/mkbills/<MkId> — every bill that member signed (lead or co-signer),
+  newest first: n name, s status text, k Knesset, b passed / rejected /
+  pending / stale. Each member's page also lists them under "מה ניסו להעביר?".
 - /data/votesmeta — status of the plenum-vote index behind /search/votes:
   years covered with per-year vote counts, total rows, last update time.
   For judging coverage and freshness, not a data endpoint.

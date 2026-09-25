@@ -21,6 +21,7 @@
 const SITE = "https://ourmoneyil.com";                 // canonical addresses are always the real domain
 const CARDS_URL = "https://api.ourmoneyil.com/data/mkcards";
 const PHOTO_BASE = "https://api.ourmoneyil.com/photos/mk/";
+const BILLS_URL = "https://api.ourmoneyil.com/data/mkbills/";   // + MkId: [{n, s, k, b}], newest first
 const MEMO_MS = 10 * 60 * 1000;                        // inputs change monthly (cards) or on deploy (shell)
 
 const memo = {};                                       // per isolate: url → {t, v}
@@ -101,6 +102,23 @@ function positionsHtml(c, S) {
       <div class="posbody"><b>${esc(p.role || S.posMember)}</b>${p.k ? ` <span class="names">· ${esc(S.posKnesset)} ${esc(p.k)}</span>` : ""}</div>
     </div>`).join("");
 }
+/* "מה ניסו להעביר?": EVERY bill, name + exact status, in the page's piles
+   (עברו · נפלו · בתהליך · לא הוכרעו) with counts, each pile folded — the
+   text is in the HTML for crawlers, and people get the live list on top.
+   No list (not built / fetch failed) → the page's loader stays. */
+const PILES = [["passed", "bPassed"], ["rejected", "bRejected"], ["pending", "bPending"], ["stale", "bStale"]];
+function billsHtml(bills, S) {
+  if (!Array.isArray(bills)) return "";
+  if (!bills.length) return `<div class="loading">${esc(S.bNoBills)}</div>`;
+  return PILES.map(([key, label]) => {
+    const rows = bills.filter(b => b.b === key);
+    if (!rows.length) return "";
+    return `<details class="bakedpile"><summary>${esc(S[label])} (${rows.length})</summary><ul class="bakedbills">` +
+      rows.map(b => `<li>${esc(b.n)}${b.s ? ` <span class="names">· ${esc(b.s)}</span>` : ""}</li>`).join("") +
+      `</ul></details>`;
+  }).join("");
+}
+
 function description(c, S, lang) {
   const who = [nowRole(c), c.faction].filter(Boolean).join(", ");
   const bits = [tenure(c, S), billsLine(c, S)].map(s => s.replace(/\.$/, "")).filter(Boolean);   // no ".."
@@ -112,7 +130,7 @@ function description(c, S, lang) {
    anchor of site/mk/index.html; a missing anchor skips that step (the page
    still works — the JS draws everything); wtest_pages.mjs runs every step
    on the real index.html so a shell change that breaks one fails there ---- */
-function render(shell, c, I, lang) {
+function render(shell, c, I, lang, bills) {
   const S = I[lang], other = lang === "en" ? "he" : "en";
   const canon = SITE + pathOf(c, lang), alt = SITE + pathOf(c, other);
   const name = lang === "en" ? c.en : c.he;
@@ -175,6 +193,9 @@ function render(shell, c, I, lang) {
   show(/(<p class="tagline"[^>]*?)(?=>)/, "none");
   h = h.replace(/(<div id="phead"[^>]*>)<\/div>/, (m, a) => a + heroHtml(c, S, lang) + "</div>");
   h = h.replace(/(<div id="ptiles"[^>]*>)<\/div>/, (m, a) => a + tilesHtml(c, S) + "</div>");
+  const bl = billsHtml(bills, S);
+  if (bl) h = h.replace(/(<div id="bills"[^>]*>)(?:<div class="loading"[^>]*>[^<]*<\/div>)?<\/div>/,
+    (m, a) => a + bl + "</div>");
   const pos = positionsHtml(c, S);
   if (pos) h = h.replace(/(<div id="positions"[^>]*>)(?:<div class="loading"[^>]*>[^<]*<\/div>)?<\/div>/,
     (m, a) => a + pos + "</div>");
@@ -382,7 +403,13 @@ export default {
       return new Response("Temporarily unavailable — " + e.message, {
         status: 503, headers: { "content-type": "text/plain; charset=utf-8", "retry-after": "300" } });
     }
+    // the bill list: its own document per MK, edge-cached, not memoised
+    // (500 lists up to ~300 KB each would crowd the isolate); missing → loader
+    let bills = null;
+    if (request.method !== "HEAD" && c.bills) {
+      try { bills = JSON.parse(await getText(BILLS_URL + c.id)).data; } catch (e) { bills = null; }
+    }
     const vary = { "content-language": lang, link: `<${SITE + pathOf(c, lang)}>; rel="canonical"` };
-    return html(request.method === "HEAD" ? null : render(shell, c, I, lang), 200, vary);
+    return html(request.method === "HEAD" ? null : render(shell, c, I, lang, bills), 200, vary);
   },
 };

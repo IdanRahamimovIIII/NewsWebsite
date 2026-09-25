@@ -30,11 +30,25 @@ const FIX = { t: 1790232519868, data: { knesset: 25, stats: {}, members: {
 let failures = 0, n = 0;
 const ok = (cond, msg) => { n++; if (!cond) { failures++; console.error("FAIL: " + msg); } };
 
+// the bill lists (/data/mkbills/<id>): 30 has five across the piles, with
+// markup in a name and an empty status; 1096 has none; 31's fetch fails
+const BILLS = {
+  "30": [{ n: "חוק א", s: "התקבלה בקריאה השלישית", k: 25, b: "passed" },
+         { n: 'חוק <b>"ב"</b> & ג', s: "נדחתה בקריאה הטרומית", k: 25, b: "rejected" },
+         { n: "חוק ד", s: "הונחה על שולחן הכנסת", k: 25, b: "pending" },
+         { n: "חוק ה", s: "", k: 20, b: "stale" },
+         { n: "חוק ו", s: "הוסרה מסדר היום", k: 20, b: "rejected" }],
+  "1096": [],
+};
 let upstream = { cards: () => new Response(JSON.stringify(FIX)) };
 let passed = [];
 globalThis.fetch = async (input, init) => {
   const u = typeof input === "string" ? input : input.url;
   if (u === CARDS_URL) return upstream.cards();
+  if (u.startsWith("https://api.ourmoneyil.com/data/mkbills/")) {
+    const id = u.split("/").pop();
+    return BILLS[id] ? new Response(JSON.stringify({ t: 1, data: BILLS[id] })) : new Response("{}", { status: 500 });
+  }
   if (u === ORIGIN + "/mk/") return new Response(SHELL);
   if (u === ORIGIN + "/mk/mk.i18n.json") return new Response(I18N);
   passed.push(u);
@@ -100,6 +114,26 @@ ok(h.includes("בכנסת 2006–2025") && /window\.MK_ENTITY=\{"id":31/.test(h)
 ok(h.includes(JSON.parse(I18N).he.billsStory.replace("{t}", 10).replace("{p}", 2)), "bills sentence");
 r = await get(`/mk/30-${enc("אלי-כהן")}/`); h = await r.text();
 ok(/window\.MK_ENTITY=\{"id":30/.test(h) && h.includes(JSON.parse(I18N).he.billsStory1.replace("{t}", 5)), "namesake by id, one law");
+
+// 4b. "מה ניסו להעביר?": every bill, name + status, in the page's piles
+{
+  const HE = JSON.parse(I18N).he;
+  r = await get(`/mk/30-${enc("אלי-כהן")}/`); h = await r.text();
+  const box = /<div id="bills">([\s\S]*?)<\/div>\s*<\/div>/.exec(h)[1];
+  ok(box.includes(`<summary>${HE.bPassed} (1)</summary>`) && box.includes(`<summary>${HE.bRejected} (2)</summary>`) &&
+     box.includes(`<summary>${HE.bPending} (1)</summary>`) && box.includes(`<summary>${HE.bStale} (1)</summary>`), "bills: four piles, counted");
+  ok((box.match(/<li>/g) || []).length === 5, "bills: every bill listed");
+  ok(box.indexOf(HE.bPassed) < box.indexOf(HE.bRejected) && box.indexOf(HE.bRejected) < box.indexOf(HE.bPending), "bills: the page's pile order");
+  ok(box.includes("חוק &lt;b&gt;&quot;ב&quot;&lt;/b&gt; &amp; ג") && !box.includes("<b>"), "bills: names escaped");
+  ok(box.includes("<li>חוק ה</li>") && box.includes('<li>חוק א <span class="names">· התקבלה בקריאה השלישית</span></li>'), "bills: status shown, empty status left out");
+  ok(divBalance(h) === divBalance(SHELL), "bills: divs balanced");
+  h = await (await get(heP)).text();
+  ok(new RegExp(`<div id="bills"><div class="loading">${HE.bNoBills}</div></div>`).test(h), "bills: an empty list says so");
+  h = await (await get(`/mk/31-${enc("אלי-כהן")}/`)).text();
+  ok(/<div id="bills"><div class="loading" data-i18n="loading">/.test(h), "bills: fetch failed → the page's loader stays");
+  h = await (await get(`/mk/1132-${enc("מוחמד-אבו-אל-היגא")}/`)).text();
+  ok(/<div id="bills"><div class="loading" data-i18n="loading">/.test(h), "bills: no count → no list asked for");
+}
 
 // 5. every other spelling → one 301 to the canonical address
 const loc = async p => { const x = await get(p); return x.status + " " + (x.headers.get("location") || ""); };
@@ -207,14 +241,25 @@ if (fs.existsSync(real)) {
   const raw = JSON.parse(fs.readFileSync(real, "utf8"));
   const env = raw.data && raw.data.members ? raw : { t: Date.now(), data: raw };   // out\ holds the bare data
   upstream.cards = () => new Response(JSON.stringify(env));
+  // …with their real bill lists when the build wrote them
+  const realBills = path.join(ROOT, "pipeline/mkcards/out/mkbills.json");
+  const lists = fs.existsSync(realBills) ? JSON.parse(fs.readFileSync(realBills, "utf8")) : {};
+  Object.assign(BILLS, lists);
   const { default: w4 } = await import("./pages.js?real" + Date.now());
-  let bad = 0;
+  let bad = 0, biggest = [0, ""];
   for (const c of Object.values(env.data.members)) for (const l of ["he", "en"]) {
     const p = `/mk/${c.id}-${enc(l === "en" ? c.slugEn : c.slugHe)}/`;
     const x = await w4.fetch(new Request(ORIGIN + p)); const t = await x.text();
-    if (x.status !== 200 || divBalance(t) !== divBalance(SHELL) || !t.includes(`lang="${l}"`)) { bad++; console.error("real card:", p, x.status); }
+    const listed = (t.match(/<li>/g) || []).length, want = lists[c.id] ? lists[c.id].length : null;
+    if (x.status !== 200 || divBalance(t) !== divBalance(SHELL) || !t.includes(`lang="${l}"`) ||
+        (want !== null && listed !== want) || (want !== null && c.bills && want !== c.bills.proposed)) {
+      bad++; console.error("real card:", p, x.status, "listed", listed, "want", want, "card", c.bills && c.bills.proposed);
+    }
+    if (t.length > biggest[0]) biggest = [t.length, c.he];
   }
-  ok(!bad, `all ${Object.keys(env.data.members).length} real cards render in he+en`);
+  ok(!bad, `all ${Object.keys(env.data.members).length} real cards render in he+en` +
+    (Object.keys(lists).length ? `, every bill listed (${Object.keys(lists).length} lists)` : ""));
+  console.log(`  heaviest page: ${biggest[1]} — ${Math.round(biggest[0] / 1024)} KB of HTML`);
 }
 
 console.log(failures ? `${failures} of ${n} FAILED` : `all ${n} passed`);

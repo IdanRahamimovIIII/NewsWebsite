@@ -518,6 +518,33 @@ def positions_for_many(relay, pids, pos_names):
     return by_pid
 
 
+BILL_EXPAND = ("$expand=KNS_Bill&$select=BillID,KNS_Bill/Name,KNS_Bill/StatusID,"
+               "KNS_Bill/KnessetNum,KNS_Bill/LastUpdatedDate")
+
+
+def bill_rows(relay, pids, status_map, latest):
+    """every bill this person signed (lead or co-signer), deduped by BillID,
+    newest first — the page's list (loadBills): name, exact status text,
+    Knesset, pile. The undecided split like the page: this Knesset →
+    "pending", an earlier one → "stale". $expand is a navigation path (the
+    WAF allows those); pages cap at 100 rows, so od_paged pages by $skip."""
+    seen = {}
+    for pid in pids:
+        rows = relay.od_paged("KNS_BillInitiator()?$filter=PersonID eq %d&%s" % (int(pid), BILL_EXPAND), cap=8000)
+        for r in rows:
+            b = r.get("KNS_Bill")
+            if not b or not r.get("BillID") or r["BillID"] in seen:
+                continue                      # an initiator row with no bill behind it is no bill
+            status = status_map.get(int(b.get("StatusID") or 0), "") or ""
+            pile = bill_bucket(status)
+            k = int(b.get("KnessetNum") or 0) or None
+            if pile == "process":
+                pile = "pending" if k == latest else "stale"
+            seen[r["BillID"]] = (date_ms(b.get("LastUpdatedDate")) or 0,
+                                 {"n": str(b.get("Name") or "").strip(), "s": status, "k": k, "b": pile})
+    return [row for _, row in sorted(seen.values(), key=lambda x: -x[0])]
+
+
 def collect(relay, limit=None):
     """everything the snapshot needs, raw — returns the world dict"""
     log("reading the directories…")
@@ -637,23 +664,18 @@ def build(relay, world):
             claimed.setdefault(p, []).append("%s (%s)" % (m["Name"], m.get("Id")))
     shared = ["PersonID %d ← %s" % (p, " + ".join(who)) for p, who in sorted(claimed.items()) if len(who) > 1]
 
-    # ---- bill counts ($count per PersonID, always filtered) ------------
-    passed_ids = sorted(sid for sid, d in world["status_map"].items()
-                        if bill_bucket(d) == "passed")
-    if not passed_ids:
+    # ---- the bills: the list (published per MK) and the counts from it --
+    if not any(bill_bucket(d) == "passed" for d in world["status_map"].values()):
         sys.exit("no passed statuses recognised — billBucket vs KNS_Status drifted; fix before publishing")
-    passed_flt = "(" + " or ".join("KNS_Bill/StatusID eq %d" % s for s in passed_ids) + ")"
-    log("counting bills for %d members…" % len(members))
-    bill_failures = []
+    log("reading the bills of %d members…" % len(members))
+    bill_failures, world["bill_lists"] = [], {}
     for i, m in enumerate(members, 1):
-        proposed = passed = 0
         try:
-            for pid in m["_pids"]:
-                proposed += relay.count("KNS_BillInitiator()", "PersonID eq %d" % pid)
-                passed += relay.count("KNS_BillInitiator()", "PersonID eq %d and %s" % (pid, passed_flt))
-            m["_bills"] = {"proposed": proposed, "passed": passed}
+            rows = bill_rows(relay, m["_pids"], world["status_map"], latest)
+            world["bill_lists"][int(m.get("Id") or 0)] = rows
+            m["_bills"] = {"proposed": len(rows), "passed": sum(1 for r in rows if r["b"] == "passed")}
         except Exception as e:  # noqa: BLE001
-            m["_bills"] = None
+            m["_bills"] = None                # no count and no list — never a partial one
             bill_failures.append("%s — %s" % (m["Name"], e))
         if i % 10 == 0:
             log("  %d/%d…" % (i, len(members)))
@@ -735,7 +757,10 @@ def gates(data, problems, partial):
     return bad
 
 
-def publish(data):
+BILLS_KEY = "pub:mkbills/%d"   # → /data/mkbills/<MkId> (the relay serves any pub:<name>)
+
+
+def publish(data, bill_lists):
     cred = cf_kv.credentials(str(HERE.parent / "d1-config.json"))
     if not cred:
         sys.exit("no Cloudflare credentials: set CF_API_TOKEN + CF_ACCOUNT_ID, "
@@ -745,12 +770,16 @@ def publish(data):
     if len(value.encode("utf-8")) > 2 * 1024 * 1024:
         sys.exit("snapshot is %.1f MB — that is not ~500 cards; refusing to publish"
                  % (len(value.encode("utf-8")) / 1e6))
-    log("publishing %s (%.0f KB)…" % (KEY, len(value.encode("utf-8")) / 1024))
-    cf_kv.bulk_put(cred, ns, [(KEY, value)])
-    bad = cf_kv.verify(cred, ns, [(KEY, value)])
+    t = int(time.time() * 1000)
+    items = [(BILLS_KEY % mk_id, cf_kv.envelope(rows, t)) for mk_id, rows in sorted(bill_lists.items())]
+    log("publishing %s (%.0f KB) + %d bill lists (%.1f MB)…" % (
+        KEY, len(value.encode("utf-8")) / 1024, len(items), sum(len(v.encode("utf-8")) for _, v in items) / 1e6))
+    # the lists first: a card never points at a list that isn't there yet
+    cf_kv.bulk_put(cred, ns, items + [(KEY, value)])
+    bad = cf_kv.verify(cred, ns, items + [(KEY, value)])
     if bad:
-        sys.exit("read-back FAILED: %s" % "; ".join(bad))
-    log("read back byte for byte — OK")
+        sys.exit("read-back FAILED (%d): %s" % (len(bad), "; ".join(bad[:20])))
+    log("read back byte for byte — OK (%d keys)" % (len(items) + 1))
     relay = cf_kv.relay_url(str(HERE.parent))
     if relay:
         status, body, _ = cf_kv.relay_get(relay + "/data/mkcards?fresh=1")
@@ -763,6 +792,18 @@ def publish(data):
             sys.exit("the public relay serves status %d with %d members (built %d) — check "
                      "the worker before calling this done" % (status, n, len(data["members"])))
         log("public check: %s/data/mkcards serves %d members — OK" % (relay, n))
+        # and the bills of the busiest member, through the same door the pages use
+        top = max(bill_lists, key=lambda k: len(bill_lists[k]), default=None)
+        if top is not None:
+            status, body, _ = cf_kv.relay_get(relay + "/data/mkbills/%d?fresh=1" % top)
+            try:
+                got = len(json.loads(body.decode("utf-8"))["data"])
+            except Exception:  # noqa: BLE001
+                got = -1
+            if status != 200 or got != len(bill_lists[top]):
+                sys.exit("/data/mkbills/%d serves status %d with %d bills (built %d)"
+                         % (top, status, got, len(bill_lists[top])))
+            log("public check: /data/mkbills/%d serves %d bills — OK" % (top, got))
     else:
         log("note: relay URL not found — skipped the public check (verify /data/mkcards yourself)")
 
@@ -784,13 +825,15 @@ def main(argv=None):
     OUT.mkdir(parents=True, exist_ok=True)
     out_path = OUT / "mkcards.json"
     out_path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    (OUT / "mkbills.json").write_text(json.dumps(world.get("bill_lists") or {}, ensure_ascii=False),
+                                      encoding="utf-8")
     log("\nbuilt %d cards → %s (%d relay calls)" % (len(data["members"]), out_path, relay.calls))
     if problems["no_photo"]:
         log("no photo for %d members (their pages show initials):" % len(problems["no_photo"]))
         for p in problems["no_photo"]:
             log("  - " + p)
     if problems["bill_failures"]:
-        log("bill counts missing for %d members (their card hides the line):" % len(problems["bill_failures"]))
+        log("bills missing for %d members (no count, no list on their page):" % len(problems["bill_failures"]))
         for p in problems["bill_failures"]:
             log("  - " + p)
 
@@ -803,7 +846,7 @@ def main(argv=None):
     if no_publish:
         log("\n--no-publish: stopping before Cloudflare. Snapshot is in out\\mkcards.json")
         return 0
-    publish(data)
+    publish(data, world["bill_lists"])
     log("\ndone. The MK page and the pages Worker read /data/mkcards from here on.")
     return 0
 

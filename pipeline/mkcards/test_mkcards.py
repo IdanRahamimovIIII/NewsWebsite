@@ -23,6 +23,9 @@ source is a rubber stamp):
     "בר לב"), parentheses ("משה (מוץ) מטלון"), a name split differently in
     KNS_Person ("עבד אלחכים" / "עבד אל חכים"), nicknames ("רפאל" / "רפי",
     "אבי" / "אברהם") — with עמיר פרץ sitting in the same Knesset as a trap
+  - the bill lists: the same bill twice (lead row + ordinal row), an
+    initiator row with no bill behind it, an unknown StatusID, >100 rows
+    (paging), undecided bills of this Knesset vs an earlier one
 """
 import io, json, re, sys, unittest, urllib.parse
 from contextlib import redirect_stdout
@@ -223,7 +226,24 @@ PASSED_IDS = {118, 122}
 # bills per PersonID: (proposed, passed). PersonID 301 (the wrong אלי כהן)
 # carries 99 laws — summing the namesakes is the classic bug.
 BILLS = {100: (31, 6), 200: (12, 2), 300: (20, 5), 301: (99, 99),
-         400: (7, 0), 500: (3, 1), 600: (15, 4), 700: (40, 9), 800: (4, 1)}
+         400: (7, 0), 500: (3, 1), 600: (15, 4), 700: (40, 9), 800: (130, 1)}
+
+
+def bill_initiator_rows(pid):
+    """KNS_BillInitiator rows with $expand=KNS_Bill, as the live service
+    answers — distinct bills = BILLS[pid], plus the dirt that must not count"""
+    proposed, passed = BILLS.get(pid, (0, 0))
+    rows = []
+    for i in range(proposed):
+        status = 118 if i < passed else (108 if i % 3 == 0 else 150 if i % 3 == 1 else 999)   # 999: unknown
+        rows.append({"BillID": pid * 10000 + i, "KNS_Bill": {
+            "Name": "הצעת חוק %d-%d" % (pid, i), "StatusID": status,
+            "KnessetNum": 25 if i % 2 == 0 else 20,
+            "LastUpdatedDate": "2024-01-%02dT00:00:00" % (1 + i % 28)}})
+    if rows:
+        rows.append(dict(rows[0]))           # the same bill again (lead row + ordinal row)
+        rows.append({"BillID": pid * 10000 + 9999, "KNS_Bill": None})   # an initiator row, no bill
+    return rows
 
 PHOTOS = {"771": "771-abcd1234.jpg", "802": "802-ef567890.jpg", "803": "803-11112222.jpg",
           "804": "804-33334444.jpg", "806": "806-55556666.jpg", "807": "807-77778888.jpg"}
@@ -238,6 +258,7 @@ class FakeWorld:
     def __init__(self):
         self.persons_published = True
         self.bills_published = True
+        self.bills_fail = set()
 
     def fetch(self, url, timeout=45):
         if url.startswith("https://relay.test/?url="):
@@ -270,6 +291,11 @@ class FakeWorld:
                               ensure_ascii=False).encode("utf-8")
         if "/$count" in url:
             return self.count(url)
+        if "KNS_BillInitiator()" in url:
+            pid = int(re.search(r"PersonID eq (\d+)", self.filter_of(url)).group(1))
+            if pid in self.bills_fail:
+                raise RuntimeError("HTTP 500 from upstream — bills of %d" % pid)
+            return self.od_page(url, bill_initiator_rows(pid))
         if "KNS_Position()" in url:
             return self.od_page(url, [])          # DutyDesc is filled everywhere in the fixture
         if "KNS_PersonToPosition()" in url:
@@ -325,6 +351,7 @@ def build_world(fake=None):
     with redirect_stdout(io.StringIO()):
         world = B.collect(relay)
         data, problems = B.build(relay, world)
+    relay.world = world                    # the bill lists ride here (published per MK)
     return data, problems, relay
 
 
@@ -504,6 +531,29 @@ class EndToEnd(unittest.TestCase):
         finally:
             PERSONS, POS_ALL = keep_p, keep_a
         self.assertIn("וורצמן אבי", problems["unresolved"])      # no guess — the gate stops it
+
+    def test_bill_lists(self):
+        lists = self.relay.world["bill_lists"]
+        rows = lists[771]
+        self.assertEqual(len(rows), 31)                          # deduped, the no-bill row dropped
+        self.assertEqual(self.cards["771"]["bills"], {"proposed": 31, "passed": 6})   # counts FROM the list
+        self.assertEqual(sum(r["b"] == "passed" for r in rows), 6)
+        self.assertTrue(all(set(r) == {"n", "s", "k", "b"} for r in rows))
+        piles = {r["b"] for r in rows}
+        self.assertLessEqual(piles, {"passed", "rejected", "pending", "stale"})
+        self.assertTrue(all(r["b"] == "pending" for r in rows if r["b"] in ("pending", "stale") and r["k"] == 25))
+        self.assertTrue(all(r["b"] == "stale" for r in rows if r["b"] in ("pending", "stale") and r["k"] == 20))
+        self.assertTrue(any(r["s"] == "" for r in rows))         # unknown StatusID: no invented text
+        self.assertEqual(len(lists[811]), 130)                   # paged past 100
+        self.assertEqual(lists[870], [])                         # no bills: an empty list, not a missing one
+
+    def test_bill_list_failure_is_all_or_nothing(self):
+        fake = FakeWorld()
+        fake.bills_fail = {300}                                  # the K25 אלי כהן
+        data, problems, relay = build_world(fake)
+        self.assertIsNone(data["members"]["803"]["bills"])
+        self.assertNotIn(803, relay.world["bill_lists"])         # no half list either
+        self.assertTrue(any("כהן אלי אליהו" in f for f in problems["bill_failures"]))
 
     def test_open_rows_of_someone_long_gone(self):
         c = self.cards["811"]                           # K17 only, register rows never closed
