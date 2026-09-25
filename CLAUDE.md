@@ -53,6 +53,8 @@ The roadmap lives in each notes file's "Open" section.
 - Git via GitHub Desktop (no git CLI) — describe commit/push steps in its terms.
   `main` holds everything (work lands here); `release` = a copy of main
   that the live site deploys. Commit on main, then bring release up to it.
+  In the local (desktop) session Claude's git is signed in: Claude may
+  commit + push main itself; pushing release = deploying live → ask first.
 - She pastes logs/screenshots, and does DevTools captures
   (F12 → Network → Copy as cURL) for bot-protected sites.
 
