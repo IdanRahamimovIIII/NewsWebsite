@@ -220,20 +220,44 @@ const ok = (name, cond, extra = '') => {
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 
-/* The real OECD response lists TIME_PERIOD newest-first. Mapping observations
+/* The OECD response has listed TIME_PERIOD newest-first. Mapping observations
    by position instead of by the codelist silently shifts every year — it did,
-   once. This fixture keeps that trap armed. */
+   once. This fixture keeps that trap armed.
+   Shape = the real answer of 2026-09-25 (SDMX-JSON 1.0): the structure is ONE
+   object at `data.structure` (2.0 had `data.structures[0]` — the switch
+   emptied the debt figure on the live page), four observation dimensions with
+   TIME_PERIOD last, and each observation is [value, …attribute indexes]. */
 const OECD_DEBT = { 2026: 1519.9e9, 2025: 1427.3e9, 2024: 1323.2e9 };
 function sdmxFixture() {
   const years = Object.keys(OECD_DEBT).sort((a, b) => b - a);          // descending
-  return { data: {
-    structures: [{ dimensions: { observation: [
-      { id: 'REF_AREA', values: [{ id: 'ISR' }] },
-      { id: 'TIME_PERIOD', values: years.map(y => ({ id: String(y) })) },
-    ] } }],
-    dataSets: [{ observations: Object.fromEntries(
-      years.map((y, i) => [`0:${i}`, [OECD_DEBT[y]]])) }],
-  } };
+  const dim = (id, keyPosition, ids) =>
+    ({ id, keyPosition, roles: [id], values: ids.map(v => ({ id: String(v), name: String(v) })) });
+  return {
+    meta: { schema: 'https://raw.githubusercontent.com/sdmx-twg/sdmx-json/master/data-message/tools/schemas/1.0/sdmx-json-data-schema.json' },
+    data: {
+      dataSets: [{ action: 'Information', observations: Object.fromEntries(
+        years.map((y, i) => [`0:0:0:${i}`, [OECD_DEBT[y], null, 0, 0, 0, null, null, 0, 0, null]])) }],
+      structure: {
+        name: 'Economic Outlook',
+        dimensions: { dataset: [], series: [], observation: [
+          dim('REF_AREA', 0, ['ISR']),
+          dim('MEASURE', 1, ['GGFL']),
+          dim('FREQ', 2, ['A']),
+          dim('TIME_PERIOD', 3, years),
+        ] },
+        attributes: { observation: [
+          { id: 'OBS_STATUS', values: [] }, { id: 'UNIT_MEASURE', values: [{ id: 'XDC' }] },
+          { id: 'UNIT_MULT', values: [{ id: '0' }] }, { id: 'CURRENCY', values: [{ id: 'ILS' }] },
+        ] },
+      },
+    },
+    errors: [],
+  };
+}
+/* the same numbers in the SDMX-JSON 2.0 envelope the page was written against */
+function sdmxFixture20() {
+  const { data } = sdmxFixture();
+  return { data: { dataSets: data.dataSets, structures: [data.structure] } };
 }
 
 async function openPage({ snapshot, noDebt }) {
@@ -512,6 +536,14 @@ console.log('\ntotal debt:');
      txt.includes('10.3%') && txt.includes('1,427'), txt.slice(0, 240));
   ok('the debt figure names its source, because it is not from the budget',
      /OECD/.test(await p4.textContent('#pop .popsrc')));
+  const want = JSON.stringify(OECD_DEBT);
+  const got = await p4.evaluate(([a, b]) =>
+    [a, b].map(j => { try { return JSON.stringify(parseSdmxAnnual(j)); } catch (e) { return e.message; } }),
+    [sdmxFixture(), sdmxFixture20()]);
+  ok('SDMX-JSON 1.0 (data.structure) and 2.0 (data.structures[]) read the same years',
+     got[0] === want && got[1] === want, got.join(' | '));
+  ok('the debug line stays empty when the debt loads',
+     !/debt:/.test(await p4.textContent('#debug').catch(() => '')));
   await p4.close();
 
   const p5 = await openPage({ snapshot: true, noDebt: true });

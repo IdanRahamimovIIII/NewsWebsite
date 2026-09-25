@@ -155,12 +155,16 @@ const flowIn = f => fv(f, "tax") + fv(f, "fees") + fv(f, "other") + fv(f, "debt"
 
    TRAP, and it cost a wrong number once already: SDMX returns the TIME_PERIOD
    values in whatever order it likes — the response we get is DESCENDING. Never
-   map observations by position; read the codelist and index into it. */
+   map observations by position; read the codelist and index into it.
+   The envelope moves too: SDMX-JSON 2.0 has `data.structures[0]`, 1.0 has
+   `data.structure` (OECD switched to 1.0 by 2026-09 and the page lost the
+   debt figure), older answers a top-level `structure` — read all three. */
 const DEBT_URL = "https://sdmx.oecd.org/public/rest/data/OECD.ECO.MAD,DSD_EO@DF_EO,1.3/" +
   "ISR.GGFL.A?startPeriod=1997&format=jsondata&dimensionAtObservation=AllDimensions";
 
 function parseSdmxAnnual(j) {
-  const st = (j.data && j.data.structures ? j.data.structures[0] : j.structure);
+  const d = j.data || {};
+  const st = (d.structures ? d.structures[0] : d.structure || j.structure);
   const dims = (st && st.dimensions && st.dimensions.observation) || [];
   const ti = dims.findIndex(d => d.id === "TIME_PERIOD");
   if (ti < 0) throw new Error("SDMX::no TIME_PERIOD dimension");
