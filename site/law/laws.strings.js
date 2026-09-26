@@ -43,7 +43,6 @@
       replacedBy: "הוחלף ב: ",
       srcText: "הנוסח המלא והעדכני (ספר החוקים הפתוח, ויקיטקסט)",
       srcKnesset: "הרשומה במאגר הכנסת",
-      notAdvice: "הדף עוזר להבין, ואינו ייעוץ משפטי.",
     },
     en: {
       tagline: "Every Israeli law, in one place",
@@ -85,7 +84,6 @@
       replacedBy: "Replaced by: ",
       srcText: "Full current text (the open statute book, Wikisource)",
       srcKnesset: "The Knesset database record",
-      notAdvice: "This page helps you understand; it isn't legal advice.",
     },
   };
   for (const l of ["he", "en"]) window.PAGE_STR[l] = Object.assign({}, window.PAGE_STR[l], add[l]);

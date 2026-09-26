@@ -42,53 +42,66 @@
 <div class="wrap">
   <p class="tagline" data-i18n="tagline">חוקי המדינה: מה חל היום, ומה עומד להשתנות</p>
 
-  <!-- the court: voided, partly voided, frozen, deferred -->
+  <!-- change first: what is about to start leads the page (Mercy) -->
   <div class="card">
-    <h2><span data-i18n="courtTitle">אילו חוקים ביטל או הקפיא בית המשפט העליון?</span><span class="count" id="courtN"></span></h2>
-    <p class="hint" data-i18n="courtHint">בית המשפט לא מוחק חוק מספר החוקים: הוא מכריז שהחוק, או חלק ממנו, בטל. לכן ברשומות הכנסת רבים מהחוקים האלה עדיין מופיעים כ״תקפים״.</p>
-    <div id="court"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
-    <p class="srcnote"><span data-i18n="courtSrc">הרשימה נאספת ידנית (מוויקיטקסט ומוויקיפדיה), והתאריך והקישור של כל פסק דין נלקחים מאתר בית המשפט. היא עשויה להיות חסרה.</span> <span id="courtRev"></span><br>
-      <span data-i18n="suggest">מכירים פסק דין שחסר כאן?</span> <a id="suggest" href="mailto:contact@ourmoneyil.com" data-i18n="suggestLink">כתבו לנו</a></p>
-  </div>
-
-  <!-- change first: what is about to start -->
-  <div class="card">
-    <h2><span data-i18n="soonTitle">אילו חוקים עומדים להיכנס לתוקף?</span><span class="count" id="soonN"></span></h2>
-    <p class="hint" data-i18n="soonHint">חוקים שהכנסת כבר העבירה, אבל עוד לא התחילו לחול.</p>
+    <h2 class="hh"><span data-i18n="soonTitle">עומדים להיכנס לתוקף</span><button class="qbtn" type="button" aria-expanded="false" aria-controls="soonInfo" aria-label="הסבר" onclick="toggleInfo('soon')">?</button></h2>
+    <div class="info" id="soonInfo" hidden>
+      <p data-i18n="soonHint">חוקים שהכנסת העבירה, אבל עוד לא התחילו לחול.</p>
+      <p class="upd"></p>
+    </div>
     <div id="soon"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
   </div>
 
+  <!-- the court: voided, partly voided, frozen, deferred -->
   <div class="card">
-    <h2><span data-i18n="startedTitle">אילו חוקים התחילו לחול בשלושת החודשים האחרונים?</span><span class="count" id="startedN"></span></h2>
-    <p class="hint" data-i18n="startedHint">לפי תאריך תחילת התוקף שרשמה הכנסת (ובהיעדרו: תאריך הפרסום ברשומות). ללא חוקי תקציב.</p>
+    <h2 class="hh"><span data-i18n="courtTitle">חוקים שבית המשפט העליון ביטל או הקפיא</span><button class="qbtn" type="button" aria-expanded="false" aria-controls="courtInfo" aria-label="הסבר" onclick="toggleInfo('court')">?</button></h2>
+    <div class="info" id="courtInfo" hidden>
+      <p data-i18n="courtHint">בית המשפט לא מוחק חוק מספר החוקים: הוא מכריז שהחוק, או חלק ממנו, בטל. לכן ברשומות הכנסת רבים מהחוקים האלה עדיין מופיעים כ״תקפים״.</p>
+      <p><span data-i18n="courtSrc">הרשימה נאספת ידנית (מוויקיטקסט ומוויקיפדיה), והתאריך והקישור של כל פסק דין נלקחים מאתר בית המשפט. היא עשויה להיות חסרה.</span> <span class="rev"></span></p>
+      <p><span data-i18n="suggest">מכירים פסק דין שחסר כאן?</span> <a class="suggest" href="mailto:contact@ourmoneyil.com" data-i18n="suggestLink">כתבו לנו</a></p>
+      <p class="upd"></p>
+    </div>
+    <div id="court"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
+  </div>
+
+  <div class="card">
+    <h2 class="hh"><span data-i18n="startedTitle">חוקים חדשים</span><button class="qbtn" type="button" aria-expanded="false" aria-controls="startedInfo" aria-label="הסבר" onclick="toggleInfo('started')">?</button></h2>
+    <div class="info" id="startedInfo" hidden>
+      <p data-i18n="startedHint">חוקים שהתחילו לחול בשלושת החודשים האחרונים — לפי תאריך תחילת התוקף שרשמה הכנסת (ובהיעדרו: תאריך הפרסום ברשומות). ללא חוקי תקציב.</p>
+      <p class="upd"></p>
+    </div>
     <div id="started"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
   </div>
 
   <div class="card">
-    <h2><span data-i18n="expireTitle">אילו חוקים עומדים לפקוע?</span><span class="count" id="expiringN"></span></h2>
-    <p class="hint" data-i18n="expireHint">חוקים זמניים שתאריך הסיום שלהם בשלושת החודשים הקרובים.</p>
+    <h2 class="hh"><span data-i18n="expireTitle">עומדים לפקוע</span><button class="qbtn" type="button" aria-expanded="false" aria-controls="expiringInfo" aria-label="הסבר" onclick="toggleInfo('expiring')">?</button></h2>
+    <div class="info" id="expiringInfo" hidden>
+      <p data-i18n="expireHint">חוקים זמניים שתאריך הסיום שלהם בשלושת החודשים הקרובים.</p>
+      <p class="upd"></p>
+    </div>
     <div id="expiring"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
   </div>
 
   <div class="card">
-    <h2><span data-i18n="tempTitle">אילו חוקים זמניים חלים היום?</span><span class="count" id="tempN"></span></h2>
-    <p class="hint" data-i18n="tempHint">הוראות שעה וחוקים עם תאריך סיום — מהקרוב לפקוע ועד הרחוק. ללא חוקי תקציב.</p>
+    <h2 class="hh"><span data-i18n="tempTitle">חוקים זמניים</span><button class="qbtn" type="button" aria-expanded="false" aria-controls="tempInfo" aria-label="הסבר" onclick="toggleInfo('temp')">?</button></h2>
+    <div class="info" id="tempInfo" hidden>
+      <p data-i18n="tempHint">הוראות שעה וחוקים עם תאריך סיום שחלים היום — מהקרוב לפקוע ועד הרחוק. ללא חוקי תקציב.</p>
+      <p class="upd"></p>
+    </div>
     <div id="temp"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
   </div>
 
   <!-- bills a committee is working on -->
   <div class="card">
-    <h2><span data-i18n="billsTitle">על אילו הצעות חוק עובדות ועדות הכנסת עכשיו?</span><span class="count" id="billsN"></span></h2>
-    <p class="hint" data-i18n="billsHint">הצעות שוועדה של הכנסת דנה בהן בשלושת החודשים האחרונים ועוד לא הוכרעו. הצעות זהות שהוגשו בנפרד מוצגות בשורה אחת.</p>
+    <h2 class="hh"><span data-i18n="billsTitle">הצעות חוק בדיון בוועדות</span><button class="qbtn" type="button" aria-expanded="false" aria-controls="billsInfo" aria-label="הסבר" onclick="toggleInfo('bills')">?</button></h2>
+    <div class="info" id="billsInfo" hidden>
+      <p data-i18n="billsHint">הצעות שוועדה של הכנסת דנה בהן בשלושת החודשים האחרונים ועוד לא הוכרעו. הצעות זהות שהוגשו בנפרד מוצגות בשורה אחת.</p>
+      <p class="upd"></p>
+    </div>
     <div id="bills"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
   </div>
 
-  <div class="card explain">
-    <h2 data-i18n="explainTitle">איך לקרוא את הדף?</h2>
-    <p data-i18n="explain1">״חל היום״ הוא הסטטוס שהכנסת רושמת לכל חוק. חוק ״בוטל בחוק״ כשהכנסת עצמה ביטלה אותו, ״פקע״ כשחוק זמני הגיע לסופו, ו״נושן״ כשסיים את תפקידו ואיש לא ביטל אותו. ביטול של בית המשפט לא מופיע ברשומות הכנסת — לכן הוא מוצג כאן בנפרד.</p>
-    <p data-i18n="explain2">הדף עוזר להבין, ואינו ייעוץ משפטי. לפני החלטה שנוגעת לכם — בדקו את נוסח החוק ואת פסק הדין המלא, או היוועצו בעורך דין.</p>
-    <p data-i18n="explain3">מקורות: מאגר הנתונים הפתוח של הכנסת (חוקים, הצעות חוק, ועדות), אתר פסקי הדין של בית המשפט העליון, וספר החוקים הפתוח בוויקיטקסט.</p>
-  </div>
+  <p class="notadvice" data-i18n="notAdvice">הדף עוזר להבין, ואינו ייעוץ משפטי.</p>
 
   <footer>
     <p class="aboutpara" data-i18n="aboutBody">״הכסף שלנו״ הוא אתר עצמאי, ללא קשר לגוף ממשלתי, למפלגה או לארגון, שנועד להעניק לאזרחי ישראל מבט נקי ומסודר על פעילות המדינה ועל האופן שבו היא משתמשת בכסף שלנו. כל הנתונים מגיעים ישירות מהמקורות הרשמיים ומוצגים כפי שהם, עם קישור למקור. מצאתם טעות או נתון חסר? כתבו לנו ונתקן:</p>

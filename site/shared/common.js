@@ -278,5 +278,24 @@ document.addEventListener("focusin", e => {
 document.addEventListener("focusout", () => { if (tipByData) hideTip(); });
 addEventListener("scroll", () => { if (tipByData) hideTip(); }, { passive: true });
 
+/* ---------- phones: the header shrinks to one row (the tabs) once the reader
+   scrolls down; the site name and the language button come back at the top.
+   Only the CSS below 640px acts on .compact — a wide screen never changes.
+   Two thresholds so the bar can't flicker at the edge. ---------- */
+function watchHeader() {
+  const bar = document.querySelector("header.topbar");
+  if (!bar) return;
+  const sync = () => document.documentElement.style.setProperty("--topbar-h", bar.offsetHeight + "px");
+  let compact = false;
+  addEventListener("scroll", () => {
+    const want = compact ? scrollY > 12 : scrollY > 64;
+    if (want !== compact) { compact = want; bar.classList.toggle("compact", compact); }
+  }, { passive: true });
+  // sticky bars below the header (the budget year bar) read --topbar-h
+  if (typeof ResizeObserver === "function") new ResizeObserver(sync).observe(bar);
+  sync();
+}
+
 /* ---------- boot ---------- */
 buildChrome();
+watchHeader();

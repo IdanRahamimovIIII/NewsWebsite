@@ -180,6 +180,9 @@ footer .aboutmail { margin: 0 0 12px; }
   nav.tabs { order: 3; flex-basis: 100%; flex-wrap: nowrap; overflow-x: auto;
     padding-bottom: 6px; scrollbar-width: none; }
   nav.tabs a { padding: 5px 12px; font-size: 13.5px; white-space: nowrap; }
+  /* scrolled down: only the tabs stay (common.js watchHeader) */
+  header.topbar.compact .brand, header.topbar.compact .langbtn { display: none; }
+  header.topbar.compact .tbwrap { padding-top: 6px; }
   .tagline { font-size: 18.5px; margin: 18px auto 16px; }
   .card { padding: 16px 14px; border-radius: 10px; margin-bottom: 14px; }
   h2 { font-size: 16.5px; }

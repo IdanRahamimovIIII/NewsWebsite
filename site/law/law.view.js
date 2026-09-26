@@ -5,24 +5,41 @@
    partial list shown as complete).
    ===================================================================== */
 
-const SHOW = 5;
+const SHOW = 2;               // no more than two items before "show all" (Mercy)
 const open = {};              // which blocks show everything
 
 function block(id, items, render, emptyKey) {
   const el = document.getElementById(id);
   if (!el) return;
-  const cnt = document.getElementById(id + "N");
-  if (cnt) cnt.textContent = items.length ? "(" + fmtN(items.length) + ")" : "";
   if (!items.length) { el.innerHTML = `<p class="hint">${esc(t(emptyKey || "none"))}</p>`; return; }
-  const all = open[id] || items.length <= SHOW + 1;
+  const all = open[id] || items.length <= SHOW;
   const shown = all ? items : items.slice(0, SHOW);
   let html = `<ul class="hl">${shown.map(render).join("")}</ul>`;
-  if (items.length > SHOW + 1) {
+  // the full count lives on the button: never a partial list shown as complete
+  if (items.length > SHOW) {
     html += `<button class="morebtn" onclick="toggleBlock('${id}')">${esc(all ? t("showLess") : fill(t("showAll"), { n: fmtN(items.length) }))}</button>`;
   }
   el.innerHTML = html;
 }
 function toggleBlock(id) { open[id] = !open[id]; render(); }
+
+/* the "?" next to a title opens its explanation right under the title */
+function toggleInfo(id) {
+  const box = document.getElementById(id + "Info"), btn = box && box.previousElementSibling.querySelector(".qbtn");
+  if (!box) return;
+  box.hidden = !box.hidden;
+  if (btn) btn.setAttribute("aria-expanded", String(!box.hidden));
+}
+function fillInfo() {
+  document.querySelectorAll(".qbtn").forEach(b => b.setAttribute("aria-label", t("infoBtn")));
+  const upd = window._freshT ? t("dataUpdated") + fmtDate(new Date(window._freshT)) : "";
+  document.querySelectorAll(".info .upd").forEach(p => { p.textContent = upd; });
+  const d = LAW.data;
+  document.querySelectorAll(".info .rev").forEach(p => {
+    p.textContent = d && d.courtReviewed ? t("courtReviewed") + fmtDate(d.courtReviewed) : "";
+  });
+  document.querySelectorAll(".info .suggest").forEach(a => { a.href = mailSuggest(t("suggestSubject")); });
+}
 
 /* ---------- one line per kind of item ---------- */
 function stateWords(l) {
@@ -79,8 +96,6 @@ function render() {
     return l && ["in", "pending"].includes(lawState(l));
   }).sort((a, b) => b.d.localeCompare(a.d));
   block("court", court, courtItem);
-  const rev = document.getElementById("courtRev");
-  if (rev) rev.textContent = d.courtReviewed ? t("courtReviewed") + fmtDate(d.courtReviewed) : "";
 
   const soon = laws.filter(l => lawState(l) === "pending")
     .sort((a, b) => (a.s || "9999").localeCompare(b.s || "9999"));
@@ -100,6 +115,7 @@ function render() {
   block("temp", temp, lawItem(l => l.e ? t("untilDate") + fmtDate(l.e) : t("noDate")));
 
   block("bills", d.bills || [], billItem, "noneBills");
+  fillInfo();
 }
 
 window.onLangChange = render;
@@ -115,6 +131,5 @@ window.onLangChange = render;
       if (el) el.innerHTML = `<p class="error">${esc(friendly(e))}</p>`;
     }
   }
-  const s = document.getElementById("suggest");
-  if (s) s.href = mailSuggest(t("suggestSubject"));
+  fillInfo();
 })();
