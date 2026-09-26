@@ -4,7 +4,7 @@
 window.PAGE = "law";
 window.PAGE_STR = {
   he: {
-    tagline: "חוקי המדינה: מה חל היום, ומה עומד להשתנות",
+    tagline: "מה משתנה בחוק",
 
     courtTitle: "חוקים שבית המשפט העליון ביטל או הקפיא",
     courtHint: "בית המשפט לא מוחק חוק מספר החוקים: הוא מכריז שהחוק, או חלק ממנו, בטל. לכן ברשומות הכנסת רבים מהחוקים האלה עדיין מופיעים כ״תקפים״.",
@@ -79,7 +79,7 @@ window.PAGE_STR = {
     explain3: "מקורות: מאגר הנתונים הפתוח של הכנסת (חוקים, הצעות חוק, ועדות), אתר פסקי הדין של בית המשפט העליון, וספר החוקים הפתוח בוויקיטקסט.",
   },
   en: {
-    tagline: "Israel's laws: what applies today, and what is about to change",
+    tagline: "What's changing in the law",
 
     courtTitle: "Laws the Supreme Court voided or froze",
     courtHint: "The court doesn't delete a law from the statute book: it declares the law, or part of it, void. So in the Knesset's records many of these laws still appear as \"in force\".",
