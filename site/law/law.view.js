@@ -53,7 +53,7 @@ function fillInfo() {
 
 /* ---------- what an opened row shows: "label: value" (law.data.js kv) ---------- */
 const goLaw = l => `<p><a class="golink" href="${lawLink(l)}">${esc(t("detailsLink"))} ←</a></p>`;
-const lawRow = line => (l, id) => item(id + ":" + l.i, lawName(l), line(l), () => lawKv(l) + goLaw(l));
+const lawRow = line => (l, id) => item(id + ":" + l.i, lawName(l), line(l), () => lawKv(l, { status: false }) + goLaw(l));
 
 function courtRow(c, id) {
   const l = LAW.byId.get(c.l);
@@ -80,7 +80,7 @@ function billRow(b, id) {
     stage: esc(b.st),
     committee: esc(b.cm || ""),
     date: b.d ? esc(t("bDiscussed").replace("{d}", fmtDate(b.d))) : "",
-    affects: affectsHtml(b.law, b.am),
+    affects: affectsHtml(b.law || (b.am ? lawForBillName(b.n) : null), b.am),   // the official link, else the name's exact match
   }) + ((b.twins || []).length ? kv("kvTwins", esc(fmtN(b.twins.length))) : "") +
     ((b.pieces || []).length ? kv("kvPieces", esc(fmtN(b.pieces.length))) +
       `<ul>${b.pieces.map(p => `<li>${esc(p.n)} · ${esc(p.st)}</li>`).join("")}</ul>` : ""));
@@ -113,7 +113,7 @@ function render() {
   const temp = laws.filter(l => lawState(l) === "in" && !isBudget(l) && isTemp(l) && !(l.e && l.e < TODAY))
     .sort((a, b) => (a.e || "9999").localeCompare(b.e || "9999"));
   block("temp", temp, (l, id) => item(id + ":" + l.i, lawName(l),
-    l.e ? t("untilDate") + fmtDate(l.e) : t("noDate"), () => lawKv(l) + goLaw(l),
+    l.e ? t("untilDate") + fmtDate(l.e) : t("noDate"), () => lawKv(l, { status: false }) + goLaw(l),
     l.e && l.e <= in90 ? t("expiresSoon") : ""));
 
   block("bills", d.bills || [], billRow, "noneBills");

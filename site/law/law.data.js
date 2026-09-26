@@ -74,10 +74,13 @@ function rulingLink(c) {
   return `<a class="doclink" href="${esc(c.u)}" target="_blank" rel="noopener">${esc(c.c)}</a>`;
 }
 /* a law, opened: status · (the Knesset's word) · from · until · topics · court · replaced by */
-function lawKv(l) {
+/* opts.status false = a block whose title already says it (ראשי: every law
+   there is "about to start" / "applies today" — a blocked one sits in the
+   court block), so the line would say nothing (Mercy) */
+function lawKv(l, opts) {
   const topics = (l.t || []).map(id => LAW.topics[id]).filter(Boolean);
   const rep = l.r && LAW.byId.get(l.r);
-  return kv("kvStatus", esc(t(STATE_KEY[shownState(l)]))) +
+  return (opts && opts.status === false ? "" : kv("kvStatus", esc(t(STATE_KEY[shownState(l)])))) +
     (knessetDiffers(l) ? kv("kvKnesset", esc(l.st)) : "") +
     kv("kvStart", l.s ? esc(fmtDate(l.s)) : "") +
     kv("kvEnd", l.e ? esc(fmtDate(l.e)) : "") +
@@ -85,6 +88,29 @@ function lawKv(l) {
     courtOf(l).map(c => kv("kvCourt", esc(t(KIND_KEY[c.k])) + (c.k === "void" ? "" : ", " + esc(c.w)) +   // "voided in full" needs no "what"
       ` (${rulingLink(c)} · ${esc(fmtDate(c.d))})`)).join("") +
     (rep ? kv("kvReplaced", `<a class="golink" href="${lawLink(rep)}">${esc(lawName(rep))}</a>`) : "");
+}
+
+/* the law an amending bill changes, read off its name — "הצעת חוק תובענות
+   ייצוגיות (תיקון מס' 16)" → חוק תובענות ייצוגיות; "הצעת חוק לתיקון פקודת
+   העיריות (…)" → פקודת העיריות. Only an EXACT match with exactly ONE law in
+   force counts — two candidates = no answer, never a guess between them. */
+let _byCore = null;
+function lawForBillName(name) {
+  if (!_byCore) {
+    _byCore = new Map();
+    for (const l of LAW.data.laws) {
+      if (lawState(l) !== "in") continue;
+      const c = splitName(l.n)[0];
+      _byCore.set(c, _byCore.has(c) ? null : l);          // null = ambiguous
+    }
+  }
+  const core = splitName(name)[0].replace(/^הצעת\s+/, "");
+  const want = [core, core.replace(/^חוק לתיקון\s+/, ""), core.replace(/^חוק לתיקון\s+/, "חוק ")];
+  for (const c of want) {
+    const l = _byCore.get(c);
+    if (l) return { i: l.i, n: l.n };
+  }
+  return null;
 }
 
 /* a law name for display: the register's full name */
