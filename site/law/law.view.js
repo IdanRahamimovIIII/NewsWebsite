@@ -97,8 +97,8 @@ function render() {
     .sort((a, b) => (a.s || "9999").localeCompare(b.s || "9999"));
   block("soon", soon, lawRow(l => l.s ? t("startsDate") + fmtDate(l.s) : t("stPending") + " · " + t("noDate")));
 
-  // a law the court touched lives in the court block only (Mercy)
-  const started = laws.filter(l => lawState(l) === "in" && !isBudget(l) && !courtOf(l).length &&
+  // only what reads "חל היום": a law voided in full is out, a partly voided one stays (Mercy)
+  const started = laws.filter(l => shownState(l) === "in" && !isBudget(l) &&
       ((l.s && l.s >= ago90 && l.s <= TODAY) || (!l.s && l.p && l.p >= ago90)))
     .sort((a, b) => (b.s || b.p).localeCompare(a.s || a.p));
   block("started", started, lawRow(l => l.s ? t("startedDate") + fmtDate(l.s) : t("publishedDate") + fmtDate(l.p)));
@@ -111,7 +111,7 @@ function render() {
   block("court", court, courtRow);
 
   // "about to expire" is not a block of its own: it is the head of this list (Mercy)
-  const temp = laws.filter(l => lawState(l) === "in" && !isBudget(l) && isTemp(l) && !courtOf(l).length && !(l.e && l.e < TODAY))
+  const temp = laws.filter(l => shownState(l) === "in" && !isBudget(l) && isTemp(l) && !(l.e && l.e < TODAY))
     .sort((a, b) => (a.e || "9999").localeCompare(b.e || "9999"));
   block("temp", temp, (l, id) => item(id + ":" + l.i, lawName(l),
     l.e ? t("untilDate") + fmtDate(l.e) : t("noDate"), () => lawKv(l, { status: false }) + goLaw(l),
