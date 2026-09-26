@@ -11,6 +11,10 @@
 .hl { list-style: none; margin: 0; padding: 0; }
 .hl > li { border-bottom: 1px solid var(--grid); }
 .hl > li:last-child { border-bottom: 0; }
+/* ראשי: a line above the first law and below the last too — every law sits
+   in its own box of lines (Mercy) */
+.hl:not(.plain) > li:first-child { border-top: 1px solid var(--grid); }
+.hl:not(.plain) > li:last-child { border-bottom: 1px solid var(--grid); }
 .it > button.head { all: unset; box-sizing: border-box; display: block; width: 100%;
   cursor: pointer; padding: 12px 2px; }
 .it > button.head:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
