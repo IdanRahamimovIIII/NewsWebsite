@@ -181,6 +181,9 @@ footer a { color: var(--accent-ink); }
 /* about + contact (shared block in every footer; strings = COMMON_STR) */
 footer .aboutpara { color: var(--ink-2); max-width: 78ch; margin: 0 0 8px; }
 footer .aboutmail { margin: 0 0 12px; }
+/* the site version (bake_i18n.mjs): tells whoever reviews which build they see */
+footer .sitever { margin: 10px 0 0; font-size: 12px; color: var(--ink-3); }
+footer .sitever .vcode { font-family: ui-monospace, monospace; }
 
 /* ---------- phones ---------- */
 @media (max-width: 640px) {

@@ -33,6 +33,7 @@ const COMMON_STR = {
     aboutBody: "״הכסף שלנו״ הוא אתר עצמאי, ללא קשר לגוף ממשלתי, למפלגה או לארגון, שנועד להעניק לאזרחי ישראל מבט נקי ומסודר על פעילות המדינה ועל האופן שבו היא משתמשת בכסף שלנו. כל הנתונים מגיעים ישירות מהמקורות הרשמיים ומוצגים כפי שהם, עם קישור למקור. מצאתם טעות או נתון חסר? כתבו לנו ונתקן:",
     contactLabel: "אמצעי תקשורת - ",
     devLabel: "למפתחים: ",
+    verLabel: "גרסה: ",
   },
   en: {
     title: "Our Money",
@@ -56,6 +57,7 @@ const COMMON_STR = {
     aboutBody: "Our Money is an independent site, unaffiliated with any government body, party or organization, built to give Israel's citizens a clean, clear view of the state's activity and of how it uses our money. All the data comes straight from the official sources and is shown as it is, linked to the original. Found a mistake or a missing figure? Write to us and we'll fix it:",
     contactLabel: "Contact - ",
     devLabel: "Developers: ",
+    verLabel: "Version: ",
   },
 };
 

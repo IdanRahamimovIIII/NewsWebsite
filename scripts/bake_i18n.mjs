@@ -27,6 +27,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
+import crypto from "node:crypto";
 
 const SITE = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "site");
 const CHECK = process.argv.includes("--check");
@@ -154,11 +155,43 @@ function i18nJson(p) {
   return { file: path.join(SITE, p.json), html: JSON.stringify(out, null, 1) + "\n", name: p.json };
 }
 
+/* ---------- versions: every local script/style link carries ?v=<hash of that
+   file>, so a browser fetches a changed file at once instead of keeping the
+   old one for hours (the host lets them cache 4h — new page + old script
+   broke what Mercy saw). One site version = a hash of all of them, shown at
+   the bottom of every page ("גרסה: …"). config.js is left bare: the pages
+   worker anchors on its exact tag, and it holds only the relay address. ---------- */
+const hashOf = f => crypto.createHash("sha1").update(lf(fs.readFileSync(f, "utf8"))).digest("hex").slice(0, 8);
+const ASSET = /(<(?:script|link)\b[^>]*?\b(?:src|href)=")([^"?#:]+\.(?:js|css))(?:\?v=[0-9a-f]+)?(")/g;
+function assets(html, page) {
+  const dir = path.dirname(path.join(SITE, page));
+  return [...html.matchAll(ASSET)].map(m => m[2]).filter(a => !/config\.js$/.test(a))
+    .map(a => path.join(dir, a)).filter(f => fs.existsSync(f));
+}
+function stamp(html, page) {
+  const dir = path.dirname(path.join(SITE, page));
+  return html.replace(ASSET, (m, head, a, tail) => {
+    const f = path.join(dir, a);
+    if (/config\.js$/.test(a) || !fs.existsSync(f)) return head + a + tail;
+    return head + a + "?v=" + hashOf(f) + tail;
+  });
+}
+function withVersion(html, ver, t) {
+  const line = `<p class="sitever"><span data-i18n="verLabel">${t("verLabel")}</span><span class="vcode">${ver}</span></p>`;
+  if (/<p class="sitever">[\s\S]*?<\/p>/.test(html)) return html.replace(/<p class="sitever">[\s\S]*?<\/p>/, line);
+  return html.replace(/(\n?\s*)<\/footer>/, `\n    ${line}$1</footer>`);
+}
+
 /* ---------- run ---------- */
 let drift = 0;
 const JOBS = [];
-for (const p of PAGES) {
-  JOBS.push({ ...bake(p), name: p.html });
+const baked = PAGES.map(p => ({ p, ...bake(p) }));
+const allAssets = [...new Set(baked.flatMap(b => assets(b.html, b.p.html)))].sort();
+const SITE_VER = crypto.createHash("sha1").update(allAssets.map(f => path.relative(SITE, f) + ":" + hashOf(f)).join("\n"))
+  .digest("hex").slice(0, 7);
+for (const { p, file, html } of baked) {
+  const { STR } = loadPage(p);
+  JOBS.push({ file, html: withVersion(stamp(html, p.html), SITE_VER, makeT(STR, p.html)), name: p.html });
   if (p.json) JOBS.push(i18nJson(p));
 }
 for (const { file, html, name } of JOBS) {
