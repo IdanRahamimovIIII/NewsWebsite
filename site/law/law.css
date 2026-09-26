@@ -96,3 +96,7 @@ details.sum p { font-size: 13.5px; color: var(--ink-2); margin: 4px 0 0; }
 /* a law's links (what it replaced, what replaced it) wrap like words — a
    list of 17 old ordinances must not push the page sideways on a phone */
 .lawhead .facts .doclink, .hl.plain .doclink { white-space: normal; }
+details.inline { display: inline; }
+details.inline > summary { display: inline; cursor: pointer; color: var(--accent-ink); list-style: none; }
+details.inline > summary::-webkit-details-marker { display: none; }
+details.inline[open] > summary { display: none; }

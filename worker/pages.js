@@ -444,9 +444,13 @@ function lawBody(l, card, X, S, today) {
   if (card && card.cm) facts.push(S.committee + card.cm);
   const rel = [];
   if (card && card.prev && card.prev.length) rel.push(esc(S.prevNames) + esc(card.prev.join(" · ")));
-  if (card && card.replacedBy && card.replacedBy.length) rel.push(esc(S.replacedByL) + card.replacedBy.map(lawRef).join(" · "));
+  // a long list (the penal code replaced 17 ordinances) shows three, the rest
+  // one click away — still in the HTML for AI
+  const refs = list => list.length <= 4 ? list.map(lawRef).join(" · ")
+    : list.slice(0, 3).map(lawRef).join(" · ") + ` <details class="inline"><summary>${esc(fill(S.andMore, { n: list.length - 3 }))}</summary>${list.slice(3).map(lawRef).join(" · ")}</details>`;
+  if (card && card.replacedBy && card.replacedBy.length) rel.push(esc(S.replacedByL) + refs(card.replacedBy));
   else if (l.r && X.byId.get(l.r)) rel.push(esc(S.replacedByL) + lawRef({ i: l.r }));
-  if (card && card.replaces && card.replaces.length) rel.push(esc(S.replacesL) + card.replaces.map(lawRef).join(" · "));
+  if (card && card.replaces && card.replaces.length) rel.push(esc(S.replacesL) + refs(card.replaces));
   out.push(`<div class="card lawhead">
     <p class="crumbs"><a href="/law/laws.html" data-i18n="lpToList">${esc(S.lpToList)}</a></p>
     <h1 class="lawname">${esc(l.n)}</h1>

@@ -392,6 +392,19 @@ def collect_cards(relay, laws, threads=CARD_THREADS):
     return cards, failures
 
 
+def counts_from_cards(data, cards):
+    """one amendment count everywhere: the law API's list (what the law's page
+    shows, and fuller — the penal code: 199 there vs 168 in KNS_LawBinding) wins;
+    printing-error corrections (no type) are not amendments. No card → the
+    binding count stays."""
+    for l in data["laws"]:
+        c = cards.get(l["i"])
+        if not c:
+            continue
+        typed = [a for a in c["am"] if a["ty"]]
+        l["a"], l["ad"] = len(typed), sum(1 for a in typed if a["ty"] == "ישיר")
+
+
 def publish_cards(cards, t):
     cred = cf_kv.credentials(str(HERE.parent / "d1-config.json"))
     ns = cf_kv.namespace_id(cred)
@@ -479,6 +492,8 @@ def main(argv=None):
         cards, card_failures = collect_cards(relay, data["laws"])
         (OUT / "lawcards.json").write_text(json.dumps(cards, ensure_ascii=False), encoding="utf-8")
         log("built %d law cards (%d failed)" % (len(cards), len(card_failures)))
+        counts_from_cards(data, cards)
+        out_path.write_text(json.dumps(data, ensure_ascii=False, indent=0), encoding="utf-8")
         for f in card_failures:
             log("  - " + f)
     bad = gates(data, problems, w)
