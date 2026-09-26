@@ -51,7 +51,7 @@ function rowHtml(l) {
   const topics = (l.t || []).slice(0, 3).map(id => `<span>${esc(LAW.topics[id] || "")}</span>`).join("");
   return `<div class="lawrow${V.openId === l.i ? " open" : ""}" id="law-${l.i}">
     <button class="head" aria-expanded="${V.openId === l.i}" onclick="toggleLaw(${l.i})">
-      <div class="nm">${esc(lawName(l))}</div>
+      <div class="nm"><span class="chev" aria-hidden="true">${V.openId === l.i ? "▾" : "▸"}</span>${nameHtml(lawName(l))}</div>
       <div class="meta">${chips}<span>${esc(am)}</span>${l.lp ? `<span>${esc(t("changedOn") + fmtDate(l.lp))}</span>` : ""}${topics}</div>
     </button>
     <div class="det">${V.openId === l.i ? detailHtml(l) : ""}</div>

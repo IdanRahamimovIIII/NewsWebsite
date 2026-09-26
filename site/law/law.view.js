@@ -32,7 +32,7 @@ function item(key, name, line, details, tag) {
   const on = openItem.has(key);
   return `<li class="it${on ? " open" : ""}">
     <button class="head" type="button" aria-expanded="${on}" onclick="toggleItem('${esc(key)}')">
-      <span class="nm"><span class="chev" aria-hidden="true">${on ? "▾" : "▸"}</span>${tag ? `<span class="lbadge">${esc(tag)}</span>` : ""}${esc(name)}</span>
+      <span class="nm"><span class="chev" aria-hidden="true">${on ? "▾" : "▸"}</span>${tag ? `<span class="lbadge">${esc(tag)}</span>` : ""}${nameHtml(name)}</span>
       <span class="line">${esc(line)}</span>
     </button>
     ${on ? `<div class="det">${details()}</div>` : ""}
