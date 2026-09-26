@@ -172,6 +172,30 @@ class Laws(unittest.TestCase):
         bad = B.gates(self.data, self.problems, self.w)
         self.assertTrue(any("only 230 laws" in b for b in bad))
 
+    def test_amending_acts(self):
+        """one act per bill id, every law it changes, its start date from the
+        bill API; skipped: an act that CREATED a law, a printing correction
+        (no type), anything older than a year"""
+        def fetch(url):
+            up = urllib.parse.unquote(url.split("/?url=", 1)[1])
+            bid = int(re.search(r"ItemId=(\d+)", up).group(1))
+            return json.dumps({"general": {"CommencementDate": {501: "2027-07-29T00:00:00", 502: "2026-06-30T00:00:00"}.get(bid)}}).encode()
+        relay = M.Relay("https://relay.example", fetch=fetch)
+        cards = {
+            2000003: {"am": [{"i": 501, "n": "חוק אומניבוס", "d": "2026-07-29", "ty": "עקיף"},
+                             {"i": 502, "n": "חוק ג (תיקון מס' 5)", "d": "2026-06-30", "ty": "ישיר"},
+                             {"i": 503, "n": "תיקון טעות", "d": "2026-07-01", "ty": ""},
+                             {"i": 504, "n": "ישן", "d": "2024-01-01", "ty": "ישיר"}]},
+            2000004: {"am": [{"i": 501, "n": "חוק אומניבוס", "d": "2026-07-29", "ty": "ישיר"},
+                             {"i": 505, "n": "חוק חדש עם תיקונים עקיפים", "d": "2026-08-01", "ty": "עקיף"}]},
+        }
+        acts, failures = B.collect_amends(relay, cards, originals={505}, today=TODAY)
+        by = {a["i"]: a for a in acts}
+        self.assertEqual(sorted(by), [501, 502])
+        self.assertEqual(by[501]["laws"], [2000003, 2000004])
+        self.assertEqual((by[501]["c"], by[502]["c"]), ("2027-07-29", "2026-06-30"))
+        self.assertFalse(failures)
+
     def test_the_real_court_list_is_well_formed(self):
         rows = B.read_court()
         self.assertGreaterEqual(len(rows), 20)

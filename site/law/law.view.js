@@ -53,7 +53,51 @@ function fillInfo() {
 
 /* ---------- what an opened row shows: "label: value" (law.data.js kv) ---------- */
 const goLaw = l => `<p><a class="golink" href="${lawLink(l)}">${esc(t("detailsLink"))} ←</a></p>`;
-const lawRow = line => (l, id) => item(id + ":" + l.i, lawName(l), line(l), () => lawKv(l, { status: false }) + goLaw(l));
+const lawRow = line => (l, id) => item(id + ":" + l.i, lawName(l), line(l), () =>
+  kv("kvType", esc(t("bNewLaw"))) + lawKv(l, { status: false }) + goLaw(l));
+
+/* ---------- amendments (the data's `amends`: every amending act of the last
+   year, with the laws it changes and when it starts). Mercy's split: an act
+   that changes ONE law folds under that law (one row per law, its amendments
+   inside); an act that changes SEVERAL laws is a row of its own. ---------- */
+const actStart = a => a.c || a.d;                       // no start date → the gazette date
+const lawLinkHtml = id => { const l = LAW.byId.get(id); return l ? `<a class="golink" href="${lawLink(l)}">${esc(lawName(l))}</a>` : ""; };
+function actLine(a, future) {
+  const d = actStart(a);
+  return (a.c ? (future ? t("startsDate") : t("startedDate")) : t("publishedDate")) + fmtDate(d);
+}
+function actListHtml(acts, future) {
+  return `<ul>${acts.map(a => `<li>${esc(a.n)} · ${esc(actLine(a, future))}${a.c && a.c !== a.d ? " · " + esc(t("publishedDate") + fmtDate(a.d)) : ""}</li>`).join("")}</ul>`;
+}
+/* rows for one block: {sort, html(id)} — laws, one-law amendment groups, multi-law acts */
+function amendRows(acts, future) {
+  const byLaw = new Map(), multi = [];
+  for (const a of acts) {
+    if ((a.laws || []).length === 1) {
+      const id = a.laws[0];
+      if (!LAW.byId.has(id)) continue;
+      (byLaw.get(id) || byLaw.set(id, []).get(id)).push(a);
+    } else if ((a.laws || []).length > 1) multi.push(a);
+  }
+  const rows = [];
+  for (const [id, list] of byLaw) {
+    const l = LAW.byId.get(id);
+    if (!future && shownState(l) !== "in") continue;        // only what reads "חל היום" (Mercy)
+    list.sort((x, y) => actStart(future ? x : y).localeCompare(actStart(future ? y : x)));
+    const lead = list[0];                                    // the soonest (future) / the latest (past)
+    // the act in short when it is named after the law ("(תיקון מס' 155)"), else its full name
+    const short = n => splitName(n)[0] === splitName(l.n)[0] ? (splitName(n)[1].match(/^\([^)]*\)/) || [splitName(n)[1]])[0] : n;
+    const line = (list.length === 1 ? short(lead.n) : fill(t("amendsN"), { n: list.length })) + " · " + actLine(lead, future);
+    rows.push({ sort: actStart(lead), html: key => item(key + ":L" + id, lawName(l), line, () =>
+      kv("kvType", esc(t("bAmendOf")) + ": " + lawLinkHtml(id)) + actListHtml(list, future) + goLaw(l)) });
+  }
+  for (const a of multi) {
+    rows.push({ sort: actStart(a), html: key => item(key + ":A" + a.i, a.n, actLine(a, future), () =>
+      kv("kvType", esc(t("bAmendOf")) + ": " + affectsHtml(a.laws.map(id => ({ i: id, n: lawName(LAW.byId.get(id) || {}) })), true)) +
+      (a.c && a.c !== a.d ? kv("bPublished", esc(fmtDate(a.d))) : "")) });
+  }
+  return rows;
+}
 
 function courtRow(c, id) {
   const l = LAW.byId.get(c.l);
@@ -93,15 +137,23 @@ function render() {
   const laws = d.laws;
   const in90 = addDays(TODAY, 90), ago90 = addDays(TODAY, -90);
 
+  // new laws + amendments, one list in date order (a row = {sort, html})
+  const acts = d.amends || [];
+  const asRows = (list, row) => list.map(l => ({ sort: l.s || l.p || "", html: key => row(l, key) }));
+  const soonRow = lawRow(l => l.s ? t("startsDate") + fmtDate(l.s) : t("stPending") + " · " + t("noDate"));
   const soon = laws.filter(l => lawState(l) === "pending")
-    .sort((a, b) => (a.s || "9999").localeCompare(b.s || "9999"));
-  block("soon", soon, lawRow(l => l.s ? t("startsDate") + fmtDate(l.s) : t("stPending") + " · " + t("noDate")));
+    .map(l => ({ sort: l.s || "9999", html: key => soonRow(l, key) }))      // no start date → last, never first
+    .concat(amendRows(acts.filter(a => a.c && a.c > TODAY), true))
+    .sort((a, b) => a.sort.localeCompare(b.sort));
+  block("soon", soon, (r, id) => r.html(id));
 
   // only what reads "חל היום": a law voided in full is out, a partly voided one stays (Mercy)
-  const started = laws.filter(l => shownState(l) === "in" && !isBudget(l) &&
-      ((l.s && l.s >= ago90 && l.s <= TODAY) || (!l.s && l.p && l.p >= ago90)))
-    .sort((a, b) => (b.s || b.p).localeCompare(a.s || a.p));
-  block("started", started, lawRow(l => l.s ? t("startedDate") + fmtDate(l.s) : t("publishedDate") + fmtDate(l.p)));
+  const startedRow = lawRow(l => l.s ? t("startedDate") + fmtDate(l.s) : t("publishedDate") + fmtDate(l.p));
+  const started = asRows(laws.filter(l => shownState(l) === "in" && !isBudget(l) &&
+      ((l.s && l.s >= ago90 && l.s <= TODAY) || (!l.s && l.p && l.p >= ago90))), startedRow)
+    .concat(amendRows(acts.filter(a => { const s = actStart(a); return s && s >= ago90 && s <= TODAY; }), false))
+    .sort((a, b) => b.sort.localeCompare(a.sort));
+  block("started", started, (r, id) => r.html(id));
 
   // the court: laws the Knesset still lists as applying (or about to)
   const court = (d.court || []).filter(c => {

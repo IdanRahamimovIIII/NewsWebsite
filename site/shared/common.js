@@ -43,6 +43,7 @@ const COMMON_STR = {
     bTyGov: "הצעת הממשלה", bTyPrivate: "הצעה פרטית", bTyCommittee: "הצעת ועדה",
     bLawsCount: "{n} חוקים ▾",
     bDiscussed: "נדונה לאחרונה ב־{d}", bUpdated: "עודכנה לאחרונה ב־{d}",
+    bAmendOf: "תיקון לחוק",
   },
   en: {
     title: "Our Money",
@@ -75,6 +76,7 @@ const COMMON_STR = {
     bTyGov: "Government bill", bTyPrivate: "Private bill", bTyCommittee: "Committee bill",
     bLawsCount: "{n} laws ▾",
     bDiscussed: "last discussed on {d}", bUpdated: "last updated on {d}",
+    bAmendOf: "Amends",
   },
 };
 

@@ -343,7 +343,7 @@ def build_card(l, j):
     rows = []
     for x in c.get("listCorrections") or []:
         add = clean(x.get("AdditionalName"))
-        rows.append({"n": clean(x.get("name")), "d": day(x.get("publicationDate")),
+        rows.append({"i": int(clean(x.get("itemId")) or 0), "n": clean(x.get("name")), "d": day(x.get("publicationDate")),
                      "no": clean(x.get("correctionNumber")), "ty": clean(x.get("correctionType")),
                      "pdf": fix_path(x.get("filePath")), "sum": clean(x.get("summaryLaw")),
                      "k": "orig" if "המקורי" in add else "rep" if "המבטל" in add else ""})
@@ -418,6 +418,50 @@ def link_bills(data, cards):
         hit = law_of.get(b["i"]) or next((law_of[x] for x in b.get("twins") or [] if x in law_of), None)
         if hit:
             b["law"] = hit
+
+
+KAPI_BILL = "https://knesset.gov.il/WebSiteApi/knessetapi/LegislationItem/GetLegislationBillItem?ItemId=%d"
+AMENDS_DAYS = 365          # acts published in the last year: enough to catch every start still ahead
+MAX_AMEND_FAILURES = 10
+
+
+def originals_of(w):
+    """bill ids that CREATED a law — such an act is a new law, not an amendment"""
+    return {b.get("LawID") for b in w["bindings"] if (b.get("BindingTypeDesc") or "") == "החוק המקורי"}
+
+
+def collect_amends(relay, cards, originals, today=None, threads=CARD_THREADS):
+    """every amending act published in the last AMENDS_DAYS: {i BillID, n its
+    name, d published, c starts to apply (the bill API's CommencementDate —
+    the law API doesn't carry it), laws [IsraelLawID, …] it changes}. The
+    page groups them: one law → under that law; several → a row of its own."""
+    from concurrent.futures import ThreadPoolExecutor
+    cut = ((today or date.today()) - timedelta(days=AMENDS_DAYS)).isoformat()
+    acts = {}
+    for lid, c in cards.items():
+        for a in c.get("am") or []:
+            if not a.get("ty") or not a.get("i") or (a.get("d") or "") < cut or a["i"] in originals:
+                continue
+            x = acts.setdefault(a["i"], {"i": a["i"], "n": a["n"], "d": a["d"], "c": None, "laws": []})
+            if lid not in x["laws"]:
+                x["laws"].append(lid)
+    failures = []
+
+    def one(i):
+        try:
+            g = (relay.json(KAPI_BILL % i) or {}).get("general") or {}
+            return i, day(g.get("CommencementDate")), None
+        except Exception as e:  # noqa: BLE001
+            return i, None, "%d — %s" % (i, str(e)[:120])
+
+    with ThreadPoolExecutor(max_workers=threads) as pool:
+        for i, start, err in pool.map(one, sorted(acts)):
+            acts[i]["c"] = start
+            if err:
+                failures.append(err)
+    for x in acts.values():
+        x["laws"].sort()
+    return sorted(acts.values(), key=lambda a: (a["c"] or a["d"] or "", a["i"]), reverse=True), failures
 
 
 def publish_cards(cards, t):
@@ -512,6 +556,10 @@ def main(argv=None):
         log("built %d law cards (%d failed)" % (len(cards), len(card_failures)))
         counts_from_cards(data, cards)
         link_bills(data, cards)
+        log("amending acts of the last year + their start dates…")
+        data["amends"], amend_failures = collect_amends(relay, cards, originals_of(w))
+        log("  %d acts (%d failed)" % (len(data["amends"]), len(amend_failures)))
+        card_failures += ["amend " + f for f in amend_failures]
         out_path.write_text(json.dumps(data, ensure_ascii=False, indent=0), encoding="utf-8")
         for f in card_failures:
             log("  - " + f)
