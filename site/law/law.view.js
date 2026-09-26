@@ -67,16 +67,21 @@ function courtRow(c, id) {
     goLaw(l));
 }
 
+const openProps = new Set();     // bills whose full sponsor list is open
+function toggleProps(key) { openProps.has(key) ? openProps.delete(key) : openProps.add(key); render(); }
+
+/* a bill — the ONE bill format (shared/bills.js billPanelHtml) */
 function billRow(b, id) {
   const ty = /ממשלת/.test(b.ty) ? "tyGov" : /ועד/.test(b.ty) ? "tyCommittee" : "tyPrivate";
-  return item(id + ":" + b.i, b.n, t(ty) + " · " + b.st, () =>
-    kv("kvType", esc(t(ty))) +
-    kv("kvStage", esc(b.st)) +
-    kv("kvLast", b.d ? esc(fmtDate(b.d)) : "") +
-    kv("kvCommittee", esc(b.cm || "")) +
-    kv("kvBy", (b.by || []).length ? esc(b.by.join(", ")) + (b.nb > b.by.length ? esc(fill(t("moreBy"), { n: b.nb - b.by.length })) : "") : "") +
-    kv("kvAffects", esc(t(b.am ? "amends" : "newLaw"))) +
-    kv("kvTwins", (b.twins || []).length ? esc(fmtN(b.twins.length)) : "") +
+  const key = id + ":" + b.i;
+  return item(key, b.n, t(ty) + " · " + b.st + (b.d ? " · " + fmtDate(b.d) : ""), () => billPanelHtml({
+    proposers: proposersHtml(b.by, /ממשלת/.test(b.ty), `toggleProps('${key}')`, openProps.has(key)),
+    type: esc(t(ty)),
+    stage: esc(b.st),
+    committee: esc(b.cm || ""),
+    date: b.d ? esc(t("bDiscussed").replace("{d}", fmtDate(b.d))) : "",
+    affects: affectsHtml(b.law, b.am),
+  }) + ((b.twins || []).length ? kv("kvTwins", esc(fmtN(b.twins.length))) : "") +
     ((b.pieces || []).length ? kv("kvPieces", esc(fmtN(b.pieces.length))) +
       `<ul>${b.pieces.map(p => `<li>${esc(p.n)} · ${esc(p.st)}</li>`).join("")}</ul>` : ""));
 }

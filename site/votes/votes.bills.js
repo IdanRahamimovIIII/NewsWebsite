@@ -116,9 +116,9 @@ function renderBTab() {
     ? `<div class="hint" style="margin:0 0 8px"><b>${esc(t("bInitHdr"))} ${esc(state.btab.initiator)}</b> · ${state.btab.initTotal}</div>`
     : "";
   html += shown.map(({ b, i }) => `<button class="vote" onclick="toggleBill(${i})">
-      <div class="vtitle">${b._open ? "▾" : "▸"} ${esc(b.Name)}</div>
+      <div class="vtitle">${rowHeadHtml(b._open, b.Name, "")}</div>
       <div class="vmeta"><span>${esc(state.statuses[b.StatusID] || "")}</span><span>${fmtDate(b.LastUpdatedDate)}</span></div>
-    </button>` + (b._open ? `<div class="kidsbox">${billItemHtml(b._item, b._docs, i, b._initsOpen)}</div>` : "")).join("");
+    </button>` + (b._open ? `<div class="kidsbox">${billItemHtml(b._item, b._docs, i, b._initsOpen, b)}</div>` : "")).join("");
   if (!shown.length) html += `<div class="loading">${esc(t("empty"))}</div>`;
   if (!state.btab.noMore)
     html += `<div class="pager"><button class="votechip" onclick="btabMore()">${esc(t("moreBills"))}</button></div>`;

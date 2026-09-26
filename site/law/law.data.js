@@ -62,25 +62,9 @@ function courtBadge(l) {
   return c[0];
 }
 
-/* a law or bill name, whole — but split in two for the eye (Mercy): the
-   words up to the first "(" / "[" or the Hebrew year are what it is about
-   (bold); from there on — the amendment number, the subject in brackets,
-   "התשפ"ו–2026" — is the same name in a quieter font. Never cut. */
-function splitName(n) {
-  const s = String(n || "").trim();
-  const cut = [s.indexOf("("), s.indexOf("["), s.search(/,?\s*(התש|תש)[\u0590-\u05ff"'״׳]*\s*[–-]?\s*\d{4}\s*$/),
-    s.search(/,\s*\d{4}\s*$/)].filter(i => i > 0);
-  const at = cut.length ? Math.min(...cut) : -1;
-  if (at < 3) return [s, ""];
-  return [s.slice(0, at).trim(), s.slice(at).replace(/^,\s*/, "").trim()];
-}
-function nameHtml(n) {
-  const [core, tail] = splitName(n);
-  return `<span class="core">${esc(core)}</span>` + (tail ? ` <span class="tail">${esc(tail)}</span>` : "");
-}
+/* the name in two voices (splitName/nameHtml) and kv() live in shared/bills.js */
 
 /* ---------- an opened row: "label: value" lines, the label bold (Mercy) ---------- */
-const kv = (key, valueHtml) => valueHtml ? `<p class="kv"><b>${esc(t(key))}:</b> ${valueHtml}</p>` : "";
 
 /* the Knesset's own word, shown only where it contradicts ours: a law the
    court voided in full still reads "תקף" there (a later start date is

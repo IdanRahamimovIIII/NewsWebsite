@@ -49,7 +49,7 @@ function renderVotes() {
   state.shown = list;
   let html = (state.advWork ? workNote() : state.deepWork ? deepNote() : "");
   html += list.map((g, i) => `<button class="vote${g._open ? " sel" : ""}" onclick="openGroup(${i})">
-      <div class="vtitle">${g._open ? "▾" : "▸"} ${esc(g.title)}</div>
+      <div class="vtitle">${rowHeadHtml(g._open, g.title, "")}</div>
       <div class="vmeta"><span>${fmtDate(g.date)}</span>${passBadge(g)}${countsHtml(g)}${
         g._initOk === null ? `<span class="resnote">${esc(t("byNameOnly"))}</span>` : ""}</div>
     </button>` + (g._open ? groupDetailHtml(g, i) : "")).join("");
@@ -168,53 +168,49 @@ async function pickVote(i, voteId) {
   ensureDetail(g, voteId);
 }
 
-/* The expanded panel, in the order Mercy set (2026-08-22):
-     1. who proposed it
-     2. כנסת · ישיבה · how many votes it took  (the individual ones on demand)
-     3. the decision text
-     4. who voted what, by faction
-     5. the official documents — last
-   The ✔/✘ and the tallies are NOT repeated here: they're in the row above.
-   Only the decisive vote is shown; almost nobody wants a list of 30
-   reservation votes, so those are one click away. */
+/* The expanded panel = the ONE bill format (shared/bills.js billPanelHtml),
+   whose order is the one Mercy set here (2026-08-22): proposers → the facts
+   (type, date with כנסת · ישיבה and how many votes it took — the individual
+   ones on demand) → the decision + who voted what, by faction → documents,
+   last. The ✔/✘ and the tallies are NOT repeated: they're in the row above.
+   Only the decisive vote is shown; the reservation votes are one click away. */
 function groupDetailHtml(g, i) {
   const j = g._detById && g._detById[g._active];
   const ready = j && j !== "loading" && !j._err;
   const hdr = ready ? ((j.VoteHeader || [])[0] || {}) : {};
   const bill = (g._bill && g._bill !== "loading") ? g._bill : null;
 
-  /* 1 — who brought it to the table */
-  const initLine = bill
-    ? initiatorsHtml(bill.names, bill.subType, `openGroupInits(${i})`, g._initsOpen) : "";
-
-  /* 2 — where it happened, and how many votes this bill took that day */
+  // the date line: when, where, and how many votes this bill took that day
   const has = v => v !== undefined && v !== null && v !== "";
-  const bits = [];
+  const bits = [fmtDate(g.date)];
   if (has(hdr.FK_Knesset)) bits.push(`${t("knesset")} ${hdr.FK_Knesset}`);
   if (has(hdr.SessionNumber)) bits.push(`${t("sessionNo")} ${hdr.SessionNumber}`);
   if (g.votes.length > 1) bits.push(`${g.votes.length} ${t("votesInGroup")}`);
   const toggle = g.votes.length > 1
     ? ` <button class="votechip" onclick="event.stopPropagation();toggleInstances(${i})">${
         esc(t(g._votesOpen ? "hideAll" : "showVotes"))}</button>` : "";
-  const metaLine = bits.length
-    ? `<div class="sub" style="margin:4px 0 8px">${esc(bits.join(" · "))}${toggle}</div>` : "";
-
   const chips = (g._votesOpen && g.votes.length > 1)
-    ? `<div class="sub" style="margin:0 0 10px">` + g.votes.map((v, idx) =>
+    ? `<div class="sub" style="margin:4px 0 8px">` + g.votes.map((v, idx) =>
         `<button class="votechip${v.VoteId === g._active ? " on" : ""}" onclick="event.stopPropagation();pickVote(${i},${v.VoteId})">` +
         `${idx === 0 ? esc(t("finalChip")) + " · " : ""}${esc(t("voteNo"))} ${v.VoteProtocolNo} · ${esc(v.VoteTimeStr || "")}</button>`
       ).join(" ") + `</div>`
     : "";
 
-  /* 3 + 4 — the decision and the who-voted breakdown */
-  const body = (!j || j === "loading") ? `<div class="loading">${esc(t("loading"))}</div>`
+  // who voted what, by faction (or the honest loading / error state)
+  const factions = (!j || j === "loading") ? `<div class="loading">${esc(t("loading"))}</div>`
     : j._err ? `<div class="error">${esc(t("err"))}</div>`
-    : detailHtml(j);
+    : bucketsHtml(j);
+  const law = ready && hdr.FK_ItemID ? lawOfBill(hdr.FK_ItemID, renderVotes) : null;
 
-  /* 5 — the official documents */
-  const docs = bill ? docsLineHtml(bill.docs) : "";
-
-  return `<div class="kidsbox">${initLine}${metaLine}${chips}${body}${docs}</div>`;
+  return `<div class="kidsbox">` + billPanelHtml({
+    proposers: bill ? proposersHtml(bill.names, bill.subType === "ממשלתית", `openGroupInits(${i})`, g._initsOpen, mkLink) : "",
+    type: bill ? esc(billTypeWord(bill.subType)) : "",
+    date: esc(bits.join(" · ")) + toggle + chips,
+    affects: affectsHtml(law, amendsByName(g.title)),
+    decision: ready && hdr.Decision ? esc(hdr.Decision) : "",
+    factions,
+    docs: bill ? docLinksHtml(bill.docs) : "",
+  }) + `</div>`;
 }
 
 function toggleInstances(i) {
@@ -224,15 +220,8 @@ function toggleInstances(i) {
   renderVotes();
 }
 
-function detailHtml(j) {
-  const hdr = (j.VoteHeader && j.VoteHeader[0]) || {};
+function bucketsHtml(j) {
   const details = j.VoteDetails || [];
-
-  // no result badge and no tallies here — the row above already says
-  // "✔ התקבלה · בעד 5 · נגד 43"; saying it twice is just noise
-  const decision = hdr.Decision
-    ? `<div class="sub" style="margin-bottom:8px">${esc(t("decisionL"))}: ${esc(hdr.Decision)}</div>` : "";
-
   // buckets by result title, each grouped by faction
   const byTitle = {};
   details.forEach(d => {
@@ -257,26 +246,10 @@ function detailHtml(j) {
         `<div class="faction"><b>${esc(f)}</b> (${names.length}): <span class="names">${names.map(mkLink).join(", ")}</span></div>`).join("")}
     </div>`;
   }).join("");
-
-  return decision + (buckets || `<div class="loading">${esc(t("empty"))}</div>`);
+  return buckets || `<div class="loading">${esc(t("empty"))}</div>`;
 }
 
-/* Who proposed it. Mercy's rule (2026-08-22): up to four names are listed in
-   full; more than that and we say HOW MANY and let the reader open the list.
-   Never show some names and quietly hide the rest — the one you were looking
-   for is exactly the one that ends up hidden. */
-function initiatorsHtml(names, subType, toggleCall, open) {
-  const list = (names || []).filter(Boolean);
-  if (!list.length)
-    return subType === "ממשלתית"
-      ? `<div class="faction"><b>${esc(t("initiatorsL"))}:</b> ${esc(t("govInitiator"))}</div>` : "";
-  if (list.length <= 4)
-    return `<div class="faction"><b>${esc(t("initiatorsL"))}:</b> ${list.map(mkLink).join(", ")}</div>`;
-  return `<div class="faction"><b>${esc(t("initiatorsL"))}:</b> ${esc(t("initsCount").replace("{n}", list.length))}
-    <button class="votechip" style="margin-inline-start:6px"
-      onclick="event.stopPropagation();${toggleCall}">${esc(t(open ? "hideAll" : "showAll"))}</button>
-    ${open ? `<div class="names" style="margin-top:6px">${list.map(mkLink).join(", ")}</div>` : ""}</div>`;
-}
+/* who proposed it (≤4 names, else the count) and the documents: shared/bills.js */
 function openBillInits(idx) {
   const b = (state.billArr || [])[idx];
   if (!b) return;
@@ -290,43 +263,30 @@ function openGroupInits(i) {
   renderVotes();
 }
 
-/* the bills tab hands us the names as one string */
-function initLineHtml(gnl, toggleCall, open) {
-  const raw = ((gnl || {}).Initiators || "").trim();
-  const names = raw ? raw.split(/\s*,\s*/).filter(Boolean) : [];
-  return initiatorsHtml(names, (gnl || {}).SubType, toggleCall, open);
-}
-
-/* official documents — straight to the Knesset's own PDF server */
-function docsLineHtml(docs) {
-  const seen = {};
-  const links = (docs || [])
-    .filter(d => d.ApplicationDesc === "PDF" && d.FilePath)
-    .filter(d => seen[d.GroupTypeDesc] ? false : (seen[d.GroupTypeDesc] = true))
-    .slice(0, 6)
-    .map(d => `<a class="doclink" href="${esc(d.FilePath)}" target="_blank" rel="noopener">${esc(d.GroupTypeDesc || "PDF")} ⇗</a>`)
-    .join(" · ");
-  return links ? `<div class="faction" style="margin-top:6px"><b>${esc(t("docsL"))}:</b> ${links}</div>` : "";
-}
-
-function billItemHtml(item, docs, idx, open) {
+/* the bills tab: a bill opened — the ONE bill format (shared/bills.js) */
+function billItemHtml(item, docs, idx, open, b) {
   if (!item) return `<div class="loading">${esc(t("loading"))}</div>`;
   if (item._err) return `<div class="error">${esc(t("err"))}</div>`;
   const g = item.general || {};
-  const initLine = initLineHtml(g, `openBillInits(${idx})`, open);
-  const docsLine = docsLineHtml(docs);
+  const raw = (g.Initiators || "").trim();
+  const names = raw ? raw.split(/\s*,\s*/).filter(Boolean) : [];
   const sessions = ((item.sessionAndDocs && item.sessionAndDocs.Sessions) || [])
     .filter(s => s.StepTitle)
     .sort((a, b) => String(b.StartDate || "").localeCompare(String(a.StartDate || "")));
-  const meta = [
-    g.SubType ? `${esc(t("billType"))}: ${esc(g.SubType)}` : "",
-    g.CommitteeName ? `${esc(t("billCommittee"))}: ${esc(g.CommitteeName)}` : "",
-    g.PublicationSeriesLaw ? esc(g.PublicationSeriesLaw) : "",
-  ].filter(Boolean).map(s => `<span>${s}</span>`).join("");
-  const steps = sessions.slice(0, 8).map(s =>
+  const journey = sessions.slice(0, 8).map(s =>
     `<div class="faction"><b>${esc(fmtDate(s.SessionDate || s.StartDate))}</b> · ${esc(s.StepTitle)}${s.Location ? ` <span class="names">(${esc(s.Location)})</span>` : ""}</div>`).join("");
-  return `<div class="vmeta" style="margin-bottom:8px">${meta}</div>` + initLine + docsLine +
-    (steps ? `<div class="hint" style="margin:10px 0 4px"><b>${esc(t("journey"))}</b></div>${steps}` : "");
+  const law = b ? lawOfBill(b.BillID, renderBTab) : null;
+  return billPanelHtml({
+    proposers: proposersHtml(names, g.SubType === "ממשלתית", `openBillInits(${idx})`, open, mkLink),
+    type: esc(billTypeWord(g.SubType)),
+    stage: b ? esc(state.statuses[b.StatusID] || "") : "",
+    committee: esc(g.CommitteeName || ""),
+    date: b && b.LastUpdatedDate ? esc(t("bUpdated").replace("{d}", fmtDate(b.LastUpdatedDate))) : "",
+    affects: affectsHtml(law, amendsByName(g.Name || (b && b.Name))),
+    journey,
+    published: esc(g.PublicationSeriesLaw || ""),
+    docs: docLinksHtml(docs),
+  });
 }
 
 /* ---------- autocomplete (Google-style suggestions from our directories) ---------- */

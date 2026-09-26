@@ -34,6 +34,15 @@ const COMMON_STR = {
     contactLabel: "אמצעי תקשורת - ",
     devLabel: "למפתחים: ",
     verLabel: "גרסה: ",
+    // a bill, anywhere (shared/bills.js)
+    bBy: "מגישים", bType: "סוג", bStage: "שלב", bCommittee: "ועדה", bDate: "תאריך",
+    bAffects: "חוק מושפע", bDecision: "ההחלטה", bFactions: "איך הצביעו הסיעות",
+    bJourney: "מסלול החקיקה", bPublished: "פורסם ברשומות", bDocs: "מסמכים רשמיים",
+    bGov: "הממשלה", bCount: "{n} חברי כנסת", bShowAll: "הצג את כולם ▾", bHide: "הסתר ▴",
+    bAmends: "מתקנת חוק קיים", bNewLaw: "חוק חדש",
+    bTyGov: "הצעת הממשלה", bTyPrivate: "הצעה פרטית", bTyCommittee: "הצעת ועדה",
+    bLawsCount: "{n} חוקים ▾",
+    bDiscussed: "נדונה לאחרונה ב־{d}", bUpdated: "עודכנה לאחרונה ב־{d}",
   },
   en: {
     title: "Our Money",
@@ -58,6 +67,14 @@ const COMMON_STR = {
     contactLabel: "Contact - ",
     devLabel: "Developers: ",
     verLabel: "Version: ",
+    bBy: "Filed by", bType: "Type", bStage: "Stage", bCommittee: "Committee", bDate: "Date",
+    bAffects: "Law affected", bDecision: "Decision", bFactions: "How the factions voted",
+    bJourney: "Legislative journey", bPublished: "Published in the gazette", bDocs: "Official documents",
+    bGov: "The Government", bCount: "{n} Knesset members", bShowAll: "Show all ▾", bHide: "Hide ▴",
+    bAmends: "Amends an existing law", bNewLaw: "New law",
+    bTyGov: "Government bill", bTyPrivate: "Private bill", bTyCommittee: "Committee bill",
+    bLawsCount: "{n} laws ▾",
+    bDiscussed: "last discussed on {d}", bUpdated: "last updated on {d}",
   },
 };
 

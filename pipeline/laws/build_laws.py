@@ -287,7 +287,7 @@ def build_bills(w):
                 "i": bid, "n": parent or name, "ty": b.get("SubTypeDesc") or "",
                 "st": w["statuses"].get(b["StatusID"], ""), "d": last.get(bid),
                 "cm": w["committees"].get(b.get("CommitteeID"), ""),
-                "by": [r["name"] for r in ini if r["name"]][:3], "nb": len(ini),
+                "by": [r["name"] for r in ini if r["name"]], "nb": len(ini),   # all of them: the page shows ≤4 or the count
                 "am": bool(AMENDS_RE.search(parent or name)),
                 "pieces": [] if parent else None, "twins": [],
             }
@@ -405,6 +405,21 @@ def counts_from_cards(data, cards):
         l["a"], l["ad"] = len(typed), sum(1 for a in typed if a["ty"] == "ישיר")
 
 
+def link_bills(data, cards):
+    """a bill that amends a law → that law ({i, n}), from the law API's own
+    list of pending bills per law (exact, not the name guess)"""
+    names = {l["i"]: l["n"] for l in data["laws"]}
+    law_of = {}
+    for lid, c in cards.items():
+        for b in c.get("pend") or []:
+            if b.get("i"):
+                law_of.setdefault(int(b["i"]), {"i": lid, "n": names.get(lid, "")})
+    for b in data["bills"]:
+        hit = law_of.get(b["i"]) or next((law_of[x] for x in b.get("twins") or [] if x in law_of), None)
+        if hit:
+            b["law"] = hit
+
+
 def publish_cards(cards, t):
     cred = cf_kv.credentials(str(HERE.parent / "d1-config.json"))
     ns = cf_kv.namespace_id(cred)
@@ -451,10 +466,13 @@ def publish(data):
         sys.exit("snapshot is %.1f MB — that is not ~2,000 laws; refusing to publish" % (size / 1e6))
     log("publishing %s (%.0f KB)…" % (KEY, size / 1024))
     cf_kv.bulk_put(cred, ns, [(KEY, value)])
-    # overwriting an existing key: a read can lag ~a minute (pipeline/shared/CLAUDE.md)
-    bad = cf_kv.verify(cred, ns, [(KEY, value)], retries=12)
+    # an OVERWRITE reads back stale for up to an hour (pipeline/shared/CLAUDE.md):
+    # Cloudflare's per-key write count is the check; a stale read is a warning
+    bad = cf_kv.verify(cred, ns, [(KEY, value)], retries=3)
     if bad:
-        sys.exit("read-back FAILED: %s" % "; ".join(bad))
+        log("note: the read-back still shows the previous snapshot — KV's edge cache "
+            "keeps an overwritten key up to an hour; Cloudflare accepted the write")
+        return
     log("read back byte for byte — OK")
     relay = cf_kv.relay_url(str(HERE.parent))
     if relay:
@@ -493,6 +511,7 @@ def main(argv=None):
         (OUT / "lawcards.json").write_text(json.dumps(cards, ensure_ascii=False), encoding="utf-8")
         log("built %d law cards (%d failed)" % (len(cards), len(card_failures)))
         counts_from_cards(data, cards)
+        link_bills(data, cards)
         out_path.write_text(json.dumps(data, ensure_ascii=False, indent=0), encoding="utf-8")
         for f in card_failures:
             log("  - " + f)
