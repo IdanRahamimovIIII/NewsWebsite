@@ -54,7 +54,7 @@ function fillInfo() {
 /* ---------- what an opened row shows: "label: value" (law.data.js kv) ---------- */
 const goLaw = l => `<p><a class="golink" href="${lawLink(l)}">${esc(t("detailsLink"))} ←</a></p>`;
 const lawRow = line => (l, id) => item(id + ":" + l.i, lawName(l), line(l), () =>
-  kv("kvType", esc(t("bNewLaw"))) + lawKv(l, { status: false }) + goLaw(l));
+  `<div class="kv"><b>${esc(t("bNewLaw"))}</b></div>` + lawKv(l, { status: false }) + goLaw(l));   // "חוק חדש", bold, no "סוג:" (Mercy)
 
 /* ---------- amendments (the data's `amends`: every amending act of the last
    year, with the laws it changes and when it starts). Mercy's split: an act
@@ -89,11 +89,11 @@ function amendRows(acts, future) {
     const short = n => splitName(n)[0] === splitName(l.n)[0] ? (splitName(n)[1].match(/^\([^)]*\)/) || [splitName(n)[1]])[0] : n;
     const line = (list.length === 1 ? short(lead.n) : fill(t("amendsN"), { n: list.length })) + " · " + actLine(lead, future);
     rows.push({ sort: actStart(lead), html: key => item(key + ":L" + id, lawName(l), line, () =>
-      kv("kvType", esc(t("bAmendOf")) + ": " + lawLinkHtml(id)) + actListHtml(list, future) + goLaw(l)) });
+      kv("bAmendOf", lawLinkHtml(id)) + actListHtml(list, future) + goLaw(l)) });   // "תיקון לחוק: [link]" (Mercy)
   }
   for (const a of multi) {
     rows.push({ sort: actStart(a), html: key => item(key + ":A" + a.i, a.n, actLine(a, future), () =>
-      kv("kvType", esc(t("bAmendOf")) + ": " + affectsHtml(a.laws.map(id => ({ i: id, n: lawName(LAW.byId.get(id) || {}) })), true)) +
+      kv("bAmendOf", affectsHtml(a.laws.map(id => ({ i: id, n: lawName(LAW.byId.get(id) || {}) })), true)) +
       (a.c && a.c !== a.d ? kv("bPublished", esc(fmtDate(a.d))) : "")) });
   }
   return rows;
