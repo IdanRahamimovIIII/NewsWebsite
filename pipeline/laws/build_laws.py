@@ -438,7 +438,8 @@ def publish(data):
         sys.exit("snapshot is %.1f MB — that is not ~2,000 laws; refusing to publish" % (size / 1e6))
     log("publishing %s (%.0f KB)…" % (KEY, size / 1024))
     cf_kv.bulk_put(cred, ns, [(KEY, value)])
-    bad = cf_kv.verify(cred, ns, [(KEY, value)])
+    # overwriting an existing key: a read can lag ~a minute (pipeline/shared/CLAUDE.md)
+    bad = cf_kv.verify(cred, ns, [(KEY, value)], retries=12)
     if bad:
         sys.exit("read-back FAILED: %s" % "; ".join(bad))
     log("read back byte for byte — OK")
