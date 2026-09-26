@@ -3,7 +3,12 @@
  * Rules and setup: worker\CLAUDE.md ("our-money-pages"). Mercy pastes this
  * file into the dashboard → Deploy. NO bindings: it reads only public URLs.
  *
- * Route: ourmoneyil.com/mk/*  (a route runs BEFORE the site, which stays as is)
+ * Routes: ourmoneyil.com/mk/* and ourmoneyil.com/law/*  (a route runs BEFORE
+ * the site, which stays as is)
+ *   /law/<IsraelLawID>-<name>/  one law's page, facts baked in (Hebrew only)
+ *   /law/<IsraelLawID>[-…][/]   301 → the right address
+ *   /law/sitemap.xml            the promoted law pages · /law/index.txt every law (for AI)
+ *   /law/ … anything else       the site's own section pages, untouched
  *   /mk/<MkId>-<hebrew-name>/   the MK page in Hebrew, facts baked into the HTML
  *   /mk/<MkId>-<english-name>/  the same page in English
  *   /mk/<MkId>[-anything][/]    301 → the right address (wrong/missing slug, no slash)
@@ -363,6 +368,258 @@ function notFound(I, origin) {
 </div></div></body></html>`;
 }
 
+/* =====================================================================
+   /law/<IsraelLawID>-<name>/ — one law's page (site\law\NOTES.md). Hebrew
+   only: laws have no English names (the page's own words still toggle).
+   Inputs: /data/laws (every law, memoised) + /data/lawcard/<id> (this law:
+   amendments, pending bills, regulations — edge-cached, not memoised) +
+   the site's /law/page shell + /law/law.i18n.json (baked words).
+   ===================================================================== */
+const LAWS_URL = "https://api.ourmoneyil.com/data/laws";
+const LAWCARD_URL = "https://api.ourmoneyil.com/data/lawcard/";
+const DAY = () => new Date().toISOString().slice(0, 10);
+
+// the name without its year ("חוק X, התשע"ז-2017" → "חוק X"), letters and
+// digits only — the address tail; the id alone decides which law it is
+const lawTitle = n => String(n || "").replace(/,?\s*(התש|תש)[\u0590-\u05ff"'״׳]*\s*[–-]?\s*\d{4}\s*$/, "")
+  .replace(/,\s*\d{4}\s*$/, "").trim();
+const lawSlug = n => lawTitle(n).replace(/[^\p{L}\p{N}\s-]/gu, "").trim().replace(/[\s-]+/g, "-");
+const lawPath = l => `/law/${l.i}-${encodeURIComponent(lawSlug(l.n))}/`;
+
+// the Knesset's validity words → plain groups (law.data.js lawState, same rules)
+function lawState(l, today) {
+  const st = l.st || "";
+  if (/טרם/.test(st) || (l.s && l.s > today && /תקף/.test(st))) return "pending";
+  if (/^תקף/.test(st)) return "in";
+  if (/בטל/.test(st)) return "repealed";
+  if (/פקע/.test(st)) return "expired";
+  if (/נושן/.test(st)) return "obsolete";
+  return "in";
+}
+const STATE_KEY = { in: "stIn", pending: "stPending", repealed: "stRepealed", expired: "stExpired", obsolete: "stObsolete", voided: "stVoided" };
+const KIND_KEY = { void: "kVoid", partial: "kPartial", frozen: "kFrozen", deferred: "kDeferred" };
+const LEGAL_FORCE = { in: "InForce", pending: "NotInForce", repealed: "NotInForce", expired: "NotInForce", obsolete: "NotInForce", voided: "NotInForce" };
+
+function lawIndex(snap) {
+  const d = snap.data, byId = new Map(d.laws.map(l => [l.i, l])), court = new Map();
+  for (const c of d.court || []) (court.get(c.l) || court.set(c.l, []).get(c.l)).push(c);
+  return { d, byId, court, t: snap.t };
+}
+function shownState(l, X, today) {
+  const s = lawState(l, today);
+  return s === "in" && (X.court.get(l.i) || []).some(c => c.k === "void") ? "voided" : s;
+}
+/* promoted = indexed + in the sitemap (Mercy): in force · not yet in force ·
+   touched by the court · stopped ≤10 years ago (no end date → last publication) */
+function promoted(l, X, today) {
+  const s = lawState(l, today);
+  if (s === "in" || s === "pending" || X.court.has(l.i)) return true;
+  const ten = String(+today.slice(0, 4) - 10) + today.slice(4);
+  return (l.e || l.lp || l.p || "") >= ten;
+}
+const fmtD = v => {
+  if (!v) return "";
+  const d = new Date(v + "T12:00:00Z");
+  return isNaN(d) ? "" : d.toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+};
+const amendWords = (l, S) => l.a === 0 ? S.neverAmended : l.a === 1 ? S.amendedOnce : fill(S.amendedN, { n: l.a });
+
+function lawBody(l, card, X, S, today) {
+  const st = shownState(l, X, today), court = X.court.get(l.i) || [];
+  const h2 = key => `<h2 data-i18n="${key}">${esc(S[key])}</h2>`;
+  const link = (href, text, ext) => `<a class="doclink" href="${esc(href)}"${ext ? ' target="_blank" rel="noopener"' : ""}>${esc(text)}</a>`;
+  const lawRef = r => { const o = r && r.i && X.byId.get(+r.i); return o ? link(lawPath(o), o.n) : esc(r.n || ""); };
+  const out = [];
+
+  // the head: name, the one-word truth, the facts in one line
+  const chips = [`<span class="lbadge${st === "voided" ? " court" : ""}">${esc(S[STATE_KEY[st]])}</span>`];
+  const cb = court.find(c => c.k !== "void" || st !== "voided");
+  if (cb) chips.push(`<span class="lbadge court">${esc(S[KIND_KEY[cb.k]])}</span>`);
+  if ((l.f || "").includes("b")) chips.push(`<span class="lbadge soft">${esc(S.basicLaw || "חוק יסוד")}</span>`);
+  const facts = [];
+  if (l.s) facts.push((st === "pending" ? S.startsDate : S.fromDate) + fmtD(l.s));
+  if (l.e) facts.push((l.e < today ? S.endedDate : S.untilDate) + fmtD(l.e));
+  facts.push(amendWords(l, S));
+  if (card && card.min) facts.push(S.ministry + card.min);
+  if (card && card.cm) facts.push(S.committee + card.cm);
+  const rel = [];
+  if (card && card.prev && card.prev.length) rel.push(esc(S.prevNames) + esc(card.prev.join(" · ")));
+  if (card && card.replacedBy && card.replacedBy.length) rel.push(esc(S.replacedByL) + card.replacedBy.map(lawRef).join(" · "));
+  else if (l.r && X.byId.get(l.r)) rel.push(esc(S.replacedByL) + lawRef({ i: l.r }));
+  if (card && card.replaces && card.replaces.length) rel.push(esc(S.replacesL) + card.replaces.map(lawRef).join(" · "));
+  out.push(`<div class="card lawhead">
+    <p class="crumbs"><a href="/law/laws.html" data-i18n="lpToList">${esc(S.lpToList)}</a></p>
+    <h1 class="lawname">${esc(l.n)}</h1>
+    <p class="chips">${chips.join(" ")}</p>
+    <p class="facts">${facts.map(esc).join(" · ")}</p>
+    ${rel.map(r => `<p class="facts">${r}</p>`).join("")}
+    ${l.st ? `<p class="facts knesset">${esc(S.knessetSays + l.st)}</p>` : ""}
+  </div>`);
+
+  // about: the official summary of the original law + the Knesset's note
+  const about = [];
+  if (card && card.orig && card.orig.sum) about.push(`<p>${esc(card.orig.sum)}</p>`);
+  if (card && card.note) about.push(`<p class="note">${esc(card.note)}</p>`);
+  if (card && card.kz) about.push(`<p>${link(card.kz, S.kolZchut, true)}</p>`);
+  if (about.length) out.push(`<div class="card">${h2("secAbout")}${about.join("")}</div>`);
+
+  // what is about to change: bills pending that amend it
+  if (card && card.pend && card.pend.length) {
+    out.push(`<div class="card">${h2("secPending")}<p class="hint" data-i18n="pendHint">${esc(S.pendHint)}</p><ul class="hl plain">${card.pend.map(b =>
+      `<li><div class="nm">${esc(b.n)}</div><div class="line">${esc([b.ty, b.step ? S.step + b.step : "", b.d ? S.lastSession + fmtD(b.d) : "", b.no].filter(Boolean).join(" · "))}</div></li>`).join("")}</ul></div>`);
+  }
+
+  // the court
+  if (court.length) {
+    out.push(`<div class="card">${h2("secCourt")}<ul class="hl plain">${court.map(c =>
+      `<li><div class="nm">${esc(S[KIND_KEY[c.k]])} — ${esc(c.w)}</div><div class="line">${link(c.u, c.c, true)} · ${esc(fmtD(c.d))}${c.pn ? " · " + esc(c.pn + S.judges) : ""}${c.ds ? " · " + esc(S.dissent + c.ds) : ""}</div></li>`).join("")}</ul></div>`);
+  }
+
+  // amendments: the latest ten, the rest one click away (all in the HTML — AI reads it)
+  if (card) {
+    const row = a => `<li><div class="nm">${esc(a.n)}</div><div class="line">${esc([fmtD(a.d), a.ty === "ישיר" ? S.direct : a.ty ? S.indirect : ""].filter(Boolean).join(" · "))}${a.pdf ? " · " + link(a.pdf, S.pdf, true) : ""}</div>${a.sum ? `<details class="sum"><summary>${esc(S.officialSum)}</summary><p>${esc(a.sum)}</p></details>` : ""}</li>`;
+    const am = card.am || [], head = am.slice(0, 10), rest = am.slice(10);
+    const orig = card.orig ? `<p class="facts">${esc(S.origLaw)}${esc(fmtD(card.orig.d))}${card.orig.pdf ? " · " + link(card.orig.pdf, S.pdf, true) : ""}</p>` : "";
+    const rep = (card.repBy || []).length ? `<p class="facts">${esc(S.repealedIn)}${card.repBy.map(r => esc(r.n) + (r.pdf ? " · " + link(r.pdf, S.pdf, true) : "")).join(" · ")}</p>` : "";
+    out.push(`<div class="card">${h2("secAmend")}${am.length ? `<ul class="hl plain">${head.map(row).join("")}</ul>` +
+      (rest.length ? `<details class="more"><summary>${esc(fill(S.allAmend, { n: am.length }))}</summary><ul class="hl plain">${rest.map(row).join("")}</ul></details>` : "")
+      : `<p class="hint">${esc(S.noAmend)}</p>`}${rep}${orig}</div>`);
+  }
+
+  // regulations made under it
+  if (card && card.nregs) {
+    const r = card.regs || [], top = r.slice(0, 5), more = r.slice(5);
+    const li = x => `<li><div class="nm">${esc(x.n)}</div>${x.d ? `<div class="line">${esc(fmtD(x.d))}</div>` : ""}</li>`;
+    out.push(`<div class="card">${h2("secRegs")}<p class="hint">${esc(fill(S.regsCount, { n: card.nregs }))}</p><ul class="hl plain">${top.map(li).join("")}</ul>` +
+      (more.length ? `<details class="more"><summary>${esc(S.allRegs)}</summary><ul class="hl plain">${more.map(li).join("")}</ul></details>` : "") +
+      (card.nproc ? `<p class="hint">${esc(fill(S.regsProc, { n: card.nproc }))}</p>` : "") + `</div>`);
+  }
+
+  // sources, always
+  const ws = (card && card.ws) || ("https://he.wikisource.org/w/index.php?search=" + encodeURIComponent(lawTitle(l.n)) + "&go=Go");
+  out.push(`<div class="card">${h2("secSources")}<p class="srcs">${link(ws, S.srcTextL, true)}
+    ${link("https://knesset.gov.il/Odata/ParliamentInfo.svc/KNS_IsraelLaw(" + l.i + ")?$format=json", S.srcKnessetL, true)}
+    ${card && card.kz ? link(card.kz, S.kolZchut, true) : ""}</p>
+    <p class="notadvice" data-i18n="notAdvice">${esc(S.notAdvice)}</p></div>`);
+  return out.join("\n");
+}
+
+function renderLaw(shell, l, card, X, I) {
+  const S = I.he, today = DAY(), st = shownState(l, X, today);
+  const canon = SITE + lawPath(l);
+  const title = fill(S.lpTitle, { name: l.n });
+  const desc = fill(S.lpDesc, { name: l.n, state: S[STATE_KEY[st]], amended: amendWords(l, S) });
+  const ld = { "@context": "https://schema.org", "@type": "Legislation", name: l.n, url: canon,
+    legislationIdentifier: "IsraelLawID " + l.i, legislationJurisdiction: "IL", inLanguage: "he",
+    legislationLegalForce: LEGAL_FORCE[st], description: desc };
+  if (l.p) ld.legislationDate = l.p;
+  if (l.lp) ld.dateModified = l.lp;
+  if (card && card.ws) ld.sameAs = card.ws;
+  let h = shell.replace(/<title>[\s\S]*?<\/title>\s*/, "")
+    .replace(/<meta name="description"[^>]*>\s*/, "")
+    .replace(/<meta name="robots"[^>]*>\s*/, "")
+    .replace(/<meta property="og:(title|description|url)"[^>]*>\s*/g, "");
+  const head = `
+<base href="/law/">
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(desc)}">
+${promoted(l, X, today) ? "" : '<meta name="robots" content="noindex">\n'}<link rel="canonical" href="${esc(canon)}">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(desc)}">
+<meta property="og:url" content="${esc(canon)}">
+<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>
+`;
+  h = /<meta charset[^>]*>/i.test(h) ? h.replace(/(<meta charset[^>]*>)/i, "$1" + head) : h.replace(/<head>/, "<head>" + head);
+  return h.replace(/(<div id="lawpage"[^>]*>)<\/div>/, (m, a) => a + lawBody(l, card, X, S, today) + "</div>");
+}
+
+/* /law/index.txt — every law, grouped by what it is today, counted, one line
+   each with its address: the AI agents' one-fetch answer (like roster.txt).
+   Includes what people see folded (budget, no longer in force): AI sees all. */
+function lawsTxt(X) {
+  const today = DAY(), S = X.d;
+  const groups = { pending: [], voided: [], in: [], repealed: [], expired: [], obsolete: [] };
+  for (const l of S.laws) groups[shownState(l, X, today)].push(l);
+  const title = { pending: "Passed, not yet in force", voided: "Voided in full by the Supreme Court (the Knesset's record still says תקף)",
+    in: "In force", repealed: "Repealed by the Knesset (בטל)", expired: "Expired — temporary laws that ended (פקע)",
+    obsolete: "Obsolete — served their purpose, never repealed (נושן)" };
+  const line = l => {
+    const bits = [l.n];
+    for (const c of X.court.get(l.i) || []) bits.push(`court: ${c.k} ${c.c} ${c.d} — ${c.w}`);
+    if (l.e) bits.push((l.e < today ? "ended " : "until ") + l.e);
+    if ((l.f || "").includes("u")) bits.push("budget law");
+    return `- ${bits.join(" | ")} — ${SITE}${lawPath(l)}`;
+  };
+  const parts = Object.keys(groups).map(k => `## ${title[k]} (${groups[k].length})\n` +
+    groups[k].sort((a, b) => a.n.localeCompare(b.n, "he")).map(line).join("\n"));
+  return `# Every Israeli law — הכסף שלנו (Our Money)
+${S.laws.length} laws in the Knesset register, grouped by what they are today, as of ${new Date(X.t).toISOString().slice(0, 10)}.
+Court effects come from a hand-kept list (the Knesset's records never note a court annulment).
+Machine-readable: https://api.ourmoneyil.com/data/laws · every law's page: ${SITE}/law/sitemap.xml
+Each page: status, amendments with gazette PDFs, bills that would change it, Supreme Court rulings, regulations, sources.
+
+${parts.join("\n\n")}
+`;
+}
+
+function lawSitemap(X) {
+  const today = DAY(), mod = X.t ? `<lastmod>${new Date(X.t).toISOString().slice(0, 10)}</lastmod>` : "";
+  const rows = X.d.laws.filter(l => promoted(l, X, today)).map(l => `<url><loc>${esc(SITE + lawPath(l))}</loc>${mod}</url>`);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!-- the promoted law pages (worker\\pages.js, from /data/laws): in force, not yet in force, touched by the court, stopped ≤10 years ago -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${rows.join("\n")}
+</urlset>
+`;
+}
+
+async function lawRoute(request, url) {
+  const isMap = url.pathname === "/law/sitemap.xml", isTxt = url.pathname === "/law/index.txt";
+  const m = /^\/law\/(\d+)(?:-([^/]*))?(\/?)$/.exec(url.pathname);
+  if (!m && !isMap && !isTxt) return fetch(request);             // the section's own pages and files
+  const unavailable = e => new Response("Temporarily unavailable — " + e.message, {
+    status: 503, headers: { "content-type": "text/plain; charset=utf-8", "retry-after": "300" } });
+  let X, I;
+  try {
+    [X, I] = await Promise.all([
+      cached("laws", async () => lawIndex(JSON.parse(await getText(LAWS_URL)))),
+      cached("lawI18n", async () => JSON.parse(await getText(url.origin + "/law/law.i18n.json"))),
+    ]);
+  } catch (e) { return unavailable(e); }
+  const head = request.method === "HEAD";
+  if (isTxt) return new Response(head ? null : lawsTxt(X), {
+    headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" } });
+  if (isMap) return new Response(head ? null : lawSitemap(X), {
+    headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
+
+  const l = X.byId.get(+m[1]);
+  if (!l) return html(head ? null : lawNotFound(I, url.origin), 404);
+  let slug = "";
+  try { slug = decodeURIComponent(m[2] || ""); } catch (e) { /* bad escape → redirect */ }
+  if (slug !== lawSlug(l.n) || m[1] !== String(l.i) || !m[3]) return moved(url.origin + lawPath(l));
+
+  let shell;
+  try { shell = await cached("lawShell", () => getText(url.origin + "/law/page")); }
+  catch (e) { return unavailable(e); }
+  let card = null;                                               // missing card → the page still has the facts
+  if (!head) {
+    try { card = JSON.parse(await getText(LAWCARD_URL + l.i)).data; } catch (e) { card = null; }
+  }
+  return html(head ? null : renderLaw(shell, l, card, X, I), 200,
+    { "content-language": "he", link: `<${SITE + lawPath(l)}>; rel="canonical"` });
+}
+
+function lawNotFound(I, origin) {
+  const S = I.he, E = I.en;
+  return `<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex">
+<title>${esc(S.title)}</title><link rel="stylesheet" href="${origin}/shared/style.css"></head>
+<body><div class="wrap"><div class="card">
+<h2>${esc(S.lpNotFound)}</h2><p><a href="/law/laws.html">${esc(S.lpToList)}</a></p>
+<p dir="ltr">${esc(E.lpNotFound)} <a href="/law/laws.html">${esc(E.lpToList)}</a></p>
+</div></div></body></html>`;
+}
+
 const html = (body, status = 200, extra = {}) => new Response(body, {
   status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300", ...extra },
 });
@@ -372,6 +629,7 @@ export default {
   async fetch(request) {
     const url = new URL(request.url);
     if (request.method !== "GET" && request.method !== "HEAD") return fetch(request);
+    if (url.pathname.startsWith("/law/")) return lawRoute(request, url);
     // the list: pre-filled when everything is at hand, else the site's page as is
     if (url.pathname === "/mk/") return listPage(request, url).catch(() => fetch(request));
     const isMap = url.pathname === "/mk/sitemap.xml", isRoster = url.pathname === "/mk/roster.txt";

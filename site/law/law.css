@@ -75,3 +75,21 @@ details.adv label { display: inline-flex; gap: 7px; align-items: center; cursor:
 
 /* the "?" button lives in style.css; .info boxes are its hidden sources */
 .info[hidden] { display: none; }
+
+/* ---------- one law's page (law/page.html, filled by worker/pages.js) ---------- */
+.lawhead .crumbs { margin: 0 0 6px; font-size: 13px; }
+.lawhead .crumbs a { color: var(--accent-ink); text-decoration: none; }
+.lawhead .crumbs a::before { content: "→ "; }
+h1.lawname { font-size: clamp(21px, 3vw, 27px); line-height: 1.3; margin: 0 0 10px; letter-spacing: -0.01em; }
+.lawhead .chips { margin: 0 0 8px; }
+.lawhead .facts, .card .facts { font-size: 13.5px; color: var(--ink-2); margin: 4px 0; }
+.lawhead .facts.knesset { color: var(--ink-3); font-size: 12.5px; }
+.card .note { color: var(--ink-2); font-size: 14px; white-space: pre-line; }
+.hl.plain > li { padding: 10px 2px; }
+.hl.plain .nm { font-size: 15px; font-weight: 500; }
+.hl.plain .line { font-size: 13px; color: var(--ink-3); margin-top: 3px; }
+details.more { margin-top: 8px; }
+details.more > summary, details.sum > summary { cursor: pointer; color: var(--accent-ink); font-size: 13.5px; }
+details.sum { margin-top: 4px; }
+details.sum p { font-size: 13.5px; color: var(--ink-2); margin: 4px 0 0; }
+.srcs a { display: inline-block; margin-inline-end: 14px; }

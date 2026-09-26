@@ -99,7 +99,9 @@ const PRESETS = {
       document: {
         Year: null, Month: null, CaseNum: null, Technical: null,
         fromPages: null, toPages: null,
-        dateType: 1, PublishFrom: iso(p.from), PublishTo: iso(p.to), publishDate: 8,
+        // dateType 2 = "between these dates"; 1 ignored them and answered the
+        // latest 500 whatever the range (court\NOTES.md). publishDate 0 trips the WAF.
+        dateType: 2, PublishFrom: iso(p.from), PublishTo: iso(p.to), publishDate: 8,
         translationDateType: 1, translationPublishFrom: iso(p.from),
         translationPublishTo: iso(p.to), translationPublishDate: 8,
         SearchText: seg(p.q, 1), Judges: null, Parties: seg("", 2), Counsel: seg("", 2),

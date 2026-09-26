@@ -57,8 +57,14 @@ All ~2,000 laws in the Knesset register, searchable by name and topic
 publication, how often it was amended (direct / inside another law), the
 law that replaced it, and the court's rulings on it, with links to the
 full current text (Wikisource's open statute book) and the Knesset record.
-Budget laws and laws no longer in force are folded by default. One law:
-https://ourmoneyil.com/law/laws.html?law=<IsraelLawID>
+Budget laws and laws no longer in force are folded by default. Every law has its own page, facts in the raw HTML:
+https://ourmoneyil.com/law/<IsraelLawID>-<name>/ (e.g.
+https://ourmoneyil.com/law/2000479-חוק-העונשין/; any other spelling
+redirects) — status, responsible ministry and committee, every amendment
+with its gazette PDF and official summary, bills pending that would change
+it, Supreme Court rulings, regulations, sources. Every law as plain text,
+grouped and counted, with links: https://ourmoneyil.com/law/index.txt ·
+every promoted address: https://ourmoneyil.com/law/sitemap.xml
 
 ### https://ourmoneyil.com/votes/ — הצבעות וחקיקה (Knesset votes & legislation)
 Every Knesset plenum vote from 2003 to today (tens of thousands),

@@ -314,6 +314,101 @@ def build_bills(w):
 
 
 # =====================================================================
+# one card per law — the law's own page (worker pages.js /law/<id>-…/)
+# Source: the Knesset site's law API (one call per law): ministry and
+# committee BY NAME (the OData ministry ids map to nothing), the Knesset's
+# note, Wikisource + Kol Zchut links, every amendment with its gazette PDF
+# and official summary, pending bills that amend it, its regulations.
+# =====================================================================
+
+KAPI_LAW = "https://knesset.gov.il/WebSiteApi/knessetapi/LegislationItem/GetLegislationLawItem?ItemId=%d"
+CARD_KEY = "pub:lawcard/%d"      # → /data/lawcard/<IsraelLawID> (the relay serves any pub:<name>)
+MAX_CARD_FAILURES = 20
+
+
+def clean(v):
+    s = str(v if v is not None else "").strip()
+    return "" if s in ("None", "null") else s
+
+
+def fix_path(p):
+    """the API's file paths mix backslashes and doubled slashes"""
+    s = clean(p).replace("\\", "/")
+    return re.sub(r"(?<!:)/{2,}", "/", s)
+
+
+def build_card(l, j):
+    g = (j or {}).get("general") or {}
+    c = (j or {}).get("corrections") or {}
+    rows = []
+    for x in c.get("listCorrections") or []:
+        add = clean(x.get("AdditionalName"))
+        rows.append({"n": clean(x.get("name")), "d": day(x.get("publicationDate")),
+                     "no": clean(x.get("correctionNumber")), "ty": clean(x.get("correctionType")),
+                     "pdf": fix_path(x.get("filePath")), "sum": clean(x.get("summaryLaw")),
+                     "k": "orig" if "המקורי" in add else "rep" if "המבטל" in add else ""})
+    orig = next((r for r in rows if r["k"] == "orig"), None)
+    am = [r for r in rows if r is not orig and r["k"] != "rep"]          # newest first, as the API gives
+    repealed_by = [r for r in rows if r["k"] == "rep"]
+    pend = [{"i": int(clean(x.get("itemId")) or 0), "n": clean(x.get("name")),
+             "no": re.sub(r"\s+", " ", clean(x.get("description"))), "ty": clean(x.get("subTypeName")),
+             "step": clean(x.get("currentStep")), "cm": clean(x.get("committeeName")),
+             "d": day(x.get("latestSessionDate"))} for x in c.get("listLegislationBills") or []]
+    regs = [{"n": clean(x.get("name")), "d": day(x.get("PublicationDate")) or day(x.get("sessionDate"))}
+            for x in j.get("secondaryLawInstalled") or []] if j else []
+    regs.sort(key=lambda r: r["d"] or "", reverse=True)
+    rel = lambda key: [{"i": x.get("itemId"), "n": clean(x.get("name")), "d": day(x.get("displayPublicationDate"))}
+                       for x in c.get(key) or []]
+    return {"i": l["i"], "min": clean(g.get("ministriesName")), "cm": clean(g.get("committeeNames")),
+            "note": clean(g.get("siteComment")), "ws": clean(g.get("openBookUrl")),
+            "kz": clean(g.get("kolZchutUrl")),
+            "prev": [clean(x) for x in (g.get("listPrevNames") or []) if clean(x)],
+            "orig": orig, "am": am, "repBy": repealed_by, "pend": pend,
+            "regs": regs[:40], "nregs": len(regs), "nproc": len((j or {}).get("secondaryLawInProcess") or []),
+            "replacedBy": rel("listRelatedsReplacedBy"), "replaces": rel("listRelatedsReplaceAnother")}
+
+
+CARD_THREADS = 4   # the law API answers in ~2 s: one at a time is 80 minutes; four is still polite
+
+
+def collect_cards(relay, laws, threads=CARD_THREADS):
+    from concurrent.futures import ThreadPoolExecutor
+    cards, failures = {}, []
+
+    def one(l):
+        try:
+            return l, build_card(l, relay.json(KAPI_LAW % l["i"])), None
+        except Exception as e:  # noqa: BLE001
+            return l, None, "%d %s — %s" % (l["i"], l["n"][:50], str(e)[:120])
+
+    with ThreadPoolExecutor(max_workers=threads) as pool:
+        for n, (l, card, err) in enumerate(pool.map(one, laws), 1):
+            if card is not None:
+                cards[l["i"]] = card
+            else:
+                failures.append(err)
+            if n % 250 == 0:
+                log("  cards: %d / %d" % (n, len(laws)))
+    return cards, failures
+
+
+def publish_cards(cards, t):
+    cred = cf_kv.credentials(str(HERE.parent / "d1-config.json"))
+    ns = cf_kv.namespace_id(cred)
+    items = [(CARD_KEY % i, cf_kv.envelope(c, t)) for i, c in sorted(cards.items())]
+    log("publishing %d law cards (%.1f MB)…" % (len(items), sum(len(v.encode("utf-8")) for _, v in items) / 1e6))
+    cf_kv.bulk_put(cred, ns, items)
+    # reading 2,000 keys back one by one sits on the API's rate line: a
+    # sample (the biggest + an even spread) proves the write went through
+    big = max(items, key=lambda kv: len(kv[1]))
+    sample = [big] + items[::max(1, len(items) // 25)]
+    bad = cf_kv.verify(cred, ns, sample)
+    if bad:
+        sys.exit("card read-back FAILED (%d): %s" % (len(bad), "; ".join(bad[:10])))
+    log("read back %d sample cards byte for byte — OK" % len(sample))
+
+
+# =====================================================================
 # gates + publish
 # =====================================================================
 
@@ -377,7 +472,17 @@ def main(argv=None):
     out_path.write_text(json.dumps(data, ensure_ascii=False, indent=0), encoding="utf-8")
     log("\nbuilt %d laws · %d court rows · %d live bills → %s (%d relay calls)"
         % (len(data["laws"]), len(data["court"]), len(data["bills"]), out_path, relay.calls))
+    cards, card_failures = {}, []
+    if "--no-cards" not in argv:
+        log("\nlaw cards (one law-API call per law, ~15 minutes)…")
+        cards, card_failures = collect_cards(relay, data["laws"])
+        (OUT / "lawcards.json").write_text(json.dumps(cards, ensure_ascii=False), encoding="utf-8")
+        log("built %d law cards (%d failed)" % (len(cards), len(card_failures)))
+        for f in card_failures:
+            log("  - " + f)
     bad = gates(data, problems, w)
+    if len(card_failures) > MAX_CARD_FAILURES:
+        bad.append("law cards failed for %d laws (more than %d)" % (len(card_failures), MAX_CARD_FAILURES))
     if bad:
         log("\nNOT publishing — fix these first:")
         for b in bad:
@@ -386,6 +491,8 @@ def main(argv=None):
     if no_publish:
         log("\n--no-publish: stopping before Cloudflare. Snapshot is in out\\laws.json")
         return 0
+    if cards:
+        publish_cards(cards, int(time.time() * 1000))   # the cards first: a page never points at a missing card
     publish(data)
     log("\ndone. The law pages read /data/laws from here on.")
     return 0

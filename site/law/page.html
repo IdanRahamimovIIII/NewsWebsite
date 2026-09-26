@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- the law page SHELL: the pages worker (worker/pages.js) fills #lawpage with
+     one law's facts and serves it at /law/<IsraelLawID>-<name>/. Opened on
+     its own it is empty — hence noindex (the worker sets it per law). -->
+<title>הכסף שלנו — חוק | Our Money — a law</title>
+<meta name="description" content="חוק במדינת ישראל: מצבו היום, תיקונים, הצעות חוק שישנו אותו ופסיקת בית המשפט העליון.">
+<meta name="robots" content="noindex">
+<link rel="alternate" type="text/plain" href="https://ourmoneyil.com/llms.txt" title="Guide for AI systems (llms.txt)">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="הכסף שלנו — Our Money">
+<meta property="og:title" content="הכסף שלנו — חוק | Our Money — a law">
+<meta property="og:image" content="https://ourmoneyil.com/shared/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="he_IL">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../shared/style.css">
+<link rel="stylesheet" href="law.css">
+</head>
+<body>
+<header class="topbar"><div class="tbwrap">
+      <a class="brand" href="../budget/" data-i18n="title">הכסף שלנו</a>
+      <nav class="tabs"><a href="../budget/" class="" data-i18n="navBudget">התקציב</a><a href="../law/" class="active" data-i18n="navLaw">החוק</a><a href="../mk/" class="" data-i18n="navMk">חברי הכנסת</a></nav>
+      <button class="langbtn" id="langbtn" onclick="toggleLang()">English</button>
+    </div></header>
+
+<!-- the law section has four pages; a law's page belongs to "חוקים" -->
+<nav class="subnav">
+  <div class="subnav-in">
+    <a href="../law/" data-i18n="subLawHome">ראשי</a>
+    <a href="../law/laws.html" class="active" data-i18n="subLaws">חוקים</a>
+    <a href="../votes/" data-i18n="subBills">הצעות חוק והצבעות</a>
+    <a href="../court/" data-i18n="subRulings">פסיקה</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div id="lawpage"></div>
+
+  <footer>
+    <p class="aboutpara" data-i18n="aboutBody">״הכסף שלנו״ הוא אתר עצמאי, ללא קשר לגוף ממשלתי, למפלגה או לארגון, שנועד להעניק לאזרחי ישראל מבט נקי ומסודר על פעילות המדינה ועל האופן שבו היא משתמשת בכסף שלנו. כל הנתונים מגיעים ישירות מהמקורות הרשמיים ומוצגים כפי שהם, עם קישור למקור. מצאתם טעות או נתון חסר? כתבו לנו ונתקן:</p>
+    <p class="aboutmail"><span data-i18n="contactLabel">אמצעי תקשורת - </span><a href="mailto:contact@ourmoneyil.com">contact@ourmoneyil.com</a></p>
+    <p class="aboutmail"><span data-i18n="devLabel">למפתחים: </span><a href="https://ourmoneyil.com/api/">https://ourmoneyil.com/api</a></p>
+    <span data-i18n="credit">מקורות המידע: </span>
+    <a href="https://main.knesset.gov.il/Activity/Info/Pages/databases.aspx" target="_blank" rel="noopener">Knesset OData</a> ·
+    <a href="https://supremedecisions.court.gov.il/" target="_blank" rel="noopener">supremedecisions.court.gov.il</a> ·
+    <a href="https://he.wikisource.org/wiki/ספר_החוקים_הפתוח" target="_blank" rel="noopener">ספר החוקים הפתוח</a>
+    <div id="debug" style="margin-top:6px"></div>
+  </footer>
+</div>
+
+<script src="../shared/config.js"></script>
+<script src="law.strings.js"></script>
+<script src="page.strings.js"></script>
+<script src="../shared/common.js"></script>
+</body>
+</html>

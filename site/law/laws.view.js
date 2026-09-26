@@ -64,7 +64,7 @@ function detailHtml(l) {
   if (l.s) status.push(`<p>${esc((st === "pending" ? t("startsDate") : t("fromDate")) + fmtDate(l.s))}</p>`);
   if (l.e) status.push(`<p>${esc((l.e < TODAY ? t("endedDate") : t("untilDate")) + fmtDate(l.e))}</p>`);
   const rep = l.r && LAW.byId.get(l.r);
-  if (rep) status.push(`<p>${esc(t("replacedBy"))}<a href="${lawLink(rep)}" onclick="event.preventDefault();openLaw(${rep.i})">${esc(lawName(rep))}</a></p>`);
+  if (rep) status.push(`<p>${esc(t("replacedBy"))}<a class="golink" href="${lawLink(rep)}">${esc(lawName(rep))}</a></p>`);
 
   const hist = [];
   if (l.p) hist.push(`<p>${esc(t("firstPub") + fmtDate(l.p))}</p>`);
@@ -80,6 +80,7 @@ function detailHtml(l) {
     <h3>${esc(t("dHistory"))}</h3>${hist.join("")}
     ${courtHtml}
     ${topics.length ? `<h3>${esc(t("dTopics"))}</h3><p>${esc(topics.join(" · "))}</p>` : ""}
+    <p><a class="golink" href="${lawLink(l)}">${esc(t("detailsLink"))} ←</a></p>
     <h3>${esc(t("dSources"))}</h3>
     <p class="srcs"><a class="doclink" href="${wikisourceUrl(l)}" target="_blank" rel="noopener">${esc(t("srcText"))}</a>
       <a class="doclink" href="${knessetRecordUrl(l)}" target="_blank" rel="noopener">${esc(t("srcKnesset"))}</a></p>

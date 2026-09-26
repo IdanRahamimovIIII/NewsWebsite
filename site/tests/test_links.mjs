@@ -14,7 +14,7 @@ const DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8932;
 
 const PAGES = ['budget/index.html', 'votes/index.html', 'mk/index.html',
-               'court/index.html', 'law/index.html', 'law/laws.html', 'votes/selftest.html',
+               'court/index.html', 'law/index.html', 'law/laws.html', 'law/page.html', 'votes/selftest.html',
                'tools/qa.html', 'tools/build.html', 'api/index.html'];
 /* the forwarding stubs at the old addresses (2026-09-06): each must exist and
    point at a page that exists — they are what keeps old links alive */
