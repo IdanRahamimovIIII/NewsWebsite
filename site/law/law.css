@@ -93,3 +93,6 @@ details.more > summary, details.sum > summary { cursor: pointer; color: var(--ac
 details.sum { margin-top: 4px; }
 details.sum p { font-size: 13.5px; color: var(--ink-2); margin: 4px 0 0; }
 .srcs a { display: inline-block; margin-inline-end: 14px; }
+/* a law's links (what it replaced, what replaced it) wrap like words — a
+   list of 17 old ordinances must not push the page sideways on a phone */
+.lawhead .facts .doclink, .hl.plain .doclink { white-space: normal; }
