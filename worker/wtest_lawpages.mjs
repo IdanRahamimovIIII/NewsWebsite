@@ -3,8 +3,7 @@
 // + /data/lawcard/<id> that carry the live traps: a law voided in full whose
 // Knesset record still says תקף, an old obsolete law (noindex, not in the
 // sitemap), a law with no card (the page still stands), markup inside a name,
-// 14 amendments (10 shown, all in the HTML), a name with a year and quotes
-// (the slug), a pending law. Run: node worker/wtest_lawpages.mjs
+// 14 amendments (10 shown, all in the HTML), a pending law, old Hebrew addresses. Run: node worker/wtest_lawpages.mjs
 // (also renders every law of pipeline/laws/out/laws.json + lawcards.json if present).
 import fs from "node:fs";
 import path from "node:path";
@@ -60,10 +59,9 @@ globalThis.fetch = async (input) => {
 };
 const { default: worker } = await import("./pages.js?" + Date.now());
 const get = (p, method = "GET") => worker.fetch(new Request(ORIGIN + p, { method, redirect: "manual" }));
-const slug = "חוק-להסדרת-ההתיישבות-ביהודה-והשומרון";
 
 // the canonical page
-let r = await get(`/law/2015037-${encodeURIComponent(slug)}/`);
+let r = await get("/law/2015037/");
 let h = await r.text();
 ok(r.status === 200, "voided law page 200, got " + r.status);
 ok(h.includes('<h1 class="lawname">חוק להסדרת ההתיישבות ביהודה והשומרון, התשע&quot;ז-2017</h1>'), "the name is the headline");
@@ -71,7 +69,8 @@ ok(h.includes("בוטל בבג״ץ") && !h.includes(">חל היום<"), "voided 
 ok(h.includes("ברשומות הכנסת: תקף"), "the Knesset's own word stays, labelled");
 ok(h.includes('"legislationLegalForce":"NotInForce"'), "JSON-LD: not in force");
 ok(!h.includes('name="robots"'), "a court-touched law is indexed");
-ok(h.includes(`<link rel="canonical" href="https://ourmoneyil.com/law/2015037-${encodeURIComponent(slug)}/">`), "canonical address");
+ok(h.includes('<link rel="canonical" href="https://ourmoneyil.com/law/2015037/">'), "canonical address: the number only");
+ok(h.includes('"BreadcrumbList"') && h.includes('"name":"חוקים"'), "breadcrumbs for Google");
 ok(h.includes("9 שופטים") && h.includes("נ&#39; סולברג"), "panel + dissent shown");
 ok(h.includes("החוק נועד להסדיר"), "the original law's official summary");
 ok(h.includes('<base href="/law/">'), "relative files resolve from /law/");
@@ -80,9 +79,9 @@ ok(r.headers.get("content-language") === "he", "content-language he");
 
 // slug/slash/id spellings → one address
 r = await get("/law/2015037");
-ok(r.status === 301 && r.headers.get("location").endsWith(`/law/2015037-${encodeURIComponent(slug)}/`), "no slug → 301");
-r = await get(`/law/2015037-${encodeURIComponent(slug)}`);
-ok(r.status === 301, "no trailing slash → 301");
+ok(r.status === 301 && r.headers.get("location").endsWith("/law/2015037/"), "no slash → 301 to the number");
+r = await get("/law/2015037-" + encodeURIComponent("חוק-להסדרת-ההתיישבות") + "/");
+ok(r.status === 301 && r.headers.get("location").endsWith("/law/2015037/"), "an old Hebrew address → 301 to the number");
 r = await get("/law/2015037-wrong-name/");
 ok(r.status === 301, "wrong slug → 301");
 r = await get("/law/0999999-x/");
@@ -117,9 +116,9 @@ ok(h.includes("יתחיל לחול ב") && h.includes('"legislationLegalForce":"
 // sitemap + index.txt
 r = await get("/law/sitemap.xml"); h = await r.text();
 ok(r.headers.get("content-type").startsWith("application/xml"), "sitemap is xml");
-ok(h.includes("/law/2015037-") && h.includes("/law/2000479-") && h.includes("/law/2245315-"), "promoted laws in the sitemap");
-ok(!h.includes("/law/2000001-"), "an obsolete 1936 law is not promoted");
-ok(h.includes("/law/2000002-"), "a law repealed ≤10 years ago is promoted");
+ok(h.includes("/law/2015037/") && h.includes("/law/2000479/") && h.includes("/law/2245315/"), "promoted laws in the sitemap");
+ok(!h.includes("/law/2000001/"), "an obsolete 1936 law is not promoted");
+ok(h.includes("/law/2000002/"), "a law repealed ≤10 years ago is promoted");
 r = await get("/law/index.txt"); h = await r.text();
 ok(h.includes("5 laws in the Knesset register"), "index.txt counts every law");
 ok(/Voided in full[^\n]*\(1\)/.test(h) && h.includes("court: void בג\"ץ 1308/17"), "index.txt: the voided group + the ruling");
@@ -133,7 +132,7 @@ BILLCARDS[2219672] = { i: 2219672, k: "amend", n: 'חוק לעידוד פעיל�
   docs: [{ g: "הצעת חוק לקריאה הראשונה", u: "https://fs.knesset.gov.il/b.pdf" }], laws: [{ i: 2000479, n: "x" }, { i: 2015037, n: "y" }] };
 const { default: wb } = await import("./pages.js?bill" + Date.now());
 r = await wb.fetch(new Request(ORIGIN + "/bill/2219672", { redirect: "manual" }));
-ok(r.status === 301 && r.headers.get("location").includes("/bill/2219672-"), "a bill without its name → 301");
+ok(r.status === 301 && r.headers.get("location").endsWith("/bill/2219672/"), "a bill without its slash → 301 to the number");
 r = await wb.fetch(new Request(r.headers.get("location"), { redirect: "manual" }));
 h = await r.text();
 ok(r.status === 200 && h.includes('<h1 class="lawname">חוק לעידוד פעילות בשוק ההון'), "the bill page renders");
@@ -142,18 +141,15 @@ const order = ["<b>מגישים:</b>", "<b>סוג:</b>", "<b>שלב:</b>", "<b>�
 const body = h.slice(h.indexOf('id="lawpage"'));
 const pos = order.map(w => body.indexOf(w));
 ok(pos.every(p => p > 0) && pos.every((p, k) => k === 0 || p > pos[k - 1]), "the bill page keeps the site-wide order: " + order.filter((w, k) => pos[k] <= 0).join(", "));
-ok(h.includes('href="/law/2000479-') && h.includes("דברי ההסבר") && h.includes("/votes/?q="), "laws, explanatory notes, votes link");
+ok(h.includes('href="/law/2000479/"') && h.includes("דברי ההסבר") && h.includes("/votes/?q="), "laws, explanatory notes, votes link");
+ok(h.includes('"BreadcrumbList"') && h.includes('"name":"הצעות חוק והצבעות"'), "bill breadcrumbs");
 r = await wb.fetch(new Request(ORIGIN + "/bill/999/", { redirect: "manual" }));
 ok(r.status === 404, "a bill without a page → 404");
 r = await wb.fetch(new Request(ORIGIN + "/bill/index.txt")); h = await r.text();
 ok(h.includes("Amendments that change several laws (1)"), "bill index.txt");
-const billSite = new Function(fs.readFileSync(path.join(ROOT, "site/shared/bills.js"), "utf8").match(/function billSlug[\s\S]*?\n}/)[0] + "; return billSlug;")();
-const wsrc = fs.readFileSync(path.join(ROOT, "worker/pages.js"), "utf8");
-const billWorker = new Function(wsrc.match(/const lawTitle = [\s\S]*?\n/)[0] + wsrc.match(/  \.replace\(\/,\\s\*\\d\{4\}[\s\S]*?\n/)[0] +
-  wsrc.match(/const lawSlug = [\s\S]*?\n/)[0] + wsrc.match(/const billSlug = [\s\S]*?\n/)[0] + "; return billSlug;")();
-const names = [SNAP.data.billPages[0].n, "הצעת חוק העונשין (תיקון מס' 160) (עונש מוות למחבלים), התשפ\"ו-2025",
-  "הצעת חוק הוועדה המשותפת של ועדת החוקה, חוק ומשפט ושל ועדת הכלכלה לדיון בהצעת חוק תובענות ייצוגיות (תיקון מס' 16)"];
-ok(names.every(n => billSite(n) === billWorker(n)), "site and worker bill slugs agree");
+const siteData = fs.readFileSync(path.join(ROOT, "site/law/law.data.js"), "utf8") + fs.readFileSync(path.join(ROOT, "site/shared/bills.js"), "utf8");
+ok(/function lawLink\(l\) \{ return "\/law\/" \+ l\.i \+ "\/"; \}/.test(siteData) && /const billLink = b => "\/bill\/" \+ \(\+b\.i\) \+ "\/";/.test(siteData),
+   "the site links laws and bills by number, like the worker");
 
 // the section's own pages pass through untouched
 passed = [];
@@ -180,14 +176,6 @@ if (fs.existsSync(path.join(outDir, "laws.json"))) {
     if (hh.length / 1024 > heavy.kb) heavy = { n: l.n, kb: Math.round(hh.length / 1024) };
   }
   ok(bad === 0, `every real law renders (${data.laws.length}, ${bad} failed)`);
-  // the site builds the same address the worker serves (law.data.js lawSlug ≡ pages.js lawSlug)
-  const siteSrc = fs.readFileSync(path.join(ROOT, "site/law/law.data.js"), "utf8").match(/function lawSlug[\s\S]*?\n}/)[0];
-  const workerSrc = fs.readFileSync(path.join(ROOT, "worker/pages.js"), "utf8");
-  const siteSlug = new Function(siteSrc + "; return lawSlug;")();
-  const workerSlug = new Function(workerSrc.match(/const lawTitle = [\s\S]*?\n/)[0] + workerSrc.match(/  \.replace\(\/,\\s\*\\d\{4\}[\s\S]*?\n/)[0] +
-    workerSrc.match(/const lawSlug = [\s\S]*?\n/)[0] + "; return lawSlug;")();
-  const drift = data.laws.filter(l => siteSlug(l.n) !== workerSlug(l.n));
-  ok(drift.length === 0, `site and worker slugs agree for every law (${drift.length} differ${drift[0] ? ": " + drift[0].n : ""})`);
   console.log(`  real: ${data.laws.length} laws, ${Object.keys(cards).length} cards; heaviest page: ${heavy.n} — ${heavy.kb} KB`);
 }
 

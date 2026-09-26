@@ -126,15 +126,9 @@ function wikisourceUrl(l) {
 function knessetRecordUrl(l) {
   return "https://knesset.gov.il/Odata/ParliamentInfo.svc/KNS_IsraelLaw(" + l.i + ")?$format=json";
 }
-/* a law's own page: /law/<IsraelLawID>-<name without its year>/ — the SAME
-   rule as worker/pages.js lawTitle/lawSlug (change both; the worker 301s any
-   other spelling, so a drift costs a redirect, never a dead link) */
-function lawSlug(n) {
-  return String(n || "").replace(/,?\s*(התש|תש)[\u0590-\u05ff"'״׳]*\s*[–-]?\s*\d{4}\s*$/, "")
-    .replace(/,\s*\d{4}\s*$/, "").trim()
-    .replace(/[^\p{L}\p{N}\s-]/gu, "").trim().replace(/[\s-]+/g, "-");
-}
-function lawLink(l) { return "/law/" + l.i + "-" + encodeURIComponent(lawSlug(l.n)) + "/"; }
+/* a law's own page: /law/<IsraelLawID>/ — the number only (Mercy: a Hebrew tail
+   turns into %D7%… when shared); the worker 301s any other spelling */
+function lawLink(l) { return "/law/" + l.i + "/"; }
 function mailSuggest(subject) {
   return "mailto:contact@ourmoneyil.com?subject=" + encodeURIComponent(subject);
 }

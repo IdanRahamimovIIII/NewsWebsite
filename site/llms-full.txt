@@ -58,15 +58,15 @@ publication, how often it was amended (direct / inside another law), the
 law that replaced it, and the court's rulings on it, with links to the
 full current text (Wikisource's open statute book) and the Knesset record.
 Budget laws and laws no longer in force are folded by default. Every law has its own page, facts in the raw HTML:
-https://ourmoneyil.com/law/<IsraelLawID>-<name>/ (e.g.
-https://ourmoneyil.com/law/2000479-חוק-העונשין/; any other spelling
+https://ourmoneyil.com/law/<IsraelLawID>/ (e.g.
+https://ourmoneyil.com/law/2000479/ = חוק העונשין; any other spelling
 redirects) — status, responsible ministry and committee, every amendment
 with its gazette PDF and official summary, bills pending that would change
 it, Supreme Court rulings, regulations, sources. Every law as plain text,
 grouped and counted, with links: https://ourmoneyil.com/law/index.txt ·
 every promoted address: https://ourmoneyil.com/law/sitemap.xml
 Bills with their own page — amendments of the last year that change
-several laws, and bills in committee — at /bill/<BillID>-<name>/: who
+several laws, and bills in committee — at /bill/<BillID>/: who
 filed it, type, stage, committee, dates (tabled / published / in force
 from), the laws it changes (links), a link to its plenum votes, the
 legislative journey with protocols, and the official documents (the

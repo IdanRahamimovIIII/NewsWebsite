@@ -5,11 +5,11 @@
  *
  * Routes: ourmoneyil.com/mk/*, /law/*, /bill/*  (a route runs BEFORE
  * the site, which stays as is)
- *   /law/<IsraelLawID>-<name>/  one law's page, facts baked in (Hebrew only)
- *   /law/<IsraelLawID>[-…][/]   301 → the right address
+ *   /law/<IsraelLawID>/         one law's page, facts baked in (Hebrew only)
+ *   /law/<IsraelLawID>[-…][/]   301 → the right address (a name tail, no slash)
  *   /law/sitemap.xml            the promoted law pages · /law/index.txt every law (for AI)
  *   /law/ … anything else       the site's own section pages, untouched
- *   /bill/<BillID>-<name>/      a bill's page (a multi-law amendment, or a bill in committee)
+ *   /bill/<BillID>/             a bill's page (a multi-law amendment, or a bill in committee)
  *   /bill/sitemap.xml · /bill/index.txt
  *   /mk/<MkId>-<hebrew-name>/   the MK page in Hebrew, facts baked into the HTML
  *   /mk/<MkId>-<english-name>/  the same page in English
@@ -371,7 +371,7 @@ function notFound(I, origin) {
 }
 
 /* =====================================================================
-   /law/<IsraelLawID>-<name>/ — one law's page (site\law\NOTES.md). Hebrew
+   /law/<IsraelLawID>/ — one law's page (site\law\NOTES.md). Hebrew
    only: laws have no English names (the page's own words still toggle).
    Inputs: /data/laws (every law, memoised) + /data/lawcard/<id> (this law:
    amendments, pending bills, regulations — edge-cached, not memoised) +
@@ -385,11 +385,10 @@ const DAY = () => new Date().toISOString().slice(0, 10);
 // digits only — the address tail; the id alone decides which law it is
 const lawTitle = n => String(n || "").replace(/,?\s*(התש|תש)[\u0590-\u05ff"'״׳]*\s*[–-]?\s*\d{4}\s*$/, "")
   .replace(/,\s*\d{4}\s*$/, "").trim();
-const lawSlug = n => lawTitle(n).replace(/[^\p{L}\p{N}\s-]/gu, "").trim().replace(/[\s-]+/g, "-");
-const lawPath = l => `/law/${l.i}-${encodeURIComponent(lawSlug(l.n))}/`;
-// a bill's name is long: the same rule, cut at a word boundary (≤80) — the id decides
-const billSlug = n => { const s = lawSlug(n); return s.length <= 80 ? s : s.slice(0, 80).replace(/-[^-]*$/, ""); };
-const billPath = b => `/bill/${b.i}-${encodeURIComponent(billSlug(b.n))}/`;
+// the address is just the number (Mercy): a Hebrew tail turns into %D7%… when
+// shared. Any other spelling (the old /law/<id>-<name>/ included) 301s here.
+const lawPath = l => `/law/${l.i}/`;
+const billPath = b => `/bill/${b.i}/`;
 const BILLCARD_URL = "https://api.ourmoneyil.com/data/billcard/";
 
 // the Knesset's validity words → plain groups (law.data.js lawState, same rules)
@@ -515,10 +514,16 @@ function lawBody(l, card, X, S, today) {
   return out.join("\n");
 }
 
-/* ---- /bill/<BillID>-<name>/ — the site-wide bill order (shared/bills.js
+/* ---- /bill/<BillID>/ — the site-wide bill order (shared/bills.js
    billPanelHtml; this is its server-side mirror for crawlers — change both;
    wtest_lawpages.mjs checks the order): proposers → type · stage · committee
    · dates · laws it changes → what it does → plenum votes → journey → documents ---- */
+/* breadcrumbs (schema.org BreadcrumbList) — what Google prints above a result */
+function crumbs(trail) {
+  return { "@type": "BreadcrumbList", itemListElement: trail.map(([name, url], k) =>
+    ({ "@type": "ListItem", position: k + 1, name, item: url })) };
+}
+
 function billBody(c, X, S) {
   const kvh = (label, html) => html ? `<div class="kv"><b>${esc(label)}:</b> ${html}</div>` : "";
   const link = (href, text, ext) => `<a class="doclink" href="${esc(href)}"${ext ? ' target="_blank" rel="noopener"' : ""}>${esc(text)}</a>`;
@@ -567,6 +572,8 @@ function renderBill(shell, c, X, I) {
     legislationJurisdiction: "IL", legislationIdentifier: "BillID " + c.i, description: desc,
     legislationLegalForce: c.k === "amend" && c.c && c.c <= DAY() ? "InForce" : "NotInForce" };
   if ((c.laws || []).length) ld.legislationChanges = c.laws.filter(x => x && x.i && X.byId.get(+x.i)).map(x => ({ "@type": "Legislation", name: X.byId.get(+x.i).n, url: SITE + lawPath(X.byId.get(+x.i)) }));
+  const graph = { "@context": "https://schema.org", "@graph": [Object.assign({}, ld, { "@context": undefined }),
+    crumbs([[S.title, SITE + "/"], [S.navLaw, SITE + "/law/"], [S.subBills, SITE + "/votes/"], [c.n, canon]])] };
   let h = shell.replace(/<title>[\s\S]*?<\/title>\s*/, "")
     .replace(/<meta name="description"[^>]*>\s*/, "")
     .replace(/<meta name="robots"[^>]*>\s*/, "")
@@ -579,7 +586,7 @@ function renderBill(shell, c, X, I) {
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${esc(canon)}">
-<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>
+<script type="application/ld+json">${JSON.stringify(graph).replace(/</g, "\\u003c")}</script>
 `;
   h = /<meta charset[^>]*>/i.test(h) ? h.replace(/(<meta charset[^>]*>)/i, "$1" + head) : h.replace(/<head>/, "<head>" + head);
   return h.replace(/(<div id="lawpage"[^>]*>)<\/div>/, (m, a) => a + billBody(c, X, S) + "</div>");
@@ -625,9 +632,7 @@ async function billRoute(request, url) {
   }
   const b = X.bills.get(+m[1]);
   if (!b) return html(head ? null : billNotFound(I, url.origin), 404);
-  let slug = "";
-  try { slug = decodeURIComponent(m[2] || ""); } catch (e) { /* redirect */ }
-  if (slug !== billSlug(b.n) || m[1] !== String(b.i) || !m[3]) return moved(url.origin + billPath(b));
+  if (m[2] !== undefined || m[1] !== String(b.i) || !m[3]) return moved(url.origin + billPath(b));   // a name tail, a leading 0, no slash
   let shell, card;
   try {
     shell = await cached("billShell", () => getText(url.origin + "/law/bill"));
@@ -659,6 +664,8 @@ function renderLaw(shell, l, card, X, I) {
   if (l.p) ld.legislationDate = l.p;
   if (l.lp) ld.dateModified = l.lp;
   if (card && card.ws) ld.sameAs = card.ws;
+  const graph = { "@context": "https://schema.org", "@graph": [Object.assign({}, ld, { "@context": undefined }),
+    crumbs([[S.title, SITE + "/"], [S.navLaw, SITE + "/law/"], [S.subLaws, SITE + "/law/laws.html"], [l.n, canon]])] };
   let h = shell.replace(/<title>[\s\S]*?<\/title>\s*/, "")
     .replace(/<meta name="description"[^>]*>\s*/, "")
     .replace(/<meta name="robots"[^>]*>\s*/, "")
@@ -671,7 +678,7 @@ ${promoted(l, X, today) ? "" : '<meta name="robots" content="noindex">\n'}<link 
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${esc(canon)}">
-<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>
+<script type="application/ld+json">${JSON.stringify(graph).replace(/</g, "\\u003c")}</script>
 `;
   h = /<meta charset[^>]*>/i.test(h) ? h.replace(/(<meta charset[^>]*>)/i, "$1" + head) : h.replace(/<head>/, "<head>" + head);
   return h.replace(/(<div id="lawpage"[^>]*>)<\/div>/, (m, a) => a + lawBody(l, card, X, S, today) + "</div>");
@@ -738,9 +745,7 @@ async function lawRoute(request, url) {
 
   const l = X.byId.get(+m[1]);
   if (!l) return html(head ? null : lawNotFound(I, url.origin), 404);
-  let slug = "";
-  try { slug = decodeURIComponent(m[2] || ""); } catch (e) { /* bad escape → redirect */ }
-  if (slug !== lawSlug(l.n) || m[1] !== String(l.i) || !m[3]) return moved(url.origin + lawPath(l));
+  if (m[2] !== undefined || m[1] !== String(l.i) || !m[3]) return moved(url.origin + lawPath(l));   // a name tail, a leading 0, no slash
 
   let shell;
   try { shell = await cached("lawShell", () => getText(url.origin + "/law/page")); }
