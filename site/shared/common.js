@@ -278,6 +278,32 @@ document.addEventListener("focusin", e => {
 document.addEventListener("focusout", () => { if (tipByData) hideTip(); });
 addEventListener("scroll", () => { if (tipByData) hideTip(); }, { passive: true });
 
+/* ---------- a "?" button (.qbtn with data-tip-for="<element id>") shows that
+   element's content in the same ONE tooltip. Tap/click toggles it — phones
+   have no hover; scrolling, Escape or a click elsewhere closes it. ---------- */
+let tipBtn = null;
+function tipOff() {
+  if (!tipBtn) return;
+  tipBtn.setAttribute("aria-expanded", "false");
+  tipBtn = null;
+  hideTip();
+}
+document.addEventListener("click", e => {
+  const btn = e.target.closest ? e.target.closest(".qbtn[data-tip-for]") : null;
+  if (!btn) { tipOff(); return; }
+  e.preventDefault();
+  if (tipBtn === btn) { tipOff(); return; }
+  tipOff();
+  const src = document.getElementById(btn.dataset.tipFor);
+  if (!src) return;
+  const b = btn.getBoundingClientRect();
+  showTip({ clientX: b.left + b.width / 2, clientY: b.bottom }, src.innerHTML);
+  tipBtn = btn;
+  btn.setAttribute("aria-expanded", "true");
+});
+addEventListener("scroll", tipOff, { passive: true });
+document.addEventListener("keydown", e => { if (e.key === "Escape") tipOff(); });
+
 /* ---------- phones: the header shrinks to one row (the tabs) once the reader
    scrolls down; the site name and the language button come back at the top.
    Only the CSS below 640px acts on .compact — a wide screen never changes.

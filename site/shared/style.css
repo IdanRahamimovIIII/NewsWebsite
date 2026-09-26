@@ -106,6 +106,17 @@ nav.tabs a:not(.active):hover { color: var(--accent-ink); }
 #tip .r { display: flex; justify-content: space-between; gap: 16px; color: var(--ink-2); }
 #tip .r b { color: var(--ink-1); font-weight: 500; font-variant-numeric: tabular-nums; }
 #tip .r.tt { border-top: 1px solid var(--grid); margin-top: 5px; padding-top: 5px; }
+#tip p { margin: 0 0 6px; color: var(--ink-2); }
+#tip p:last-child { margin-bottom: 0; }
+#tip .upd { color: var(--ink-3); font-size: 12px; }
+/* the "?" that opens an explanation in the tooltip (common.js, data-tip-for).
+   It rides right after the title's last word, even on a wrapped title. */
+.qbtn { display: inline-block; vertical-align: 2px; margin-inline-start: 8px;
+  width: 22px; height: 22px; border-radius: 50%; padding: 0;
+  border: 1px solid var(--border); background: var(--page); color: var(--ink-2);
+  font: 600 13px/1 system-ui, sans-serif; cursor: pointer; }
+.qbtn:hover, .qbtn[aria-expanded="true"] { border-color: var(--accent-ink); color: var(--accent-ink); }
+.qbtn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 
 /* ---------- cards & text ---------- */
 .card {

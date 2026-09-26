@@ -44,7 +44,7 @@
 
   <!-- change first: what is about to start leads the page (Mercy) -->
   <div class="card">
-    <h2 class="hh"><span data-i18n="soonTitle">עומדים להיכנס לתוקף</span><button class="qbtn" type="button" aria-expanded="false" aria-controls="soonInfo" aria-label="הסבר" onclick="toggleInfo('soon')">?</button></h2>
+    <h2 class="hh"><span data-i18n="soonTitle">עומדים להיכנס לתוקף</span><button class="qbtn" type="button" aria-expanded="false" data-tip-for="soonInfo" aria-label="הסבר">?</button></h2>
     <div class="info" id="soonInfo" hidden>
       <p data-i18n="soonHint">חוקים שהכנסת העבירה, אבל עוד לא התחילו לחול.</p>
       <p class="upd"></p>
@@ -53,7 +53,7 @@
   </div>
 
   <div class="card">
-    <h2 class="hh"><span data-i18n="startedTitle">חוקים חדשים</span><button class="qbtn" type="button" aria-expanded="false" aria-controls="startedInfo" aria-label="הסבר" onclick="toggleInfo('started')">?</button></h2>
+    <h2 class="hh"><span data-i18n="startedTitle">חוקים חדשים</span><button class="qbtn" type="button" aria-expanded="false" data-tip-for="startedInfo" aria-label="הסבר">?</button></h2>
     <div class="info" id="startedInfo" hidden>
       <p data-i18n="startedHint">חוקים שהתחילו לחול בשלושת החודשים האחרונים — לפי תאריך תחילת התוקף שרשמה הכנסת (ובהיעדרו: תאריך הפרסום ברשומות). ללא חוקי תקציב.</p>
       <p class="upd"></p>
@@ -63,18 +63,18 @@
 
   <!-- the court: voided, partly voided, frozen, deferred -->
   <div class="card">
-    <h2 class="hh"><span data-i18n="courtTitle">חוקים שבית המשפט העליון ביטל או הקפיא</span><button class="qbtn" type="button" aria-expanded="false" aria-controls="courtInfo" aria-label="הסבר" onclick="toggleInfo('court')">?</button></h2>
+    <h2 class="hh"><span data-i18n="courtTitle">חוקים שבית המשפט העליון ביטל או הקפיא</span><button class="qbtn" type="button" aria-expanded="false" data-tip-for="courtInfo" aria-label="הסבר">?</button></h2>
     <div class="info" id="courtInfo" hidden>
       <p data-i18n="courtHint">בית המשפט לא מוחק חוק מספר החוקים: הוא מכריז שהחוק, או חלק ממנו, בטל. לכן ברשומות הכנסת רבים מהחוקים האלה עדיין מופיעים כ״תקפים״.</p>
       <p><span data-i18n="courtSrc">הרשימה נאספת ידנית (מוויקיטקסט ומוויקיפדיה), והתאריך והקישור של כל פסק דין נלקחים מאתר בית המשפט. היא עשויה להיות חסרה.</span> <span class="rev"></span></p>
-      <p><span data-i18n="suggest">מכירים פסק דין שחסר כאן?</span> <a class="suggest" href="mailto:contact@ourmoneyil.com" data-i18n="suggestLink">כתבו לנו</a></p>
       <p class="upd"></p>
     </div>
     <div id="court"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
+    <p class="srcnote"><span data-i18n="suggest">מכירים פסק דין שחסר כאן?</span> <a class="suggest" href="mailto:contact@ourmoneyil.com" data-i18n="suggestLink">כתבו לנו</a></p>
   </div>
 
   <div class="card">
-    <h2 class="hh"><span data-i18n="tempTitle">חוקים זמניים</span><button class="qbtn" type="button" aria-expanded="false" aria-controls="tempInfo" aria-label="הסבר" onclick="toggleInfo('temp')">?</button></h2>
+    <h2 class="hh"><span data-i18n="tempTitle">חוקים זמניים</span><button class="qbtn" type="button" aria-expanded="false" data-tip-for="tempInfo" aria-label="הסבר">?</button></h2>
     <div class="info" id="tempInfo" hidden>
       <p data-i18n="tempHint">הוראות שעה וחוקים עם תאריך סיום שחלים היום — מהקרוב לפקוע ועד הרחוק. ״פוקע בקרוב״ = תאריך הסיום בשלושת החודשים הקרובים. ללא חוקי תקציב.</p>
       <p class="upd"></p>
@@ -84,7 +84,7 @@
 
   <!-- bills a committee is working on -->
   <div class="card">
-    <h2 class="hh"><span data-i18n="billsTitle">הצעות חוק בדיון בוועדות</span><button class="qbtn" type="button" aria-expanded="false" aria-controls="billsInfo" aria-label="הסבר" onclick="toggleInfo('bills')">?</button></h2>
+    <h2 class="hh"><span data-i18n="billsTitle">הצעות חוק בדיון בוועדות</span><button class="qbtn" type="button" aria-expanded="false" data-tip-for="billsInfo" aria-label="הסבר">?</button></h2>
     <div class="info" id="billsInfo" hidden>
       <p data-i18n="billsHint">הצעות שוועדה של הכנסת דנה בהן בשלושת החודשים האחרונים ועוד לא הוכרעו. הצעות זהות שהוגשו בנפרד מוצגות בשורה אחת.</p>
       <p class="upd"></p>
