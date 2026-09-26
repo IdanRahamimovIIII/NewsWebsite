@@ -45,6 +45,16 @@ def main(argv):
         sys.exit("usage: deploy_worker.py pages|relay [--check]")
     name, fname = WORKERS[argv[0]]
     code = (HERE / fname).read_text(encoding="utf-8")
+    # Cloudflare runs exactly what GitHub's main holds (Mercy): refuse a file
+    # with uncommitted changes or one that isn't pushed to origin/main
+    import subprocess
+    git = lambda *a: subprocess.run(["git", *a], cwd=HERE.parent, capture_output=True, text=True, encoding="utf-8")
+    git("fetch", "-q", "origin", "main")
+    if git("status", "--porcelain", "worker/" + fname).stdout.strip():
+        sys.exit("worker/%s has uncommitted changes — commit and push first" % fname)
+    on_main = git("show", "origin/main:worker/" + fname)
+    if on_main.returncode or not same(on_main.stdout, code):
+        sys.exit("worker/%s differs from GitHub (origin/main) — push first; Cloudflare must run what GitHub holds" % fname)
     cred = cf_kv.credentials(str(HERE.parent / "pipeline" / "d1-config.json"))
     if not cred:
         sys.exit("no Cloudflare credentials (pipeline\\d1-config.json)")
