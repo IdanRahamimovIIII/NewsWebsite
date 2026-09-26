@@ -21,7 +21,8 @@ window.PAGE_STR = {
     expireTitle: "עומדים לפקוע",
     expireHint: "חוקים זמניים שתאריך הסיום שלהם בשלושת החודשים הקרובים.",
     tempTitle: "חוקים זמניים",
-    tempHint: "הוראות שעה וחוקים עם תאריך סיום שחלים היום — מהקרוב לפקוע ועד הרחוק. ללא חוקי תקציב.",
+    tempHint: "הוראות שעה וחוקים עם תאריך סיום שחלים היום — מהקרוב לפקוע ועד הרחוק. ״פוקע בקרוב״ = תאריך הסיום בשלושת החודשים הקרובים. ללא חוקי תקציב.",
+    expiresSoon: "פוקע בקרוב",
     billsTitle: "הצעות חוק בדיון בוועדות",
     billsHint: "הצעות שוועדה של הכנסת דנה בהן בשלושת החודשים האחרונים ועוד לא הוכרעו. הצעות זהות שהוגשו בנפרד מוצגות בשורה אחת.",
 
@@ -91,7 +92,8 @@ window.PAGE_STR = {
     expireTitle: "About to expire",
     expireHint: "Temporary laws whose end date falls in the next three months.",
     tempTitle: "Temporary laws",
-    tempHint: "Temporary provisions and laws with an end date that apply today — soonest to expire first. Budget laws left out.",
+    tempHint: "Temporary provisions and laws with an end date that apply today — soonest to expire first. \"Expires soon\" = the end date falls in the next three months. Budget laws left out.",
+    expiresSoon: "Expires soon",
     billsTitle: "Bills in committee",
     billsHint: "Bills a Knesset committee discussed in the last three months that aren't decided yet. Identical bills filed separately share one row.",
 

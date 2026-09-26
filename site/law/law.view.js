@@ -61,9 +61,9 @@ function courtItem(c) {
   </li>`;
 }
 
-function lawItem(dateWords) {
+function lawItem(dateWords, tag) {
   return l => `<li>
-    <div class="ttl"><a href="${lawLink(l)}">${esc(lawName(l))}</a></div>
+    <div class="ttl">${tag && tag(l) ? `<span class="lbadge">${esc(tag(l))}</span> ` : ""}<a href="${lawLink(l)}">${esc(lawName(l))}</a></div>
     <div class="meta"><span>${esc(dateWords(l))}</span>${(l.t || []).slice(0, 3).map(id => `<span>${esc(LAW.topics[id] || "")}</span>`).join("")}</div>
   </li>`;
 }
@@ -106,13 +106,11 @@ function render() {
     .sort((a, b) => (b.s || b.p).localeCompare(a.s || a.p));
   block("started", started, lawItem(l => l.s ? t("startedDate") + fmtDate(l.s) : t("publishedDate") + fmtDate(l.p)));
 
-  const expiring = laws.filter(l => lawState(l) === "in" && l.e && l.e >= TODAY && l.e <= in90)
-    .sort((a, b) => a.e.localeCompare(b.e));
-  block("expiring", expiring, lawItem(l => t("untilDate") + fmtDate(l.e)));
-
   const temp = laws.filter(l => lawState(l) === "in" && !isBudget(l) && isTemp(l) && !(l.e && l.e < TODAY))
     .sort((a, b) => (a.e || "9999").localeCompare(b.e || "9999"));
-  block("temp", temp, lawItem(l => l.e ? t("untilDate") + fmtDate(l.e) : t("noDate")));
+  // "about to expire" is not a block of its own: it is the head of this list (Mercy)
+  block("temp", temp, lawItem(l => l.e ? t("untilDate") + fmtDate(l.e) : t("noDate"),
+                              l => l.e && l.e <= in90 ? t("expiresSoon") : ""));
 
   block("bills", d.bills || [], billItem, "noneBills");
   fillInfo();
@@ -126,7 +124,7 @@ window.onLangChange = render;
     render();
   } catch (e) {
     debug(e.message);
-    for (const id of ["court", "soon", "started", "expiring", "temp", "bills"]) {
+    for (const id of ["court", "soon", "started", "temp", "bills"]) {
       const el = document.getElementById(id);
       if (el) el.innerHTML = `<p class="error">${esc(friendly(e))}</p>`;
     }
