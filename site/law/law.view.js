@@ -51,45 +51,34 @@ function fillInfo() {
   document.querySelectorAll(".suggest").forEach(a => { a.href = mailSuggest(t("suggestSubject")); });
 }
 
-/* ---------- what an opened law shows ---------- */
-function rulingLine(c) {
-  return `<a class="doclink" href="${esc(c.u)}" target="_blank" rel="noopener">${esc(c.c)}</a> · ${esc(fmtDate(c.d))}` +
-    (c.pn ? " · " + esc(c.pn + t("judges")) : "") + (c.ds ? " · " + esc(t("dissent") + c.ds) : "");
-}
-function lawDetails(l) {
-  const out = [`<p>${esc(t("knessetSays") + (l.st || ""))}</p>`];
-  if (l.s) out.push(`<p>${esc((lawState(l) === "pending" ? t("startsDate") : t("fromDate")) + fmtDate(l.s))}</p>`);
-  if (l.e) out.push(`<p>${esc((l.e < TODAY ? t("endedDate") : t("untilDate")) + fmtDate(l.e))}</p>`);
-  out.push(`<p>${esc(l.a === 0 ? t("neverAmended") : l.a === 1 ? t("amendedOnce") : fill(t("amendedN"), { n: fmtN(l.a) }))}</p>`);
-  const topics = (l.t || []).map(id => LAW.topics[id]).filter(Boolean);
-  if (topics.length) out.push(`<p>${esc(topics.join(" · "))}</p>`);
-  for (const c of courtOf(l)) out.push(`<p><b>${esc(t(KIND_KEY[c.k]))}</b> — ${esc(c.w)} · ${rulingLine(c)}</p>`);
-  out.push(`<p><a class="golink" href="${lawLink(l)}">${esc(t("detailsLink"))} ←</a></p>`);
-  return out.join("");
-}
-
-/* ---------- the rows ---------- */
-const lawRow = line => (l, id) => item(id + ":" + l.i, lawName(l), line(l), () => lawDetails(l));
+/* ---------- what an opened row shows: "label: value" (law.data.js kv) ---------- */
+const goLaw = l => `<p><a class="golink" href="${lawLink(l)}">${esc(t("detailsLink"))} ←</a></p>`;
+const lawRow = line => (l, id) => item(id + ":" + l.i, lawName(l), line(l), () => lawKv(l) + goLaw(l));
 
 function courtRow(c, id) {
   const l = LAW.byId.get(c.l);
   return item(id + ":" + c.l + ":" + c.d, lawName(l), t(KIND_KEY[c.k] || "kPartial") + " · " + c.w, () =>
-    `<p>${esc(t("ruling"))}: ${rulingLine(c)}</p>
-     <p>${esc(t("knessetSays") + (l.st || ""))}</p>
-     <p><a class="golink" href="${lawLink(l)}">${esc(t("detailsLink"))} ←</a></p>`);
+    kv("kvType", esc(t(KIND_KEY[c.k] || "kPartial"))) +
+    kv("kvWhat", esc(c.w)) +
+    kv("kvRuling", rulingLink(c)) +
+    kv("kvDate", esc(fmtDate(c.d))) +
+    kv("kvPanel", c.pn ? esc(c.pn + t("judges")) + (c.ds ? " · " + esc(t("dissent") + c.ds) : "") : "") +
+    (knessetDiffers(l) ? kv("kvKnesset", esc(l.st)) : "") +
+    goLaw(l));
 }
 
 function billRow(b, id) {
   const ty = /ממשלת/.test(b.ty) ? "tyGov" : /ועד/.test(b.ty) ? "tyCommittee" : "tyPrivate";
-  return item(id + ":" + b.i, b.n, t(ty) + " · " + b.st, () => {
-    const out = [`<p>${esc(t(b.am ? "amends" : "newLaw"))}</p>`,
-                 `<p>${esc(t("lastDiscussed") + fmtDate(b.d))}</p>`];
-    if (b.cm) out.push(`<p>${esc(t("committee") + b.cm)}</p>`);
-    if ((b.by || []).length) out.push(`<p>${esc(t("by") + b.by.join(", "))}${b.nb > b.by.length ? esc(fill(t("moreBy"), { n: b.nb - b.by.length })) : ""}</p>`);
-    if ((b.twins || []).length) out.push(`<p>${esc(fill(t("twins"), { n: b.twins.length }))}</p>`);
-    if ((b.pieces || []).length) out.push(`<p>${esc(fill(t("pieces"), { n: b.pieces.length }))}</p><ul>${b.pieces.map(p => `<li>${esc(p.n)} · ${esc(p.st)}</li>`).join("")}</ul>`);
-    return out.join("");
-  });
+  return item(id + ":" + b.i, b.n, t(ty) + " · " + b.st, () =>
+    kv("kvType", esc(t(ty))) +
+    kv("kvStage", esc(b.st)) +
+    kv("kvLast", b.d ? esc(fmtDate(b.d)) : "") +
+    kv("kvCommittee", esc(b.cm || "")) +
+    kv("kvBy", (b.by || []).length ? esc(b.by.join(", ")) + (b.nb > b.by.length ? esc(fill(t("moreBy"), { n: b.nb - b.by.length })) : "") : "") +
+    kv("kvAffects", esc(t(b.am ? "amends" : "newLaw"))) +
+    kv("kvTwins", (b.twins || []).length ? esc(fmtN(b.twins.length)) : "") +
+    ((b.pieces || []).length ? kv("kvPieces", esc(fmtN(b.pieces.length))) +
+      `<ul>${b.pieces.map(p => `<li>${esc(p.n)} · ${esc(p.st)}</li>`).join("")}</ul>` : ""));
 }
 
 /* ---------- the blocks ---------- */
@@ -119,7 +108,7 @@ function render() {
   const temp = laws.filter(l => lawState(l) === "in" && !isBudget(l) && isTemp(l) && !(l.e && l.e < TODAY))
     .sort((a, b) => (a.e || "9999").localeCompare(b.e || "9999"));
   block("temp", temp, (l, id) => item(id + ":" + l.i, lawName(l),
-    l.e ? t("untilDate") + fmtDate(l.e) : t("noDate"), () => lawDetails(l),
+    l.e ? t("untilDate") + fmtDate(l.e) : t("noDate"), () => lawKv(l) + goLaw(l),
     l.e && l.e <= in90 ? t("expiresSoon") : ""));
 
   block("bills", d.bills || [], billRow, "noneBills");

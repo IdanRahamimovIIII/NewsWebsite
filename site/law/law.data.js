@@ -79,6 +79,30 @@ function nameHtml(n) {
   return `<span class="core">${esc(core)}</span>` + (tail ? ` <span class="tail">${esc(tail)}</span>` : "");
 }
 
+/* ---------- an opened row: "label: value" lines, the label bold (Mercy) ---------- */
+const kv = (key, valueHtml) => valueHtml ? `<p class="kv"><b>${esc(t(key))}:</b> ${valueHtml}</p>` : "";
+
+/* the Knesset's own word, shown only where it contradicts ours: a law the
+   court voided in full still reads "תקף" there (a later start date is
+   already said by "תחילת תוקף") */
+const knessetDiffers = l => shownState(l) === "voided";
+function rulingLink(c) {
+  return `<a class="doclink" href="${esc(c.u)}" target="_blank" rel="noopener">${esc(c.c)}</a>`;
+}
+/* a law, opened: status · (the Knesset's word) · from · until · topics · court · replaced by */
+function lawKv(l) {
+  const topics = (l.t || []).map(id => LAW.topics[id]).filter(Boolean);
+  const rep = l.r && LAW.byId.get(l.r);
+  return kv("kvStatus", esc(t(STATE_KEY[shownState(l)]))) +
+    (knessetDiffers(l) ? kv("kvKnesset", esc(l.st)) : "") +
+    kv("kvStart", l.s ? esc(fmtDate(l.s)) : "") +
+    kv("kvEnd", l.e ? esc(fmtDate(l.e)) : "") +
+    kv("kvTopics", esc(topics.join(" · "))) +
+    courtOf(l).map(c => kv("kvCourt", esc(t(KIND_KEY[c.k])) + (c.k === "void" ? "" : ", " + esc(c.w)) +   // "voided in full" needs no "what"
+      ` (${rulingLink(c)} · ${esc(fmtDate(c.d))})`)).join("") +
+    (rep ? kv("kvReplaced", `<a class="golink" href="${lawLink(rep)}">${esc(lawName(rep))}</a>`) : "");
+}
+
 /* a law name for display: the register's full name */
 const lawName = l => l.n || "";
 

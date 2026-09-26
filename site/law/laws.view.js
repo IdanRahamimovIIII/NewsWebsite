@@ -59,29 +59,8 @@ function rowHtml(l) {
 }
 
 function detailHtml(l) {
-  const st = shownState(l);
-  const status = [`<p>${esc(t(STATE_KEY[st]))} · ${esc(t("knessetSays") + (l.st || ""))}</p>`];
-  if (l.s) status.push(`<p>${esc((st === "pending" ? t("startsDate") : t("fromDate")) + fmtDate(l.s))}</p>`);
-  if (l.e) status.push(`<p>${esc((l.e < TODAY ? t("endedDate") : t("untilDate")) + fmtDate(l.e))}</p>`);
-  const rep = l.r && LAW.byId.get(l.r);
-  if (rep) status.push(`<p>${esc(t("replacedBy"))}<a class="golink" href="${lawLink(rep)}">${esc(lawName(rep))}</a></p>`);
-
-  const hist = [];
-  if (l.p) hist.push(`<p>${esc(t("firstPub") + fmtDate(l.p))}</p>`);
-  if (l.lp && l.lp !== l.p) hist.push(`<p>${esc(t("lastPub") + fmtDate(l.lp))}</p>`);
-  hist.push(`<p>${esc(l.a ? fill(t("amendDetail"), { a: fmtN(l.a), d: fmtN(l.ad), i: fmtN(l.a - l.ad) }) : t("neverAmended"))}</p>`);
-
-  const court = courtOf(l);
-  const courtHtml = court.length ? `<h3>${esc(t("dCourt"))}</h3><ul>${court.map(c =>
-    `<li><b>${esc(t(KIND_KEY[c.k]))}</b> — ${esc(c.w)} · <a class="doclink" href="${esc(c.u)}" target="_blank" rel="noopener">${esc(c.c)}</a> · ${esc(fmtDate(c.d))}${c.pn ? " · " + esc(c.pn + t("judges")) : ""}${c.ds ? " · " + esc(t("dissent") + c.ds) : ""}</li>`).join("")}</ul>` : "";
-
-  const topics = (l.t || []).map(id => LAW.topics[id]).filter(Boolean);
-  return `<h3>${esc(t("dStatus"))}</h3>${status.join("")}
-    <h3>${esc(t("dHistory"))}</h3>${hist.join("")}
-    ${courtHtml}
-    ${topics.length ? `<h3>${esc(t("dTopics"))}</h3><p>${esc(topics.join(" · "))}</p>` : ""}
-    <p><a class="golink" href="${lawLink(l)}">${esc(t("detailsLink"))} ←</a></p>
-    <h3>${esc(t("dSources"))}</h3>
+  return lawKv(l) +
+    `<p><a class="golink" href="${lawLink(l)}">${esc(t("detailsLink"))} ←</a></p>
     <p class="srcs"><a class="doclink" href="${wikisourceUrl(l)}" target="_blank" rel="noopener">${esc(t("srcText"))}</a>
       <a class="doclink" href="${knessetRecordUrl(l)}" target="_blank" rel="noopener">${esc(t("srcKnesset"))}</a></p>
     <p class="notadvice">${esc(t("notAdvice"))}</p>`;
