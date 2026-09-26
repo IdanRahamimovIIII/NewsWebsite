@@ -347,11 +347,15 @@ function renderAdvPick() {
 }
 
 /* ---------- init ---------- */
-const PAGE_VER = "22.08 · פאנל מסודר"; // bumped on every update — if the footer shows an older stamp, you're on a cached/old copy
-document.getElementById("pagever").textContent = "גרסה " + PAGE_VER;
+// the page version is the site-wide "גרסה" line in the footer (stamped by the bake)
 applyLang();
 // autocomplete, fed by our own directories
 attachAC("advmk", async q => matchNames(q, ((await ensureCmb()).MKS || []).map(m => m.Name)), doSearch);
 attachAC("advinit", async q => matchNames(q, Object.values(await getPersons())), doSearch);
 attachAC("binit", async q => matchNames(q, Object.values(await getPersons())), runBSearch);
 loadVotes();
+// a link can open a search: /votes/?q=<law name> (a bill's page links here for its plenum votes)
+{
+  const q0 = new URLSearchParams(location.search).get("q");
+  if (q0) { document.getElementById("q").value = q0; doSearch(); }
+}

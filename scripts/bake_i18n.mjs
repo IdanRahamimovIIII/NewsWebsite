@@ -45,6 +45,7 @@ const PAGES = [
   { html: "law/index.html",         strings: "law/law.strings.js" },
   { html: "law/laws.html",          strings: ["law/law.strings.js", "law/laws.strings.js"] },
   { html: "law/page.html",          strings: ["law/law.strings.js", "law/page.strings.js"], json: "law/law.i18n.json" },
+  { html: "law/bill.html",          strings: ["law/law.strings.js", "law/page.strings.js"] },
 ];
 
 /* ---------- load COMMON_STR from shared/common.js ---------- */

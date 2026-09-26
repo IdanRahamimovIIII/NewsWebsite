@@ -53,6 +53,8 @@ function fillInfo() {
 
 /* ---------- what an opened row shows: "label: value" (law.data.js kv) ---------- */
 const goLaw = l => `<p><a class="golink" href="${lawLink(l)}">${esc(t("detailsLink"))} ←</a></p>`;
+const hasPage = id => (LAW.data.billPages || []).some(b => b.i === id);
+const goBill = (b, key) => hasPage(b.i) ? `<p><a class="golink" href="${billLink(b)}">${esc(t(key))} ←</a></p>` : "";
 const lawRow = line => (l, id) => item(id + ":" + l.i, lawName(l), line(l), () =>
   `<div class="kv"><b>${esc(t("bNewLaw"))}</b></div>` + lawKv(l, { status: false }) + goLaw(l));   // "חוק חדש", bold, no "סוג:" (Mercy)
 
@@ -94,7 +96,7 @@ function amendRows(acts, future) {
   for (const a of multi) {
     rows.push({ sort: actStart(a), html: key => item(key + ":A" + a.i, a.n, actLine(a, future), () =>
       kv("bAmendOf", affectsHtml(a.laws.map(id => ({ i: id, n: lawName(LAW.byId.get(id) || {}) })), true)) +
-      (a.c && a.c !== a.d ? kv("bPublished", esc(fmtDate(a.d))) : "")) });
+      (a.c && a.c !== a.d ? kv("bPublished", esc(fmtDate(a.d))) : "") + goBill(a, "detailsAmend")) });
   }
   return rows;
 }
@@ -127,7 +129,7 @@ function billRow(b, id) {
     affects: affectsHtml(b.law || (b.am ? lawForBillName(b.n) : null), b.am),   // the official link, else the name's exact match
   }) + ((b.twins || []).length ? kv("kvTwins", esc(fmtN(b.twins.length))) : "") +
     ((b.pieces || []).length ? kv("kvPieces", esc(fmtN(b.pieces.length))) +
-      `<ul>${b.pieces.map(p => `<li>${esc(p.n)} · ${esc(p.st)}</li>`).join("")}</ul>` : ""));
+      `<ul>${b.pieces.map(p => `<li>${esc(p.n)} · ${esc(p.st)}</li>`).join("")}</ul>` : "") + goBill(b, "detailsBill"));
 }
 
 /* ---------- the blocks ---------- */

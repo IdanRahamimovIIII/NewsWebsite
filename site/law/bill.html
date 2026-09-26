@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- the law page SHELL: the pages worker (worker/pages.js) fills #lawpage with
-     one law's facts and serves it at /law/<IsraelLawID>-<name>/. Opened on
-     its own it is empty — hence noindex (the worker sets it per law). -->
-<title>הכסף שלנו — חוק | Our Money — a law</title>
-<meta name="description" content="חוק במדינת ישראל: מצבו היום, תיקונים, הצעות חוק שישנו אותו ופסיקת בית המשפט העליון.">
+<!-- the bill page SHELL: the pages worker (worker/pages.js) fills #lawpage with
+     one bill's facts and serves it at /bill/<BillID>-<name>/. Opened on its
+     own it is empty — hence noindex (the worker sets it per bill). -->
+<title>הכסף שלנו — הצעת חוק | Our Money — a bill</title>
+<meta name="description" content="הצעת חוק או תיקון לחוק: מי הגיש, מה היא משנה, מסלול החקיקה והמסמכים הרשמיים.">
 <meta name="robots" content="noindex">
 <link rel="alternate" type="text/plain" href="https://ourmoneyil.com/llms.txt" title="Guide for AI systems (llms.txt)">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="הכסף שלנו — Our Money">
-<meta property="og:title" content="הכסף שלנו — חוק | Our Money — a law">
+<meta property="og:title" content="הכסף שלנו — הצעת חוק | Our Money — a bill">
 <meta property="og:image" content="https://ourmoneyil.com/shared/share.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -28,12 +28,12 @@
       <button class="langbtn" id="langbtn" onclick="toggleLang()">English</button>
     </div></header>
 
-<!-- the law section has four pages; a law's page belongs to "חוקים" -->
+<!-- the law section has four pages; a bill's page belongs to "הצעות חוק והצבעות" -->
 <nav class="subnav">
   <div class="subnav-in">
     <a href="../law/" data-i18n="subLawHome">ראשי</a>
-    <a href="../law/laws.html" class="active" data-i18n="subLaws">חוקים</a>
-    <a href="../votes/" data-i18n="subBills">הצעות חוק והצבעות</a>
+    <a href="../law/laws.html" data-i18n="subLaws">חוקים</a>
+    <a href="../votes/" class="active" data-i18n="subBills">הצעות חוק והצבעות</a>
     <a href="../court/" data-i18n="subRulings">פסיקה</a>
   </div>
 </nav>

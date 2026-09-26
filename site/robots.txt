@@ -53,3 +53,4 @@ Disallow: /votes/selftest.html
 Sitemap: https://ourmoneyil.com/sitemap.xml
 Sitemap: https://ourmoneyil.com/mk/sitemap.xml
 Sitemap: https://ourmoneyil.com/law/sitemap.xml
+Sitemap: https://ourmoneyil.com/bill/sitemap.xml

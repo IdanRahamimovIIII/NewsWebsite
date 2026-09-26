@@ -3,12 +3,14 @@
  * Rules and setup: worker\CLAUDE.md ("our-money-pages"). Mercy pastes this
  * file into the dashboard → Deploy. NO bindings: it reads only public URLs.
  *
- * Routes: ourmoneyil.com/mk/* and ourmoneyil.com/law/*  (a route runs BEFORE
+ * Routes: ourmoneyil.com/mk/*, /law/*, /bill/*  (a route runs BEFORE
  * the site, which stays as is)
  *   /law/<IsraelLawID>-<name>/  one law's page, facts baked in (Hebrew only)
  *   /law/<IsraelLawID>[-…][/]   301 → the right address
  *   /law/sitemap.xml            the promoted law pages · /law/index.txt every law (for AI)
  *   /law/ … anything else       the site's own section pages, untouched
+ *   /bill/<BillID>-<name>/      a bill's page (a multi-law amendment, or a bill in committee)
+ *   /bill/sitemap.xml · /bill/index.txt
  *   /mk/<MkId>-<hebrew-name>/   the MK page in Hebrew, facts baked into the HTML
  *   /mk/<MkId>-<english-name>/  the same page in English
  *   /mk/<MkId>[-anything][/]    301 → the right address (wrong/missing slug, no slash)
@@ -385,6 +387,10 @@ const lawTitle = n => String(n || "").replace(/,?\s*(התש|תש)[\u0590-\u05ff"
   .replace(/,\s*\d{4}\s*$/, "").trim();
 const lawSlug = n => lawTitle(n).replace(/[^\p{L}\p{N}\s-]/gu, "").trim().replace(/[\s-]+/g, "-");
 const lawPath = l => `/law/${l.i}-${encodeURIComponent(lawSlug(l.n))}/`;
+// a bill's name is long: the same rule, cut at a word boundary (≤80) — the id decides
+const billSlug = n => { const s = lawSlug(n); return s.length <= 80 ? s : s.slice(0, 80).replace(/-[^-]*$/, ""); };
+const billPath = b => `/bill/${b.i}-${encodeURIComponent(billSlug(b.n))}/`;
+const BILLCARD_URL = "https://api.ourmoneyil.com/data/billcard/";
 
 // the Knesset's validity words → plain groups (law.data.js lawState, same rules)
 function lawState(l, today) {
@@ -403,7 +409,8 @@ const LEGAL_FORCE = { in: "InForce", pending: "NotInForce", repealed: "NotInForc
 function lawIndex(snap) {
   const d = snap.data, byId = new Map(d.laws.map(l => [l.i, l])), court = new Map();
   for (const c of d.court || []) (court.get(c.l) || court.set(c.l, []).get(c.l)).push(c);
-  return { d, byId, court, t: snap.t };
+  const bills = new Map((d.billPages || []).map(b => [b.i, b]));   // the bills that have a page
+  return { d, byId, court, bills, t: snap.t };
 }
 function shownState(l, X, today) {
   const s = lawState(l, today);
@@ -470,7 +477,7 @@ function lawBody(l, card, X, S, today) {
   // what is about to change: bills pending that amend it
   if (card && card.pend && card.pend.length) {
     out.push(`<div class="card">${h2("secPending")}<p class="hint" data-i18n="pendHint">${esc(S.pendHint)}</p><ul class="hl plain">${card.pend.map(b =>
-      `<li><div class="nm">${esc(b.n)}</div><div class="line">${esc([b.ty, b.step ? S.step + b.step : "", b.d ? S.lastSession + fmtD(b.d) : "", b.no].filter(Boolean).join(" · "))}</div></li>`).join("")}</ul></div>`);
+      `<li><div class="nm">${X.bills.has(b.i) ? link(billPath(X.bills.get(b.i)), b.n) : esc(b.n)}</div><div class="line">${esc([b.ty, b.step ? S.step + b.step : "", b.d ? S.lastSession + fmtD(b.d) : "", b.no].filter(Boolean).join(" · "))}</div></li>`).join("")}</ul></div>`);
   }
 
   // the court
@@ -481,7 +488,7 @@ function lawBody(l, card, X, S, today) {
 
   // amendments: the latest ten, the rest one click away (all in the HTML — AI reads it)
   if (card) {
-    const row = a => `<li><div class="nm">${esc(a.n)}</div><div class="line">${esc([fmtD(a.d), a.ty === "ישיר" ? S.direct : a.ty ? S.indirect : ""].filter(Boolean).join(" · "))}${a.pdf ? " · " + link(a.pdf, S.pdf, true) : ""}</div>${a.sum ? `<details class="sum"><summary>${esc(S.officialSum)}</summary><p>${esc(a.sum)}</p></details>` : ""}</li>`;
+    const row = a => `<li><div class="nm">${a.i && X.bills.has(a.i) ? link(billPath(X.bills.get(a.i)), a.n) : esc(a.n)}</div><div class="line">${esc([fmtD(a.d), a.ty === "ישיר" ? S.direct : a.ty ? S.indirect : ""].filter(Boolean).join(" · "))}${a.pdf ? " · " + link(a.pdf, S.pdf, true) : ""}</div>${a.sum ? `<details class="sum"><summary>${esc(S.officialSum)}</summary><p>${esc(a.sum)}</p></details>` : ""}</li>`;
     const am = card.am || [], head = am.slice(0, 10), rest = am.slice(10);
     const orig = card.orig ? `<p class="facts">${esc(S.origLaw)}${esc(fmtD(card.orig.d))}${card.orig.pdf ? " · " + link(card.orig.pdf, S.pdf, true) : ""}</p>` : "";
     const rep = (card.repBy || []).length ? `<p class="facts">${esc(S.repealedIn)}${card.repBy.map(r => esc(r.n) + (r.pdf ? " · " + link(r.pdf, S.pdf, true) : "")).join(" · ")}</p>` : "";
@@ -506,6 +513,139 @@ function lawBody(l, card, X, S, today) {
     ${card && card.kz ? link(card.kz, S.kolZchut, true) : ""}</p>
     <p class="notadvice" data-i18n="notAdvice">${esc(S.notAdvice)}</p></div>`);
   return out.join("\n");
+}
+
+/* ---- /bill/<BillID>-<name>/ — the site-wide bill order (shared/bills.js
+   billPanelHtml; this is its server-side mirror for crawlers — change both;
+   wtest_lawpages.mjs checks the order): proposers → type · stage · committee
+   · dates · laws it changes → what it does → plenum votes → journey → documents ---- */
+function billBody(c, X, S) {
+  const kvh = (label, html) => html ? `<div class="kv"><b>${esc(label)}:</b> ${html}</div>` : "";
+  const link = (href, text, ext) => `<a class="doclink" href="${esc(href)}"${ext ? ' target="_blank" rel="noopener"' : ""}>${esc(text)}</a>`;
+  const lawA = r => { const o = r && r.i && X.byId.get(+r.i); return o ? link(lawPath(o), o.n) : esc((r && r.n) || ""); };
+  const fold = (items, countWord) => items.length <= 4 ? items.join(" · ")
+    : `<details class="inline"><summary>${esc(countWord)}</summary>${items.join(" · ")}</details>`;
+  const isGov = /ממשלת/.test(c.ty || "");
+  const typeWord = !c.ty ? "" : S[/ממשלת/.test(c.ty) ? "bTyGov" : /ועד/.test(c.ty) ? "bTyCommittee" : "bTyPrivate"];
+  const by = (c.by || []).length ? fold(c.by.map(esc), fill(S.bCount, { n: c.by.length }) + "") : isGov ? esc(S.bGov) : "";
+  const laws = (c.laws || []).filter(x => x && x.i);
+  const first = (c.docs || []).find(d => /לקריאה הראשונה/.test(d.g)) || (c.docs || [])[0];
+  const core = String(c.n || "").split(/[([]/)[0].replace(/,?\s*(התש|תש)\S*\s*[–-]?\s*\d{4}\s*$/, "").replace(/^הצעת\s+/, "").trim();
+  const out = [];
+  out.push(`<div class="card lawhead">
+    <p class="crumbs"><a href="/votes/" data-i18n="bpToBills">${esc(S.bpToBills)}</a></p>
+    <h1 class="lawname">${esc(c.n)}</h1>
+    <p class="chips"><span class="lbadge">${esc(c.k === "amend" ? S.bpKindAmend : S.bpKindBill)}</span>${c.st ? ` <span class="lbadge soft">${esc(c.st)}</span>` : ""}</p>
+  </div>`);
+  out.push(`<div class="card">` +
+    kvh(S.bBy, by) + kvh(S.bType, esc(typeWord)) + kvh(S.bStage, esc(c.st || "")) + kvh(S.bCommittee, esc(c.cm || "")) +
+    kvh(S.bpFirst, esc(c.first || "")) + kvh(S.bpPub, esc(c.pub || "")) + kvh(S.bpStart, c.c ? esc(fmtD(c.c)) : "") +
+    kvh(c.k === "amend" ? S.bAmendOf : S.bAffects, laws.length ? fold(laws.map(lawA), fill(S.bLawsCount, { n: laws.length })) : "") +
+    `</div>`);
+  out.push(`<div class="card"><h2 data-i18n="bpWhat">${esc(S.bpWhat)}</h2>` +
+    (c.sum ? `<p>${esc(c.sum)}</p>` : `<p class="hint">${esc(S.bpNoWhat)}</p>`) +
+    (c.note ? `<p class="note">${esc(c.note)}</p>` : "") +
+    (first ? `<p>${link(first.u, S.bpWhatPdf, true)}</p>` : "") + `</div>`);
+  out.push(`<div class="card"><h2 data-i18n="bpVotes">${esc(S.bpVotes)}</h2><p><a class="golink" href="/votes/?q=${encodeURIComponent(core)}">${esc(S.bpVotesLink)}</a></p></div>`);
+  if ((c.journey || []).length) {
+    out.push(`<div class="card"><h2 data-i18n="bJourney">${esc(S.bJourney)}</h2><ul class="hl plain">${c.journey.map(j =>
+      `<li><div class="nm">${esc(j.s)}</div><div class="line">${esc([fmtD(j.d), j.w].filter(Boolean).join(" · "))}${j.p ? " · " + link(j.p, S.bpProtocol, true) : ""}</div></li>`).join("")}</ul></div>`);
+  }
+  out.push(`<div class="card"><h2 data-i18n="bDocs">${esc(S.bDocs)}</h2><p class="srcs">${(c.docs || []).map(d => link(d.u, d.g + " (PDF)", true)).join(" ")}
+    ${link("https://knesset.gov.il/Odata/ParliamentInfo.svc/KNS_Bill(" + c.i + ")?$format=json", S.srcKnessetL, true)}</p>
+    <p class="notadvice" data-i18n="notAdvice">${esc(S.notAdvice)}</p></div>`);
+  return out.join("\n");
+}
+
+function renderBill(shell, c, X, I) {
+  const S = I.he;
+  const b = X.bills.get(c.i) || c;
+  const canon = SITE + billPath(b);
+  const title = fill(S.bpTitle, { name: c.n });
+  const desc = fill(S.bpDesc, { name: c.n, kind: c.k === "amend" ? S.bpKindAmend : S.bpKindBill });
+  const ld = { "@context": "https://schema.org", "@type": "Legislation", name: c.n, url: canon, inLanguage: "he",
+    legislationJurisdiction: "IL", legislationIdentifier: "BillID " + c.i, description: desc,
+    legislationLegalForce: c.k === "amend" && c.c && c.c <= DAY() ? "InForce" : "NotInForce" };
+  if ((c.laws || []).length) ld.legislationChanges = c.laws.filter(x => x && x.i && X.byId.get(+x.i)).map(x => ({ "@type": "Legislation", name: X.byId.get(+x.i).n, url: SITE + lawPath(X.byId.get(+x.i)) }));
+  let h = shell.replace(/<title>[\s\S]*?<\/title>\s*/, "")
+    .replace(/<meta name="description"[^>]*>\s*/, "")
+    .replace(/<meta name="robots"[^>]*>\s*/, "")
+    .replace(/<meta property="og:(title|description|url)"[^>]*>\s*/g, "");
+  const head = `
+<base href="/law/">
+<title>${esc(title)}</title>
+<meta name="description" content="${esc(desc)}">
+<link rel="canonical" href="${esc(canon)}">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(desc)}">
+<meta property="og:url" content="${esc(canon)}">
+<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>
+`;
+  h = /<meta charset[^>]*>/i.test(h) ? h.replace(/(<meta charset[^>]*>)/i, "$1" + head) : h.replace(/<head>/, "<head>" + head);
+  return h.replace(/(<div id="lawpage"[^>]*>)<\/div>/, (m, a) => a + billBody(c, X, S) + "</div>");
+}
+
+function billsTxt(X) {
+  const list = [...X.bills.values()];
+  const amend = list.filter(b => b.k === "amend"), pend = list.filter(b => b.k !== "amend");
+  const line = b => `- ${b.n} — ${SITE}${billPath(b)}`;
+  return `# Bills with a page — הכסף שלנו (Our Money)
+Amendments passed in the last year that change several laws (${amend.length}), and the bills a Knesset committee discussed in the last 3 months (${pend.length}).
+An amendment that changes one law lives on that law's page (${SITE}/law/index.txt). Machine-readable: https://api.ourmoneyil.com/data/billcard/<BillID>
+
+## Amendments that change several laws (${amend.length})
+${amend.sort((a, b) => a.n.localeCompare(b.n, "he")).map(line).join("\n")}
+
+## Bills in committee (${pend.length})
+${pend.sort((a, b) => a.n.localeCompare(b.n, "he")).map(line).join("\n")}
+`;
+}
+
+async function billRoute(request, url) {
+  const isMap = url.pathname === "/bill/sitemap.xml", isTxt = url.pathname === "/bill/index.txt";
+  const m = /^\/bill\/(\d+)(?:-([^/]*))?(\/?)$/.exec(url.pathname);
+  if (!m && !isMap && !isTxt) return fetch(request);
+  const unavailable = e => new Response("Temporarily unavailable — " + e.message, {
+    status: 503, headers: { "content-type": "text/plain; charset=utf-8", "retry-after": "300" } });
+  let X, I;
+  try {
+    [X, I] = await Promise.all([
+      cached("laws", async () => lawIndex(JSON.parse(await getText(LAWS_URL)))),
+      cached("lawI18n", async () => JSON.parse(await getText(url.origin + "/law/law.i18n.json"))),
+    ]);
+  } catch (e) { return unavailable(e); }
+  const head = request.method === "HEAD";
+  if (isTxt) return new Response(head ? null : billsTxt(X), {
+    headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" } });
+  if (isMap) {
+    const mod = X.t ? `<lastmod>${new Date(X.t).toISOString().slice(0, 10)}</lastmod>` : "";
+    const rows = [...X.bills.values()].map(b => `<url><loc>${esc(SITE + billPath(b))}</loc>${mod}</url>`);
+    return new Response(head ? null : `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${rows.join("\n")}\n</urlset>\n`, {
+      headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
+  }
+  const b = X.bills.get(+m[1]);
+  if (!b) return html(head ? null : billNotFound(I, url.origin), 404);
+  let slug = "";
+  try { slug = decodeURIComponent(m[2] || ""); } catch (e) { /* redirect */ }
+  if (slug !== billSlug(b.n) || m[1] !== String(b.i) || !m[3]) return moved(url.origin + billPath(b));
+  let shell, card;
+  try {
+    shell = await cached("billShell", () => getText(url.origin + "/law/bill"));
+    card = head ? b : JSON.parse(await getText(BILLCARD_URL + b.i)).data;
+  } catch (e) { return unavailable(e); }
+  return html(head ? null : renderBill(shell, card, X, I), 200,
+    { "content-language": "he", link: `<${SITE + billPath(b)}>; rel="canonical"` });
+}
+
+function billNotFound(I, origin) {
+  const S = I.he, E = I.en;
+  return `<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex">
+<title>${esc(S.title)}</title><link rel="stylesheet" href="${origin}/shared/style.css"></head>
+<body><div class="wrap"><div class="card">
+<h2>${esc(S.bpNotFound)}</h2><p><a href="/votes/">${esc(S.bpToBills)}</a></p>
+<p dir="ltr">${esc(E.bpNotFound)} <a href="/votes/">${esc(E.bpToBills)}</a></p>
+</div></div></body></html>`;
 }
 
 function renderLaw(shell, l, card, X, I) {
@@ -634,6 +774,7 @@ export default {
     const url = new URL(request.url);
     if (request.method !== "GET" && request.method !== "HEAD") return fetch(request);
     if (url.pathname.startsWith("/law/")) return lawRoute(request, url);
+    if (url.pathname.startsWith("/bill/")) return billRoute(request, url);
     // the list: pre-filled when everything is at hand, else the site's page as is
     if (url.pathname === "/mk/") return listPage(request, url).catch(() => fetch(request));
     const isMap = url.pathname === "/mk/sitemap.xml", isRoster = url.pathname === "/mk/roster.txt";

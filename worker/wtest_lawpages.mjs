@@ -27,6 +27,7 @@ let SNAP = { t: 1790000000000, data: { knesset: 25, topics: {}, bills: [], laws:
 ], court: [
   { l: 2015037, k: "void", c: 'בג"ץ 1308/17', d: "2020-06-09", w: "ביטול החוק כולו", u: "https://supremedecisions.court.gov.il/x", pn: "9", ds: "נ' סולברג" },
 ] } };
+const BILLCARDS = {};
 const CARDS = {
   2000479: { i: 2000479, min: "המשפטים", cm: "חוקה, חוק ומשפט", note: "הערה", ws: "https://he.wikisource.org/wiki/חוק_העונשין",
     kz: "https://www.kolzchut.org.il/x", prev: [], orig: { n: "חוק העונשין", d: "1977-08-04", pdf: "", sum: "" },
@@ -48,6 +49,11 @@ globalThis.fetch = async (input) => {
     return CARDS[id] ? new Response(JSON.stringify({ t: 1, data: CARDS[id] })) : new Response('{"error":"not published"}', { status: 404 });
   }
   if (u === ORIGIN + "/law/page") return new Response(SHELL);
+  if (u === ORIGIN + "/law/bill") return new Response(fs.readFileSync(path.join(ROOT, "site/law/bill.html"), "utf8"));
+  if (u.startsWith("https://api.ourmoneyil.com/data/billcard/")) {
+    const id = u.split("/").pop();
+    return BILLCARDS[id] ? new Response(JSON.stringify({ t: 1, data: BILLCARDS[id] })) : new Response("{}", { status: 404 });
+  }
   if (u === ORIGIN + "/law/law.i18n.json") return new Response(I18N);
   passed.push(u);
   return new Response("SITE:" + u);
@@ -118,6 +124,36 @@ r = await get("/law/index.txt"); h = await r.text();
 ok(h.includes("5 laws in the Knesset register"), "index.txt counts every law");
 ok(/Voided in full[^\n]*\(1\)/.test(h) && h.includes("court: void בג\"ץ 1308/17"), "index.txt: the voided group + the ruling");
 ok(h.includes("Obsolete") && h.includes("מקדונל"), "index.txt holds what people see folded");
+
+// a bill page (a multi-law amendment): its facts in the site-wide order
+SNAP.data.billPages = [{ i: 2219672, n: 'חוק לעידוד פעילות בשוק ההון (תיקוני חקיקה), התשפ"ו-2026', k: "amend" }];
+BILLCARDS[2219672] = { i: 2219672, k: "amend", n: 'חוק לעידוד פעילות בשוק ההון (תיקוני חקיקה), התשפ"ו-2026', ty: "ממשלתית",
+  st: "התקבלה בקריאה שלישית", cm: "ועדת הכספים", by: [], first: "הצעות חוק הממשלה, 26/06/2024", pub: "ספר החוקים, 02/08/2026",
+  c: "2026-11-02", sum: "", note: "", journey: [{ d: "2024-06-26", s: "הונחה על שולחן הכנסת לקריאה ראשונה", w: "במליאה", p: "https://fs.knesset.gov.il/p.doc" }],
+  docs: [{ g: "הצעת חוק לקריאה הראשונה", u: "https://fs.knesset.gov.il/b.pdf" }], laws: [{ i: 2000479, n: "x" }, { i: 2015037, n: "y" }] };
+const { default: wb } = await import("./pages.js?bill" + Date.now());
+r = await wb.fetch(new Request(ORIGIN + "/bill/2219672", { redirect: "manual" }));
+ok(r.status === 301 && r.headers.get("location").includes("/bill/2219672-"), "a bill without its name → 301");
+r = await wb.fetch(new Request(r.headers.get("location"), { redirect: "manual" }));
+h = await r.text();
+ok(r.status === 200 && h.includes('<h1 class="lawname">חוק לעידוד פעילות בשוק ההון'), "the bill page renders");
+// the labels as the page prints them (a bare word can also occur inside the shell)
+const order = ["<b>מגישים:</b>", "<b>סוג:</b>", "<b>שלב:</b>", "<b>ועדה:</b>", "<b>תיקון לחוק:</b>", ">מה התיקון עושה<", ">ההצבעות במליאה<", ">מסלול החקיקה<", ">מסמכים רשמיים<"];
+const body = h.slice(h.indexOf('id="lawpage"'));
+const pos = order.map(w => body.indexOf(w));
+ok(pos.every(p => p > 0) && pos.every((p, k) => k === 0 || p > pos[k - 1]), "the bill page keeps the site-wide order: " + order.filter((w, k) => pos[k] <= 0).join(", "));
+ok(h.includes('href="/law/2000479-') && h.includes("דברי ההסבר") && h.includes("/votes/?q="), "laws, explanatory notes, votes link");
+r = await wb.fetch(new Request(ORIGIN + "/bill/999/", { redirect: "manual" }));
+ok(r.status === 404, "a bill without a page → 404");
+r = await wb.fetch(new Request(ORIGIN + "/bill/index.txt")); h = await r.text();
+ok(h.includes("Amendments that change several laws (1)"), "bill index.txt");
+const billSite = new Function(fs.readFileSync(path.join(ROOT, "site/shared/bills.js"), "utf8").match(/function billSlug[\s\S]*?\n}/)[0] + "; return billSlug;")();
+const wsrc = fs.readFileSync(path.join(ROOT, "worker/pages.js"), "utf8");
+const billWorker = new Function(wsrc.match(/const lawTitle = [\s\S]*?\n/)[0] + wsrc.match(/  \.replace\(\/,\\s\*\\d\{4\}[\s\S]*?\n/)[0] +
+  wsrc.match(/const lawSlug = [\s\S]*?\n/)[0] + wsrc.match(/const billSlug = [\s\S]*?\n/)[0] + "; return billSlug;")();
+const names = [SNAP.data.billPages[0].n, "הצעת חוק העונשין (תיקון מס' 160) (עונש מוות למחבלים), התשפ\"ו-2025",
+  "הצעת חוק הוועדה המשותפת של ועדת החוקה, חוק ומשפט ושל ועדת הכלכלה לדיון בהצעת חוק תובענות ייצוגיות (תיקון מס' 16)"];
+ok(names.every(n => billSite(n) === billWorker(n)), "site and worker bill slugs agree");
 
 // the section's own pages pass through untouched
 passed = [];

@@ -29,6 +29,18 @@ function nameHtml(n) {
   return `<span class="core">${esc(core)}</span>` + (tail ? ` <span class="tail">${esc(tail)}</span>` : "");
 }
 
+/* a bill's own page: /bill/<BillID>-<name>/ — the SAME rule as worker/pages.js
+   lawSlug/billSlug (name minus its year, letters/digits, ≤80 at a word
+   boundary; change both — wtest_lawpages.mjs compares them). The worker 301s
+   any other spelling, so a drift costs a redirect, never a dead link. */
+function billSlug(n) {
+  const s = String(n || "").replace(/,?\s*(התש|תש)[\u0590-\u05ff"'״׳]*\s*[–-]?\s*\d{4}\s*$/, "")
+    .replace(/,\s*\d{4}\s*$/, "").trim()
+    .replace(/[^\p{L}\p{N}\s-]/gu, "").trim().replace(/[\s-]+/g, "-");
+  return s.length <= 80 ? s : s.slice(0, 80).replace(/-[^-]*$/, "");
+}
+const billLink = b => "/bill/" + (+b.i) + "-" + encodeURIComponent(billSlug(b.n)) + "/";
+
 /* "label: value" — the label bold (Mercy). key = a string key; empty value → nothing */
 // a <div>, not a <p>: a value may hold a fold (<details>), which a <p> can't contain
 const kv = (key, valueHtml) => valueHtml ? `<div class="kv"><b>${esc(t(key))}:</b> ${valueHtml}</div>` : "";

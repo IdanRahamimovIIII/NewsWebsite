@@ -464,6 +464,82 @@ def collect_amends(relay, cards, originals, today=None, threads=CARD_THREADS):
     return sorted(acts.values(), key=lambda a: (a["c"] or a["d"] or "", a["i"]), reverse=True), failures
 
 
+BILLCARD_KEY = "pub:billcard/%d"   # → /data/billcard/<BillID>
+DOC_ORDER = ["הצעת חוק לקריאה הראשונה", "הצעת חוק לקריאה השנייה והשלישית", "חוק - פרסום ברשומות"]
+
+
+def bill_targets(data):
+    """the bills that get a page (Mercy): an amending act that changes SEVERAL
+    laws (one law → it lives on that law's page only), and every bill a
+    committee is working on now. {BillID: (kind, [{i,n}] laws it changes)}"""
+    names = {l["i"]: l["n"] for l in data["laws"]}
+    out = {}
+    for a in data.get("amends") or []:
+        if len(a["laws"]) > 1:
+            out[a["i"]] = ("amend", [{"i": x, "n": names.get(x, "")} for x in a["laws"]])
+    for b in data.get("bills") or []:
+        out.setdefault(b["i"], ("pending", [b["law"]] if b.get("law") else []))
+    return out
+
+
+def build_billcard(bid, kind, laws, item, docs):
+    g = (item or {}).get("general") or {}
+    sess = ((item or {}).get("sessionAndDocs") or {}).get("Sessions") or []
+    # StartDate is ISO; SessionDate is DD/MM/YYYY (day() reads ISO only)
+    journey = sorted(({"d": day(s.get("StartDate")), "s": clean(s.get("StepTitle")),
+                       "w": clean(s.get("Location")), "p": fix_path(s.get("ProtocolUrl"))}
+                      for s in sess if clean(s.get("StepTitle"))),
+                     key=lambda x: x["d"] or "", reverse=True)
+    seen, dl = set(), []
+    for d in docs or []:
+        kindname = clean(d.get("GroupTypeDesc"))
+        if (d.get("ApplicationDesc") or "") != "PDF" or not d.get("FilePath") or kindname in seen:
+            continue
+        seen.add(kindname)
+        dl.append({"g": kindname, "u": fix_path(d.get("FilePath"))})
+    dl.sort(key=lambda d: DOC_ORDER.index(d["g"]) if d["g"] in DOC_ORDER else 99)
+    raw = clean(g.get("Initiators"))
+    return {"i": bid, "k": kind, "n": clean(g.get("Name")), "ty": clean(g.get("SubType")),
+            "st": clean(g.get("Status")), "cm": clean(g.get("CommitteeName")),
+            "by": [x for x in re.split(r"\s*,\s*", raw) if x] if raw else [],
+            "first": clean(g.get("PublicationSeriesFirstCall")), "pub": clean(g.get("PublicationSeriesLaw")),
+            "c": day(g.get("CommencementDate")), "fin": day(g.get("ValidityFinishDate")),
+            "sum": clean(g.get("SummaryLaw")), "note": clean(g.get("SiteComment")),
+            "kn": g.get("Knesset"), "journey": journey, "docs": dl, "laws": laws}
+
+
+def collect_billcards(relay, data, threads=CARD_THREADS):
+    from concurrent.futures import ThreadPoolExecutor
+    targets = bill_targets(data)
+    failures = []
+
+    def one(bid):
+        kind, laws = targets[bid]
+        try:
+            item = relay.json(KAPI_BILL % bid)
+            docs = relay.od("KNS_DocumentBill()?$filter=BillID eq %d&$select=GroupTypeDesc,ApplicationDesc,FilePath" % bid)
+            return bid, build_billcard(bid, kind, laws, item, docs), None
+        except Exception as e:  # noqa: BLE001
+            return bid, None, "%d — %s" % (bid, str(e)[:120])
+
+    cards = {}
+    with ThreadPoolExecutor(max_workers=threads) as pool:
+        for bid, card, err in pool.map(one, sorted(targets)):
+            if card:
+                cards[bid] = card
+            else:
+                failures.append(err)
+    return cards, failures
+
+
+def publish_billcards(cards, t):
+    cred = cf_kv.credentials(str(HERE.parent / "d1-config.json"))
+    ns = cf_kv.namespace_id(cred)
+    items = [(BILLCARD_KEY % i, cf_kv.envelope(c, t)) for i, c in sorted(cards.items())]
+    log("publishing %d bill cards…" % len(items))
+    cf_kv.bulk_put(cred, ns, items)
+
+
 def publish_cards(cards, t):
     cred = cf_kv.credentials(str(HERE.parent / "d1-config.json"))
     ns = cf_kv.namespace_id(cred)
@@ -548,7 +624,7 @@ def main(argv=None):
     out_path.write_text(json.dumps(data, ensure_ascii=False, indent=0), encoding="utf-8")
     log("\nbuilt %d laws · %d court rows · %d live bills → %s (%d relay calls)"
         % (len(data["laws"]), len(data["court"]), len(data["bills"]), out_path, relay.calls))
-    cards, card_failures = {}, []
+    cards, card_failures, billcards = {}, [], {}
     if "--no-cards" not in argv:
         log("\nlaw cards (one law-API call per law, ~15 minutes)…")
         cards, card_failures = collect_cards(relay, data["laws"])
@@ -560,6 +636,12 @@ def main(argv=None):
         data["amends"], amend_failures = collect_amends(relay, cards, originals_of(w))
         log("  %d acts (%d failed)" % (len(data["amends"]), len(amend_failures)))
         card_failures += ["amend " + f for f in amend_failures]
+        log("bill pages: cards for multi-law amendments + bills in committee…")
+        billcards, bill_failures = collect_billcards(relay, data)
+        data["billPages"] = sorted(({"i": c["i"], "n": c["n"], "k": c["k"]} for c in billcards.values()),
+                                   key=lambda x: x["i"])
+        log("  %d bill cards (%d failed)" % (len(billcards), len(bill_failures)))
+        card_failures += ["bill " + f for f in bill_failures]
         out_path.write_text(json.dumps(data, ensure_ascii=False, indent=0), encoding="utf-8")
         for f in card_failures:
             log("  - " + f)
@@ -575,7 +657,10 @@ def main(argv=None):
         log("\n--no-publish: stopping before Cloudflare. Snapshot is in out\\laws.json")
         return 0
     if cards:
-        publish_cards(cards, int(time.time() * 1000))   # the cards first: a page never points at a missing card
+        t = int(time.time() * 1000)
+        publish_cards(cards, t)          # the cards first: a page never points at a missing card
+        if billcards:
+            publish_billcards(billcards, t)
     publish(data)
     log("\ndone. The law pages read /data/laws from here on.")
     return 0
