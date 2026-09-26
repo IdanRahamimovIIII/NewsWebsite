@@ -7,19 +7,26 @@
 /* ---------- a highlight: two rows, then "show all" ----------
    A row = the name + ONE quiet line. ▸ opens details in place; the link to
    the full record sits inside, never on the name (Mercy: no blue names). */
-/* a block's title sits in a tinted band across the top of its card (Mercy
-   chose option ג): the card loses its top padding, the band takes it */
-.card:has(> h2.hh) { padding-top: 0; }
-.card > h2.hh { font-size: 20px; font-weight: 700; margin: 0 -24px 12px; padding: 13px 24px;
-  background: color-mix(in srgb, var(--series-1) 10%, var(--surface-1));
-  border-bottom: 1px solid var(--border); border-radius: 12px 12px 0 0; }
+/* a block's title: a coloured bar at its start (Mercy chose option ב), a
+   different colour per block, and the card a stronger border. The colours
+   are the dataviz categorical slots in page order — never green/red (the
+   site's for/against), checked by the palette validator in both modes; the
+   title text stays ink (the bar is identity, the words are the label). */
+.card:has(> h2.hh) { border: 1.5px solid var(--baseline); }
+.card > h2.hh { font-size: 20px; font-weight: 700; margin: 0 0 12px;
+  border-inline-start: 4px solid var(--acc, var(--series-1)); padding-inline-start: 10px; }
+.acc1 { --acc: #2a78d6; } .acc2 { --acc: #eb6834; } .acc3 { --acc: #4a3aa7; }
+.acc4 { --acc: #eda100; } .acc5 { --acc: #e87ba4; }
+@media (prefers-color-scheme: dark) {
+  .acc1 { --acc: #3987e5; } .acc2 { --acc: #d95926; } .acc3 { --acc: #9085e9; }
+  .acc4 { --acc: #c98500; } .acc5 { --acc: #d55181; }
+}
 .hl { list-style: none; margin: 0; padding: 0; }
 .hl > li { border-bottom: 1px solid var(--grid); }
 .hl > li:last-child { border-bottom: 0; }
 /* ראשי: a line above the first law and below the last too — every law sits
    in its own box of lines (Mercy) */
 .hl:not(.plain) > li:first-child { border-top: 1px solid var(--grid); }
-.card > h2.hh + .info + div > .hl > li:first-child { border-top: 0; }   /* the band's own line is above it */
 .hl:not(.plain) > li:last-child { border-bottom: 1px solid var(--grid); }
 .it > button.head { all: unset; box-sizing: border-box; display: block; width: 100%;
   cursor: pointer; padding: 12px 2px; }
@@ -80,7 +87,7 @@ details.adv label { display: inline-flex; gap: 7px; align-items: center; cursor:
 
 @media (max-width: 640px) {
   .it .nm, .lawrow .nm { font-size: 15px; }
-  .card > h2.hh { margin: 0 -14px 10px; padding: 11px 14px; font-size: 19px; border-radius: 10px 10px 0 0; }
+  .card > h2.hh { font-size: 19px; margin-bottom: 10px; }
   .lawctl select { font-size: 16px; }   /* no iPhone zoom */
 }
 
