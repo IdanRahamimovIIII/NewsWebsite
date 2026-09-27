@@ -4,7 +4,9 @@
    the options filter the SAME list in place. Budget laws and laws that no
    longer apply are hidden by default, one click shows them (Mercy); a
    law not yet in force always leads (change first, Mercy).
-   Address: ?q= ?topic= ?law=<IsraelLawID> (opens that law).
+   Address: ?q= ?topic=. An opened row stays out of it — a law's link is
+   its own page /law/<id>/ (Mercy: F5 kept jumping back to it); an old
+   ?law=<id> still opens that row once, then leaves the address.
    ===================================================================== */
 
 const PAGE_SIZE = 150;
@@ -118,7 +120,6 @@ function syncUrl() {
   const p = new URLSearchParams();
   if (V.q) p.set("q", V.q);
   if (V.topic) p.set("topic", V.topic);
-  if (V.openId) p.set("law", V.openId);
   const qs = p.toString();
   history.replaceState(null, "", location.pathname + (qs ? "?" + qs : ""));
 }
