@@ -77,7 +77,7 @@ details.adv label { display: inline-flex; gap: 7px; align-items: center; cursor:
 /* סדר / סוג / נושאים: one column of labels, three boxes of one width — a long
    choice is cut (Mercy) */
 .lawctl label, details.adv label:has(select) { display: inline-flex; gap: 7px; align-items: center; font-size: 13.5px; color: var(--ink-2); }
-.lawctl label > span, details.adv label:has(select) > span { min-width: 3.9em; }
+.lawctl label > span, details.adv label:has(select) > span { min-width: 3.9em; font-weight: 700; }   /* bold labels (Mercy) */
 .lawctl select, details.adv select { width: 140px; text-overflow: ellipsis; }
 .lawctl { padding-inline: 2px; }   /* level with .advin's 2px */
 .statline { color: var(--ink-2); font-size: 13.5px; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
