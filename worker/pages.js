@@ -428,6 +428,8 @@ const fmtD = v => {
   const d = new Date(v + "T12:00:00Z");
   return isNaN(d) ? "" : d.toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 };
+const COURT_ORDER = { void: 0, frozen: 1, partial: 2, deferred: 3 };
+const courtRank = (a, b) => (COURT_ORDER[a.k] ?? 9) - (COURT_ORDER[b.k] ?? 9) || (b.d || "").localeCompare(a.d || "");
 const amendWords = (l, S) => l.a === 0 ? S.neverAmended : l.a === 1 ? S.amendedOnce : fill(S.amendedN, { n: l.a });
 
 function lawBody(l, card, X, S, today) {
@@ -437,63 +439,73 @@ function lawBody(l, card, X, S, today) {
   const lawRef = r => { const o = r && r.i && X.byId.get(+r.i); return o ? link(lawPath(o), o.n) : esc(r.n || ""); };
   const out = [];
 
-  // the head: name, the one-word truth, the facts in one line
-  const chips = [`<span class="lbadge${st === "voided" ? " court" : ""}">${esc(S[STATE_KEY[st]])}</span>`];
-  const cb = court.find(c => c.k !== "void" || st !== "voided");
-  if (cb) chips.push(`<span class="lbadge court">${esc(S[KIND_KEY[cb.k]])}</span>`);
+  // the head (Mercy): [status] name on one line — the Knesset's word, the
+  // court's beside it (red when it stopped the whole law); then the official
+  // page and what explains the law. No amendment count / ministry / committee.
+  const ks = lawState(l, today);
+  const chips = [`<span class="lbadge">${esc(S[STATE_KEY[ks]])}</span>`];
+  const cb = [...court].sort(courtRank)[0];
+  if (cb) chips.push(`<span class="lbadge ${cb.k === "void" || cb.k === "frozen" ? "stop" : "court"}">${esc(cb.k === "void" ? S.stVoided : S[KIND_KEY[cb.k]])}</span>`);
   if ((l.f || "").includes("b")) chips.push(`<span class="lbadge soft">${esc(S.basicLaw || "חוק יסוד")}</span>`);
   const facts = [];
-  if (l.s) facts.push((st === "pending" ? S.startsDate : S.fromDate) + fmtD(l.s));
+  if (l.s && ks === "pending") facts.push(S.startsDate + fmtD(l.s));
   if (l.e) facts.push((l.e < today ? S.endedDate : S.untilDate) + fmtD(l.e));
-  facts.push(amendWords(l, S));
-  if (card && card.min) facts.push(S.ministry + card.min);
-  if (card && card.cm) facts.push(S.committee + card.cm);
   const rel = [];
   if (card && card.prev && card.prev.length) rel.push(esc(S.prevNames) + esc(card.prev.join(" · ")));
   // a long list (the penal code replaced 17 ordinances) shows three, the rest
   // one click away — still in the HTML for AI
   const refs = list => list.length <= 4 ? list.map(lawRef).join(" · ")
     : list.slice(0, 3).map(lawRef).join(" · ") + ` <details class="inline"><summary>${esc(fill(S.andMore, { n: list.length - 3 }))}</summary>${list.slice(3).map(lawRef).join(" · ")}</details>`;
+  const gone = ["repealed", "expired", "obsolete"].includes(ks);   // "מבטל" on a law in force = a few sections
   if (card && card.replacedBy && card.replacedBy.length) rel.push(esc(S.replacedByL) + refs(card.replacedBy));
-  else if (l.r && X.byId.get(l.r)) rel.push(esc(S.replacedByL) + lawRef({ i: l.r }));
+  else if (gone && l.r && X.byId.get(l.r)) rel.push(esc(S.replacedByL) + lawRef({ i: l.r }));
   if (card && card.replaces && card.replaces.length) rel.push(esc(S.replacesL) + refs(card.replaces));
-  out.push(`<div class="card lawhead">
-    <p class="crumbs"><a href="/law/laws.html" data-i18n="lpToList">${esc(S.lpToList)}</a></p>
-    <h1 class="lawname">${esc(l.n)}</h1>
-    <p class="chips">${chips.join(" ")}</p>
-    <p class="facts">${facts.map(esc).join(" · ")}</p>
-    ${rel.map(r => `<p class="facts">${r}</p>`).join("")}
-    ${l.st ? `<p class="facts knesset">${esc(S.knessetSays + l.st)}</p>` : ""}
-  </div>`);
-
-  // about: the official summary of the original law + the Knesset's note
   const about = [];
   if (card && card.orig && card.orig.sum) about.push(`<p>${esc(card.orig.sum)}</p>`);
   if (card && card.note) about.push(`<p class="note">${esc(card.note)}</p>`);
   if (card && card.kz) about.push(`<p>${link(card.kz, S.kolZchut, true)}</p>`);
-  if (about.length) out.push(`<div class="card">${h2("secAbout")}${about.join("")}</div>`);
+  out.push(`<div class="card lawhead">
+    <p class="crumbs"><a href="/law/laws.html" data-i18n="lpToList">${esc(S.lpToList)}</a></p>
+    <h1 class="lawname">${chips.join(" ")} ${esc(l.n)}</h1>
+    ${facts.length ? `<p class="facts">${facts.map(esc).join(" · ")}</p>` : ""}
+    ${rel.map(r => `<p class="facts">${r}</p>`).join("")}
+    <p class="official"><a class="golink" href="https://main.knesset.gov.il/apps/legislation/main/laws/${l.i}" target="_blank" rel="noopener" data-i18n="lpOfficial">${esc(S.lpOfficial)}</a></p>
+    ${about.join("")}
+  </div>`);
 
-  // what is about to change: bills pending that amend it
+  // two first, the rest one click away — all in the HTML (AI reads it)
+  const two = (items, row) => `<ul class="hl plain">${items.slice(0, 2).map(row).join("")}</ul>` + (items.length > 2
+    ? `<details class="more"><summary>${esc(fill(S.showMore, { n: items.length - 2 }))}</summary><ul class="hl plain">${items.slice(2).map(row).join("")}</ul></details>` : "");
+  const billA = (i, n) => i && X.bills.has(i) ? link(billPath(X.bills.get(i)), n) : esc(n);
+
+  // amendments passed, not yet in force (the bill API's start date — /data/laws amends)
+  const soon = (X.d.amends || []).filter(a => a.c && a.c > today && (a.laws || []).includes(l.i))
+    .sort((a, b) => a.c.localeCompare(b.c));
+  if (soon.length) {
+    out.push(`<div class="card">${h2("secSoon")}<ul class="hl plain">${soon.map(a =>
+      `<li><div class="nm">${billA(a.i, a.n)}</div><div class="line">${esc([S.startsDate + fmtD(a.c), a.d ? S.publishedOn + fmtD(a.d) : ""].filter(Boolean).join(" · "))}</div></li>`).join("")}</ul></div>`);
+  }
+
+  // amendments not passed yet: bills pending that amend it
   if (card && card.pend && card.pend.length) {
     out.push(`<div class="card">${h2("secPending")}<p class="hint" data-i18n="pendHint">${esc(S.pendHint)}</p><ul class="hl plain">${card.pend.map(b =>
-      `<li><div class="nm">${X.bills.has(b.i) ? link(billPath(X.bills.get(b.i)), b.n) : esc(b.n)}</div><div class="line">${esc([b.ty, b.step ? S.step + b.step : "", b.d ? S.lastSession + fmtD(b.d) : "", b.no].filter(Boolean).join(" · "))}</div></li>`).join("")}</ul></div>`);
+      `<li><div class="nm">${billA(b.i, b.n)}</div><div class="line">${esc([b.ty, b.step ? S.step + b.step : "", b.d ? S.lastSession + fmtD(b.d) : "", b.no].filter(Boolean).join(" · "))}</div></li>`).join("")}</ul></div>`);
   }
 
-  // the court
-  if (court.length) {
-    out.push(`<div class="card">${h2("secCourt")}<ul class="hl plain">${court.map(c =>
-      `<li><div class="nm">${esc(S[KIND_KEY[c.k]])} — ${esc(c.w)}</div><div class="line">${link(c.u, c.c, true)} · ${esc(fmtD(c.d))}${c.pn ? " · " + esc(c.pn + S.judges) : ""}${c.ds ? " · " + esc(S.dissent + c.ds) : ""}</div></li>`).join("")}</ul></div>`);
-  }
-
-  // amendments: the latest ten, the rest one click away (all in the HTML — AI reads it)
+  // past amendments, newest first (the ones still ahead are above)
   if (card) {
-    const row = a => `<li><div class="nm">${a.i && X.bills.has(a.i) ? link(billPath(X.bills.get(a.i)), a.n) : esc(a.n)}</div><div class="line">${esc([fmtD(a.d), a.ty === "ישיר" ? S.direct : a.ty ? S.indirect : ""].filter(Boolean).join(" · "))}${a.pdf ? " · " + link(a.pdf, S.pdf, true) : ""}</div>${a.sum ? `<details class="sum"><summary>${esc(S.officialSum)}</summary><p>${esc(a.sum)}</p></details>` : ""}</li>`;
-    const am = card.am || [], head = am.slice(0, 10), rest = am.slice(10);
+    const ahead = new Set(soon.map(a => a.i));
+    const row = a => `<li><div class="nm">${billA(a.i, a.n)}</div><div class="line">${esc([fmtD(a.d), a.ty === "ישיר" ? S.direct : a.ty ? S.indirect : ""].filter(Boolean).join(" · "))}${a.pdf ? " · " + link(a.pdf, S.pdf, true) : ""}</div>${a.sum ? `<details class="sum"><summary>${esc(S.officialSum)}</summary><p>${esc(a.sum)}</p></details>` : ""}</li>`;
+    const am = (card.am || []).filter(a => !ahead.has(a.i));
     const orig = card.orig ? `<p class="facts">${esc(S.origLaw)}${esc(fmtD(card.orig.d))}${card.orig.pdf ? " · " + link(card.orig.pdf, S.pdf, true) : ""}</p>` : "";
     const rep = (card.repBy || []).length ? `<p class="facts">${esc(S.repealedIn)}${card.repBy.map(r => esc(r.n) + (r.pdf ? " · " + link(r.pdf, S.pdf, true) : "")).join(" · ")}</p>` : "";
-    out.push(`<div class="card">${h2("secAmend")}${am.length ? `<ul class="hl plain">${head.map(row).join("")}</ul>` +
-      (rest.length ? `<details class="more"><summary>${esc(fill(S.allAmend, { n: am.length }))}</summary><ul class="hl plain">${rest.map(row).join("")}</ul></details>` : "")
-      : `<p class="hint">${esc(S.noAmend)}</p>`}${rep}${orig}</div>`);
+    out.push(`<div class="card">${h2("secAmend")}${am.length ? two(am, row) : `<p class="hint">${esc(S.noAmend)}</p>`}${rep}${orig}</div>`);
+  }
+
+  // the court, the strongest word first: voided > frozen > partly > deferred, then newest
+  if (court.length) {
+    out.push(`<div class="card">${h2("secCourt")}${two([...court].sort(courtRank), c =>
+      `<li><div class="nm">${esc(S[KIND_KEY[c.k]])} — ${esc(c.w)}</div><div class="line">${link(c.u, c.c, true)} · ${esc(fmtD(c.d))}${c.pn ? " · " + esc(c.pn + S.judges) : ""}${c.ds ? " · " + esc(S.dissent + c.ds) : ""}</div></li>`)}</div>`);
   }
 
   // regulations made under it

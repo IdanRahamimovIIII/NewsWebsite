@@ -64,9 +64,10 @@ const get = (p, method = "GET") => worker.fetch(new Request(ORIGIN + p, { method
 let r = await get("/law/2015037/");
 let h = await r.text();
 ok(r.status === 200, "voided law page 200, got " + r.status);
-ok(h.includes('<h1 class="lawname">חוק להסדרת ההתיישבות ביהודה והשומרון, התשע&quot;ז-2017</h1>'), "the name is the headline");
-ok(h.includes("בוטל בבג״ץ") && !h.includes(">חל היום<"), "voided in full says so, never 'applies today'");
-ok(h.includes("ברשומות הכנסת: תקף"), "the Knesset's own word stays, labelled");
+ok(h.includes('<h1 class="lawname"><span class="lbadge">חל היום</span> <span class="lbadge stop">בוטל בבג״ץ</span> חוק להסדרת ההתיישבות ביהודה והשומרון, התשע&quot;ז-2017</h1>'),
+   "[status] name on one line: the Knesset's word, the court's in red beside it (Mercy)");
+ok(!h.includes("ברשומות הכנסת"), "no separate Knesset line (Mercy)");
+ok(h.includes('href="https://main.knesset.gov.il/apps/legislation/main/laws/2015037"'), "the official page, under the name");
 ok(h.includes('"legislationLegalForce":"NotInForce"'), "JSON-LD: not in force");
 ok(!h.includes('name="robots"'), "a court-touched law is indexed");
 ok(h.includes('<link rel="canonical" href="https://ourmoneyil.com/law/2015037/">'), "canonical address: the number only");
@@ -100,9 +101,10 @@ ok(h.includes("נושן"), "obsolete said in words");
 
 // the penal code: amendments, pending bills, regulations, sources
 r = await get("/law/2000479"); r = await get(new URL(r.headers.get("location")).pathname); h = await r.text();
-ok(h.includes("משרד אחראי: המשפטים") && h.includes("ועדה בכנסת: חוקה, חוק ומשפט"), "ministry + committee by name");
+{ const body = h.slice(h.indexOf('id="lawpage"'));   // the meta description may still count amendments
+  ok(!body.includes("משרד אחראי:") && !body.includes("ועדה בכנסת:") && !/תוקן \d/.test(body), "no amendment count / ministry / committee (Mercy)"); }
 ok(Array.from({ length: 14 }, (_, k) => 155 - k).every(no => h.includes("(תיקון מס&#39; " + no + ")")), "all 14 amendments are in the HTML (AI reads them)");
-ok(h.includes("כל 14 התיקונים"), "the rest folded behind 'all 14'");
+ok(h.includes("הצג עוד 12"), "two amendments shown, the rest behind 'show 12 more'");
 ok(h.includes("תקציר &lt;script&gt;") && !h.includes("<script>x</script>"), "an official summary is escaped");
 ok(h.includes("הצעת חוק העונשין (תיקון מס&#39; 160)") && h.includes("שלב: הכנה לקריאה ראשונה"), "pending bills with their stage");
 ok(h.includes("89 תקנות") && h.includes("ועוד 11 בהליך"), "regulations counted");
