@@ -45,8 +45,6 @@
       lastPub: "פרסום אחרון ברשומות (החוק או תיקון לו): ",
       amendDetail: "{a} תיקונים: {d} ישירים (חוק שכל מטרתו לתקן אותו) ו־{i} עקיפים (בתוך חוק אחר).",
       replacedBy: "הוחלף ב: ",
-      srcText: "הנוסח המלא והעדכני (ספר החוקים הפתוח, ויקיטקסט)",
-      srcKnesset: "הרשומה במאגר הכנסת",
     },
     en: {
       tagline: "The laws of Israel",
@@ -90,8 +88,6 @@
       lastPub: "Latest gazette publication (the law or an amendment): ",
       amendDetail: "{a} amendments: {d} direct (a law whose whole purpose is amending it) and {i} indirect (inside another law).",
       replacedBy: "Replaced by: ",
-      srcText: "Full current text (the open statute book, Wikisource)",
-      srcKnesset: "The Knesset database record",
     },
   };
   for (const l of ["he", "en"]) window.PAGE_STR[l] = Object.assign({}, window.PAGE_STR[l], add[l]);

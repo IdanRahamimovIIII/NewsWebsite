@@ -52,8 +52,6 @@
 .it .chev { font-size: 16px; width: 20px; }
 .it .line { padding-inline-start: 20px; }
 /* the laws list opens in place too: the same ▸ */
-.lawrow .chev { display: inline-block; width: 20px; color: var(--ink-2); font-size: 16px; }
-.lawrow .meta { padding-inline-start: 20px; }
 
 /* an opened row: "label: value" lines — the label bold, the value regular */
 
@@ -84,21 +82,23 @@ details.adv label { display: inline-flex; gap: 7px; align-items: center; cursor:
 .statline { color: var(--ink-2); font-size: 13.5px; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
 .statline .hid { color: var(--ink-3); }
 
-.lawrow { border-bottom: 1px solid var(--grid); }
-.lawrow:first-child, .loosenote + .lawrow { border-top: 1px solid var(--grid); }
+.lawrow { border-bottom: 1px solid var(--grid); position: relative; padding: 11px 2px; }
+.lawrow:first-child, .loosenote + .lawrow { border-top: 1px solid var(--grid); }   /* each law in its own box (Mercy) */
 /* "! nothing matches with your settings…" — its own block, a line above (Mercy) */
 .loosenote { margin: 14px 0 10px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--ink-2); font-size: 14px; }
-.loosenote b { color: var(--ink-1); margin-inline-end: 2px; }   /* each law in its own box (Mercy) */
-.lawrow > button.head { all: unset; box-sizing: border-box; display: block; width: 100%;
-  cursor: pointer; padding: 11px 2px; }
-.lawrow > button.head:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.loosenote b { color: var(--ink-1); margin-inline-end: 2px; }
+/* a row = a link to the law's page: the name's link stretches over the row */
 .lawrow .nm { font-size: 15px; color: var(--ink-1); }
-.lawrow > button.head:hover .nm { color: var(--accent-ink); }
+.lawrow a.go { color: inherit; text-decoration: none; }
+.lawrow a.go::after { content: ""; position: absolute; inset: 0; }
+.lawrow:hover a.go { color: var(--accent-ink); }
+.lawrow a.go:focus-visible { outline: none; }
+.lawrow:has(a.go:focus-visible) { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.lawrow .facts { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 12.5px; color: var(--ink-2); margin-top: 4px; }
+.lawrow .facts b { color: var(--ink-1); font-weight: 600; }
+.lawrow a.replink { position: relative; z-index: 1; color: var(--accent-ink); }
 .lawrow .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center;
   font-size: 12.5px; color: var(--ink-2); margin-top: 4px; }
-.lawrow .det { display: none; padding: 2px 2px 16px; font-size: 14px; }
-.lawrow.open .det { display: block; }
-.lawrow.open { background: color-mix(in srgb, var(--series-1) 4%, transparent); }
 .det h3 { font-size: 13.5px; color: var(--ink-2); margin: 12px 0 4px; font-weight: 600; }
 .det p { margin: 3px 0; }
 .det ul { margin: 3px 0; padding-inline-start: 18px; }

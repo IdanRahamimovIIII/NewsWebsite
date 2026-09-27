@@ -4,14 +4,14 @@
    the options filter the SAME list in place. Budget laws and laws that no
    longer apply are hidden by default, one click shows them (Mercy); a
    law not yet in force always leads (change first, Mercy).
-   Address: ?q= ?topic=. An opened row stays out of it — a law's link is
-   its own page /law/<id>/ (Mercy: F5 kept jumping back to it); an old
-   ?law=<id> still opens that row once, then leaves the address.
+   A row is a link to the law's own page /law/<id>/ — no dropdown; the rare
+   facts (start, end, replaced by) sit in the row itself (Mercy).
+   Address: ?q= ?topic=; an old ?law=<id> goes to that law's page.
    ===================================================================== */
 
 const PAGE_SIZE = 150;
 const V = { q: "", topic: "", kind: "in", basic: false, court: false,   // budget laws always listed; kind: all|in|gone (Mercy)
-            sort: "changed", limit: PAGE_SIZE, openId: null, picked: null };
+            sort: "changed", limit: PAGE_SIZE };
 
 const normHe = s => String(s || "").replace(/[֑-ׇ]/g, "").replace(/["'״׳]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 
@@ -21,9 +21,6 @@ function matches(l, loose) {   // loose: the name only, no settings
     const name = normHe(l.n);
     if (!words.every(w => name.includes(w))) return false;
   }
-  // a law the reader picked (a suggestion, an old ?law= address) shows whatever
-  // the settings — until the next search (applyControls clears it)
-  if (l.i === V.picked) return true;
   if (loose) return true;
   if (V.topic && !(l.t || []).includes(Number(V.topic))) return false;
   if (V.basic && !(l.f || "").includes("b")) return false;
@@ -58,21 +55,19 @@ function rowHtml(l) {
   ].join("");
   const am = l.a === 0 ? t("neverAmended") : l.a === 1 ? t("amendedOnce") : fill(t("amendedN"), { n: fmtN(l.a) });
   const topics = (l.t || []).slice(0, 3).map(id => `<span>${esc(LAW.topics[id] || "")}</span>`).join("");
-  return `<div class="lawrow${V.openId === l.i ? " open" : ""}" id="law-${l.i}">
-    <button class="head" aria-expanded="${V.openId === l.i}" onclick="toggleLaw(${l.i})">
-      <div class="nm"><span class="chev" aria-hidden="true">${V.openId === l.i ? "▾" : "▸"}</span>${nameHtml(lawName(l))}</div>
-      <div class="meta">${chips}<span>${esc(am)}</span>${l.lp ? `<span>${esc(t("changedOn") + fmtDate(l.lp))}</span>` : ""}${topics}</div>
-    </button>
-    <div class="det">${V.openId === l.i ? detailHtml(l) : ""}</div>
+  // the rare facts, in the row: a start still ahead, an end, a successor
+  const rep = l.r && LAW.byId.get(l.r);
+  const facts = [
+    lawState(l) === "pending" && l.s ? `<span><b>${esc(t("kvStart"))}:</b> ${esc(fmtDate(l.s))}</span>` : "",
+    l.e ? `<span><b>${esc(t("kvEnd"))}:</b> ${esc(fmtDate(l.e))}</span>` : "",
+    rep ? `<span><b>${esc(t("kvReplaced"))}:</b> <a class="replink" href="${lawLink(rep)}">${esc(lawName(rep))}</a></span>` : "",
+  ].join("");
+  // the name's link covers the whole row (.lawrow a.go::after); the successor's link sits above it
+  return `<div class="lawrow" id="law-${l.i}">
+    <div class="nm"><a class="go" href="${lawLink(l)}">${nameHtml(lawName(l))}</a></div>
+    <div class="meta">${chips}<span>${esc(am)}</span>${l.lp ? `<span>${esc(t("changedOn") + fmtDate(l.lp))}</span>` : ""}${topics}</div>
+    ${facts ? `<div class="facts">${facts}</div>` : ""}
   </div>`;
-}
-
-function detailHtml(l) {
-  return lawKv(l) +
-    `<p><a class="golink" href="${lawLink(l)}">${esc(t("detailsLink"))} ←</a></p>
-    <p class="srcs"><a class="doclink" href="${wikisourceUrl(l)}" target="_blank" rel="noopener">${esc(t("srcText"))}</a>
-      <a class="doclink" href="${knessetRecordUrl(l)}" target="_blank" rel="noopener">${esc(t("srcKnesset"))}</a></p>
-    <p class="notadvice">${esc(t("notAdvice"))}</p>`;
 }
 
 function renderList() {
@@ -101,27 +96,6 @@ function renderList() {
   list.innerHTML = html;
 }
 
-function toggleLaw(id) {
-  V.openId = V.openId === id ? null : id;
-  renderList();
-  syncUrl();
-}
-function openLaw(id) {
-  V.openId = V.picked = id;
-  // the law must be in view: make sure the filters and the page size let it through
-  const d = LAW.data, l = LAW.byId.get(id);
-  if (!l) return;
-  V.q = ""; document.getElementById("q").value = "";
-  V.topic = ""; document.getElementById("topic").value = "";
-  const hits = d.laws.filter(l => matches(l)).sort((a, b) => ((lawState(b) === "pending") - (lawState(a) === "pending")) || SORTS[V.sort](a, b));
-  const pos = hits.findIndex(x => x.i === id);
-  if (pos >= V.limit) V.limit = pos + 1;
-  renderList();
-  syncUrl();
-  const el = document.getElementById("law-" + id);
-  if (el) el.scrollIntoView({ block: "start", behavior: "smooth" });
-}
-
 function syncUrl() {
   const p = new URLSearchParams();
   if (V.q) p.set("q", V.q);
@@ -131,8 +105,8 @@ function syncUrl() {
 }
 
 /* ---------- suggestions under the search field (attachSuggest, common.js):
-   every law, whatever the settings, with its tag; a pick fills the field
-   and opens that law (Mercy) ---------- */
+   every law, whatever the settings, with its tag; a pick goes to that law's
+   page (Mercy) ---------- */
 function lawSuggest(text) {
   const q = normHe(text), words = q.split(" ").filter(Boolean);
   if (!words.length || !LAW.data) return [];
@@ -147,21 +121,11 @@ function lawSuggest(text) {
     const st = shownState(l), cb = courtBadge(l);
     const tags = (st === "in" ? "" : `<span class="lbadge${st === "voided" ? " stop" : ""}">${esc(t(STATE_KEY[st]))}</span>`) +
       (cb && cb.k === "frozen" ? `<span class="lbadge stop">${esc(t(KIND_KEY.frozen))}</span>` : "");
-    return { html: `<span class="sname">${markWords(lawName(l), words)}</span>${tags}`, pick: () => pickLaw(l) };
+    return { html: `<span class="sname">${markWords(lawName(l), words)}</span>${tags}`, pick: () => { location.href = lawLink(l); } };
   });
-}
-function pickLaw(l) {
-  const q = document.getElementById("q");
-  q.value = lawName(l); q.blur();                           // blur: the phone keyboard goes away
-  V.q = q.value; V.openId = V.picked = l.i; V.limit = PAGE_SIZE;
-  renderList();
-  syncUrl();
-  const el = document.getElementById("law-" + l.i);
-  if (el) el.scrollIntoView({ block: "start", behavior: "smooth" });
 }
 
 function applyControls() {
-  V.picked = null;
   V.q = document.getElementById("q").value.trim();
   V.topic = document.getElementById("topic").value;
   V.kind = document.getElementById("kind").value;
@@ -201,13 +165,13 @@ window.onLangChange = () => { fillControls(); renderList(); };
   V.q = p.get("q") || "";
   V.topic = p.get("topic") || "";
   const want = Number(p.get("law")) || null;
+  if (want) { location.replace("/law/" + want + "/"); return; }   // an old address: the law has its own page
   document.getElementById("q").value = V.q;
   try {
     await loadLaws();
     fillControls();
     attachSuggest(document.getElementById("q"), lawSuggest);
-    if (want && LAW.byId.has(want)) openLaw(want);
-    else renderList();
+    renderList();
   } catch (e) {
     debug(e.message);
     document.getElementById("list").innerHTML = `<p class="error">${esc(friendly(e))}</p>`;
