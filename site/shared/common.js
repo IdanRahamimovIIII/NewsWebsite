@@ -131,6 +131,7 @@ function applyLang() {
   if (btn) btn.textContent = lang === "he" ? "English" : "עברית";
   document.querySelectorAll("[data-i18n]").forEach(el => el.innerHTML = t(el.dataset.i18n));
   document.querySelectorAll("[data-i18n-ph]").forEach(el => el.placeholder = t(el.dataset.i18nPh));
+  document.querySelectorAll("button.sbtn").forEach(el => el.setAttribute("aria-label", t("searchBtn")));   // the magnifier has no text
   renderFreshness();
 }
 function toggleLang() {

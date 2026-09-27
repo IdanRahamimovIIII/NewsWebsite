@@ -20,7 +20,7 @@
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <!-- the shared look, then this page's own bits -->
-<link rel="stylesheet" href="../shared/style.css?v=86e6bfa1">
+<link rel="stylesheet" href="../shared/style.css?v=4f8f4d0a">
 <link rel="stylesheet" href="mk.css?v=b859232f">
 </head>
 <body>
@@ -41,7 +41,7 @@
         <input id="mkq" style="flex:1" data-i18n-ph="searchMkPh"
                onkeydown="if(event.key==='Enter')mkSearch()" placeholder="שם, תפקיד או סיעה — למשל &quot;שר החוץ&quot; או &quot;יש עתיד&quot;…">
       </label>
-      <button onclick="mkSearch()" data-i18n="searchBtn">חיפוש</button>
+      <button class="sbtn" type="button" onclick="mkSearch()" aria-label="חיפוש"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M20 20l-4.2-4.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
     </div>
   </div>
 
@@ -83,9 +83,8 @@
     <span data-i18n="credit">מקורות המידע: </span>
     <a href="https://knesset.gov.il/Odata/ParliamentInfo.svc/" target="_blank" rel="noopener">Knesset OData</a> ·
     <a href="https://oknesset.org" target="_blank" rel="noopener">Open Knesset</a>
-    · <span id="pagever"></span>
     <div id="debug" style="margin-top:6px"></div>
-    <p class="sitever"><span data-i18n="verLabel">גרסה: </span><span class="vcode">8adac54</span></p>
+    <p class="sitever"><span data-i18n="verLabel">גרסה: </span><span class="vcode">9046377</span></p>
   </footer>
 </div>
 
@@ -97,8 +96,8 @@
        mk.view.js       draws the portfolio (and starts the page at the bottom) -->
 <script src="../shared/config.js"></script>
 <script src="mk.strings.js?v=3f0c990f"></script>
-<script src="../shared/common.js?v=332872d6"></script>
+<script src="../shared/common.js?v=678fc2e3"></script>
 <script src="mk.data.js?v=b278f094"></script>
-<script src="mk.view.js?v=539d4a45"></script>
+<script src="mk.view.js?v=641481b6"></script>
 </body>
 </html>

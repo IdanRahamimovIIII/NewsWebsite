@@ -4,7 +4,7 @@
 (function () {
   const add = {
     he: {
-      tagline: "כל חוקי מדינת ישראל, במקום אחד",
+      tagline: "חוקי מדינת ישראל",
       listTitle: "חיפוש בחוקים",
       listHint: "חיפוש לפי שם החוק. לחיצה על חוק פותחת את הפרטים שלו.",
       qPh: "לדוגמה: חוק העונשין, שכירות, נכים",
@@ -42,7 +42,7 @@
       srcKnesset: "הרשומה במאגר הכנסת",
     },
     en: {
-      tagline: "Every Israeli law, in one place",
+      tagline: "The laws of Israel",
       listTitle: "Search the laws",
       listHint: "Search by the law's name. Click a law to open its details.",
       qPh: "e.g. חוק העונשין, rent, disability",

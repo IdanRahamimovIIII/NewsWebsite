@@ -19,7 +19,7 @@
 <meta property="og:locale" content="he_IL">
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="../shared/style.css?v=86e6bfa1">
+<link rel="stylesheet" href="../shared/style.css?v=4f8f4d0a">
 <style>
   /* ---- court page only ---- */
   .controls { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin-bottom: 6px; }
@@ -78,19 +78,11 @@
     </div>
     <div class="searchrow">
       <input id="q" data-i18n-ph="qPh" onkeydown="if(event.key==='Enter')reload()" placeholder="חיפוש חופשי בפסיקה — לדוגמה: חופש הביטוי">
-      <button onclick="reload()" data-i18n="searchBtn">חיפוש</button>
+      <button class="sbtn" type="button" onclick="reload()" aria-label="חיפוש"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M20 20l-4.2-4.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
     </div>
 
     <div class="statrow" id="stats"></div>
     <div id="list"><div class="loading" data-i18n="loading">טוען נתונים…</div></div>
-  </div>
-
-  <!-- how to read this -->
-  <div class="card explain">
-    <h2 data-i18n="expTitle">איך קוראים את זה?</h2>
-    <p><span data-i18n="exp1">‏<b>פסק דין</b> הוא ההכרעה הסופית בתיק — זה המסמך שמשנה את המציאות. <b>החלטה</b> היא כל צעד בדרך: צווים, בקשות, קביעות ביניים.</span></p>
-    <p><span data-i18n="exp2">‏כשבית המשפט העליון יושב כ<b>בג"ץ</b> (בית משפט גבוה לצדק), אזרחים עותרים נגד המדינה עצמה — ממשלה, שרים, רשויות. שם מתרחשות ההכרעות הגדולות על גבולות הכוח השלטוני.</span></p>
-    <p><span data-i18n="exp3">‏פרשנות של העליון מחייבת את כל בתי המשפט האחרים. לכן גם "החלטה קטנה" יכולה לשנות בפועל את משמעותו של חוק — בלי שהכנסת שינתה מילה.</span></p>
   </div>
 
   <footer>
@@ -100,7 +92,7 @@
     <span data-i18n="credit">מקור המידע: </span>
     <a href="https://supremedecisions.court.gov.il" target="_blank" rel="noopener" data-i18n="srcName">מאגר פסקי הדין של בית המשפט העליון</a>
     <div id="debug" style="margin-top:6px"></div>
-    <p class="sitever"><span data-i18n="verLabel">גרסה: </span><span class="vcode">8adac54</span></p>
+    <p class="sitever"><span data-i18n="verLabel">גרסה: </span><span class="vcode">9046377</span></p>
   </footer>
 </div>
 
@@ -152,7 +144,7 @@ window.PAGE_STR = {
   }
 };
 </script>
-<script src="../shared/common.js?v=332872d6"></script>
+<script src="../shared/common.js?v=678fc2e3"></script>
 <script>
 "use strict";
 /* =====================================================================

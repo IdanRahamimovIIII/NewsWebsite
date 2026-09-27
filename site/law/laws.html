@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>הכסף שלנו — כל חוקי מדינת ישראל | Our Money — Every Israeli Law</title>
+<title>הכסף שלנו — חוקי מדינת ישראל | Our Money — The Laws of Israel</title>
 <meta name="description" content="כל חוקי מדינת ישראל במקום אחד: מה חל היום, מה בוטל ומתי, כמה פעמים כל חוק תוקן, ואילו חוקים ביטל בית המשפט העליון — מנתוני הכנסת, עם קישור למקור.">
 <!-- who we are to search engines and social cards (share.png is the shared card image) -->
 <link rel="canonical" href="https://ourmoneyil.com/law/laws.html">
 <link rel="alternate" type="text/plain" href="https://ourmoneyil.com/llms.txt" title="Guide for AI systems (llms.txt)">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="הכסף שלנו — Our Money">
-<meta property="og:title" content="הכסף שלנו — כל חוקי מדינת ישראל | Our Money — Every Israeli Law">
+<meta property="og:title" content="הכסף שלנו — חוקי מדינת ישראל | Our Money — The Laws of Israel">
 <meta property="og:description" content="כל חוקי מדינת ישראל במקום אחד: מה חל היום, מה בוטל ומתי, כמה פעמים כל חוק תוקן, ואילו חוקים ביטל בית המשפט העליון — מנתוני הכנסת, עם קישור למקור.">
 <meta property="og:url" content="https://ourmoneyil.com/law/laws.html">
 <meta property="og:image" content="https://ourmoneyil.com/shared/share.png">
@@ -19,8 +19,8 @@
 <meta property="og:locale" content="he_IL">
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="../shared/style.css?v=86e6bfa1">
-<link rel="stylesheet" href="law.css?v=22a325b4">
+<link rel="stylesheet" href="../shared/style.css?v=4f8f4d0a">
+<link rel="stylesheet" href="law.css?v=8fcaecac">
 </head>
 <body>
 <header class="topbar"><div class="tbwrap">
@@ -40,14 +40,14 @@
 </nav>
 
 <div class="wrap">
-  <p class="tagline" data-i18n="tagline">כל חוקי מדינת ישראל, במקום אחד</p>
+  <p class="tagline" data-i18n="tagline">חוקי מדינת ישראל</p>
 
   <div class="card">
     <h2 data-i18n="listTitle">חיפוש בחוקים</h2>
     <p class="hint" data-i18n="listHint">חיפוש לפי שם החוק. לחיצה על חוק פותחת את הפרטים שלו.</p>
     <div class="searchrow">
       <input id="q" data-i18n-ph="qPh" onkeydown="if(event.key==='Enter')applyControls()" placeholder="לדוגמה: חוק העונשין, שכירות, נכים">
-      <button onclick="applyControls()" data-i18n="searchBtn">חיפוש</button>
+      <button class="sbtn" type="button" onclick="applyControls()" aria-label="חיפוש"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M20 20l-4.2-4.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
     </div>
     <div class="lawctl">
       <select id="topic" onchange="applyControls()" aria-label="נושא"></select>
@@ -67,13 +67,6 @@
     <p class="notadvice" data-i18n="notAdvice">הדף עוזר להבין, ואינו ייעוץ משפטי.</p>
   </div>
 
-  <div class="card explain">
-    <h2 data-i18n="explainTitle">איך לקרוא את הדף?</h2>
-    <p data-i18n="explain1">״חל היום״ הוא הסטטוס שהכנסת רושמת לכל חוק. חוק ״בוטל בחוק״ כשהכנסת עצמה ביטלה אותו, ״פקע״ כשחוק זמני הגיע לסופו, ו״נושן״ כשסיים את תפקידו ואיש לא ביטל אותו. ביטול של בית המשפט לא מופיע ברשומות הכנסת — לכן הוא מוצג כאן בנפרד.</p>
-    <p data-i18n="explain2">הדף עוזר להבין, ואינו ייעוץ משפטי. לפני החלטה שנוגעת לכם — בדקו את נוסח החוק ואת פסק הדין המלא, או היוועצו בעורך דין.</p>
-    <p data-i18n="explain3">מקורות: מאגר הנתונים הפתוח של הכנסת (חוקים, הצעות חוק, ועדות), אתר פסקי הדין של בית המשפט העליון, וספר החוקים הפתוח בוויקיטקסט.</p>
-  </div>
-
   <footer>
     <p class="aboutpara" data-i18n="aboutBody">״הכסף שלנו״ הוא אתר עצמאי, ללא קשר לגוף ממשלתי, למפלגה או לארגון, שנועד להעניק לאזרחי ישראל מבט נקי ומסודר על פעילות המדינה ועל האופן שבו היא משתמשת בכסף שלנו. כל הנתונים מגיעים ישירות מהמקורות הרשמיים ומוצגים כפי שהם, עם קישור למקור. מצאתם טעות או נתון חסר? כתבו לנו ונתקן:</p>
     <p class="aboutmail"><span data-i18n="contactLabel">אמצעי תקשורת - </span><a href="mailto:contact@ourmoneyil.com">contact@ourmoneyil.com</a></p>
@@ -83,14 +76,14 @@
     <a href="https://supremedecisions.court.gov.il/" target="_blank" rel="noopener">supremedecisions.court.gov.il</a> ·
     <a href="https://he.wikisource.org/wiki/ספר_החוקים_הפתוח" target="_blank" rel="noopener">ספר החוקים הפתוח</a>
     <div id="debug" style="margin-top:6px"></div>
-    <p class="sitever"><span data-i18n="verLabel">גרסה: </span><span class="vcode">8adac54</span></p>
+    <p class="sitever"><span data-i18n="verLabel">גרסה: </span><span class="vcode">9046377</span></p>
   </footer>
 </div>
 
 <script src="../shared/config.js"></script>
 <script src="law.strings.js?v=5757b3fa"></script>
-<script src="laws.strings.js?v=432c426c"></script>
-<script src="../shared/common.js?v=332872d6"></script>
+<script src="laws.strings.js?v=d4a7acb6"></script>
+<script src="../shared/common.js?v=678fc2e3"></script>
 <script src="../shared/bills.js?v=9b8cd849"></script>
 <script src="law.data.js?v=05d57782"></script>
 <script src="laws.view.js?v=97078e24"></script>

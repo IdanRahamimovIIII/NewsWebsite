@@ -153,6 +153,13 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--i
   padding: 9px 20px; font-size: 15px; cursor: pointer;
 }
 .searchrow button:hover { filter: brightness(1.1); }
+/* the field and its magnifier are one bar (like Google): no gap, the field's
+   end corners square, the button's start corners square */
+.searchrow:has(> button.sbtn), .searchrow:has(> label + button.sbtn) { gap: 0; flex-wrap: nowrap; }
+.searchrow:has(button.sbtn) input { border-start-end-radius: 0; border-end-end-radius: 0; border-inline-end: 0; min-width: 0; }
+.searchrow button.sbtn { flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 48px; padding: 0; border-start-start-radius: 0; border-end-start-radius: 0; }
+.searchrow button.sbtn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 
 /* ---------- small round buttons (filters, chips) ---------- */
 .chipbtn {
@@ -220,4 +227,5 @@ footer .sitever .vcode { font-family: ui-monospace, monospace; }
   th, td { padding: 6px 6px; }
   .searchrow input { font-size: 16px; } /* 16px stops iPhone from zooming into the field */
   .searchrow button { padding: 9px 16px; }
+  .searchrow button.sbtn { padding: 0; width: 46px; }
 }

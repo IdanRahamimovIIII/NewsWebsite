@@ -78,6 +78,7 @@ details.adv label { display: inline-flex; gap: 7px; align-items: center; cursor:
 .statline .hid { color: var(--ink-3); }
 
 .lawrow { border-bottom: 1px solid var(--grid); }
+.lawrow:first-child { border-top: 1px solid var(--grid); }   /* each law in its own box (Mercy) */
 .lawrow > button.head { all: unset; box-sizing: border-box; display: block; width: 100%;
   cursor: pointer; padding: 11px 2px; }
 .lawrow > button.head:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }

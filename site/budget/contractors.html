@@ -19,7 +19,7 @@
 <meta property="og:locale" content="he_IL">
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="../shared/style.css?v=86e6bfa1">
+<link rel="stylesheet" href="../shared/style.css?v=4f8f4d0a">
 <link rel="stylesheet" href="budget.css?v=44946315">
 </head>
 <body>
@@ -98,17 +98,9 @@
     <p class="hint" data-i18n="searchHint">חפשו שם ספק או מילה מתיאור ההתקשרות (למשל: פרסום, יועצים, אל על). לחיצה על שם ספק פותחת את כל ההתקשרויות שלו.</p>
     <div class="searchrow">
       <input id="q" data-i18n-ph="searchPh" onkeydown="if(event.key==='Enter')doSearch()" placeholder="לדוגמה: יועצים">
-      <button onclick="doSearch()" data-i18n="searchBtn">חיפוש</button>
+      <button class="sbtn" type="button" onclick="doSearch()" aria-label="חיפוש"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M20 20l-4.2-4.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
     </div>
     <div id="searchout"></div>
-  </div>
-
-  <!-- explainer -->
-  <div class="card explain">
-    <h2 data-i18n="explainTitle">איך לקרוא את המספרים?</h2>
-    <p data-i18n="explain1">״היקף״ הוא השווי הכולל של ההתקשרות לכל אורכה — מה שהמדינה התחייבה לו, לא מה ששולם. ״שולם״ הוא מה שדווח כמשולם בפועל עד היום. שני המספרים יכולים להיות רחוקים זה מזה: חוזה גדול יכול להתחיל בקטן, ולהיפך.</p>
-    <p data-i18n="explain2">הנתונים מגיעים מדוחות ההתקשרויות שמשרדי הממשלה מפרסמים אחת לרבעון, כפי שהם נאספים בבסיס הנתונים הפתוח של ״מפתח התקציב״. הדיווח אינו שלם: ככל שמתקרבים להווה הוא דליל יותר, ומשרד הביטחון אינו מפרסם את התקשרויותיו כלל — הרכש הביטחוני פועל לפי תקנות פטור נפרדות וחלק מהתקציב מסווג.</p>
-    <p data-i18n="explain3">טעות במספרים? בעמוד התקציב, מתחת לכל סעיף, מוצגות ההתקשרויות מתוך מאגר שבנינו מכמה מקורות מוצלבים — שם כל התקשרות מציינת את מקורותיה. העמוד הזה קורא ישירות מ״מפתח התקציב״, ולכן משקף גם את מגבלותיו.</p>
   </div>
 
   <footer>
@@ -119,7 +111,7 @@
     <a href="https://next.obudget.org" target="_blank" rel="noopener">obudget.org</a> ·
     <a href="https://mr.gov.il" target="_blank" rel="noopener">מינהל הרכש</a>
     <div id="debug" style="margin-top:6px"></div>
-    <p class="sitever"><span data-i18n="verLabel">גרסה: </span><span class="vcode">8adac54</span></p>
+    <p class="sitever"><span data-i18n="verLabel">גרסה: </span><span class="vcode">9046377</span></p>
   </footer>
 </div>
 
@@ -127,7 +119,7 @@
 
 <script src="../shared/config.js"></script>
 <script src="contractors.strings.js?v=bd2d4f00"></script>
-<script src="../shared/common.js?v=332872d6"></script>
+<script src="../shared/common.js?v=678fc2e3"></script>
 <script src="contractors.data.js?v=e4fd6b5e"></script>
 <script src="contractors.view.js?v=5f1d6452"></script>
 </body>

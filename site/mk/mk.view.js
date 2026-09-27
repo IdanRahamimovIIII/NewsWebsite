@@ -605,8 +605,7 @@ function votePage(d) {
 /* =====================================================================
    8. INIT
    ===================================================================== */
-const PAGE_VER = "26.09aj · טולטיפ אחד"; // bumped on every update — an older stamp in the footer means a cached/old copy
-document.getElementById("pagever").textContent = "גרסה " + PAGE_VER;
+// the page version is the site-wide "גרסה" line in the footer (stamped by the bake)
 if (ENTITY && ENTITY.lang === "en") lang = "en";   // the English entity address
 applyLang();
 // the results ARE the suggestions: they update with every letter typed
