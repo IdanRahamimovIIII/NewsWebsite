@@ -80,7 +80,8 @@ function rulingLink(c) {
 function lawKv(l, opts) {
   const topics = (l.t || []).map(id => LAW.topics[id]).filter(Boolean);
   const rep = l.r && LAW.byId.get(l.r);
-  return (opts && opts.status === false ? "" : kv("kvStatus", esc(t(STATE_KEY[shownState(l)])))) +
+  const st = shownState(l);                                 // "applies today" goes without saying (Mercy)
+  return (opts && opts.status === false || st === "in" ? "" : kv("kvStatus", esc(t(STATE_KEY[st])))) +
     (knessetDiffers(l) ? kv("kvKnesset", esc(l.st)) : "") +
     kv("kvStart", l.s ? esc(fmtDate(l.s)) : "") +
     kv("kvEnd", l.e ? esc(fmtDate(l.e)) : "") +

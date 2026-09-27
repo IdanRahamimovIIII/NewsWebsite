@@ -8,7 +8,7 @@
    ===================================================================== */
 
 const PAGE_SIZE = 150;
-const V = { q: "", topic: "",   // budget laws are always listed (Mercy) gone: false, basic: false, court: false,
+const V = { q: "", topic: "", kind: "in", basic: false, court: false,   // budget laws always listed; kind: all|in|gone (Mercy)
             sort: "changed", limit: PAGE_SIZE, openId: null };
 
 const normHe = s => String(s || "").replace(/[֑-ׇ]/g, "").replace(/["'״׳]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -24,7 +24,8 @@ function matches(l) {
   if (V.court && !courtOf(l).length) return false;
   // hidden by default — but a law the reader asked for by address is always shown
   if (l.i === V.openId) return true;
-  if (!V.gone && !V.court && notApplying(l)) return false;
+  if (V.kind === "in" && notApplying(l)) return false;      // applies today (+ not yet in force, which leads)
+  if (V.kind === "gone" && !notApplying(l)) return false;   // repealed / expired / obsolete / voided in full
   return true;
 }
 
@@ -44,7 +45,7 @@ function rowHtml(l) {
   const st = shownState(l);
   const cb = courtBadge(l);
   const chips = [
-    `<span class="lbadge${st === "voided" ? " court" : ""}">${esc(t(STATE_KEY[st]))}</span>`,
+    st === "in" ? "" : `<span class="lbadge${st === "voided" ? " court" : ""}">${esc(t(STATE_KEY[st]))}</span>`,   // no tag = applies today
     cb && !(st === "voided" && cb.k === "void") ? `<span class="lbadge court">${esc(t(KIND_KEY[cb.k]))}</span>` : "",
     (l.f || "").includes("b") ? `<span class="lbadge soft">${esc(t("basicLaw"))}</span>` : "",
     isTemp(l) ? `<span class="lbadge soft">${esc(t("temporary"))}</span>` : "",
@@ -78,7 +79,7 @@ function renderList() {
   const shown = hits.slice(0, V.limit);
   const total = d.laws.length;
   const hidB = 0;                                           // budget laws are always listed
-  const hidG = V.gone || V.court ? 0 : d.laws.filter(notApplying).length;
+  const hidG = V.kind === "in" ? d.laws.filter(notApplying).length : 0;
   const stat = document.getElementById("stat");
   stat.innerHTML = esc(hits.length === total ? fill(t("shown"), { n: fmtN(hits.length) })
       : fill(t("shownOf"), { n: fmtN(hits.length), m: fmtN(total) })) +
@@ -125,7 +126,7 @@ function syncUrl() {
 function applyControls() {
   V.q = document.getElementById("q").value.trim();
   V.topic = document.getElementById("topic").value;
-  V.gone = document.getElementById("optGone").checked;
+  V.kind = document.getElementById("kind").value;
   V.basic = document.getElementById("optBasic").checked;
   V.court = document.getElementById("optCourt").checked;
   V.sort = document.getElementById("sort").value;
@@ -145,6 +146,10 @@ function fillControls() {
   sel.innerHTML = `<option value="">${esc(t("topicAll"))}</option>` +
     opts.map(id => `<option value="${id}">${esc(LAW.topics[id])} (${fmtN(counts[id])})</option>`).join("");
   sel.value = V.topic;
+  const kind = document.getElementById("kind");
+  kind.innerHTML = [["all", "kindAll"], ["in", "kindIn"], ["gone", "kindGone"]].map(([v, k]) =>
+    `<option value="${v}">${esc(t(k))}</option>`).join("");
+  kind.value = V.kind;
   const sort = document.getElementById("sort");
   sort.innerHTML = ["changed", "newest", "oldest", "amended", "name"].map(k =>
     `<option value="${k}">${esc(t("sort" + k[0].toUpperCase() + k.slice(1)))}</option>`).join("");
