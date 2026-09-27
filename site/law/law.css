@@ -78,7 +78,7 @@ details.adv label { display: inline-flex; gap: 7px; align-items: center; cursor:
    choice is cut (Mercy) */
 .lawctl label, details.adv label:has(select) { display: inline-flex; gap: 7px; align-items: center; font-size: 13.5px; color: var(--ink-2); }
 .lawctl label > span, details.adv label:has(select) > span { min-width: 3.9em; font-weight: 700; }   /* bold labels (Mercy) */
-.lawctl select, details.adv select { width: 140px; text-overflow: ellipsis; }
+.lawctl select, details.adv select { width: 10.8em; text-overflow: ellipsis; }   /* "חוקים שחלים היום" in full (Mercy) */
 .lawctl { padding-inline: 2px; }   /* level with .advin's 2px */
 .statline { color: var(--ink-2); font-size: 13.5px; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
 .statline .hid { color: var(--ink-3); }

@@ -8,6 +8,10 @@
      window.onLangChange = () => { ...re-render data-driven parts... }
    ===================================================================== */
 
+// every page fills itself after load: the browser's F5 scroll-restore lands
+// while the page is still short (→ its bottom). Start at the top (Mercy).
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+
 /* ---------- shared strings ---------- */
 const COMMON_STR = {
   he: {
