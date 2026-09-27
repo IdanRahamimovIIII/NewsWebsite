@@ -8,7 +8,7 @@
    ===================================================================== */
 
 const PAGE_SIZE = 150;
-const V = { q: "", topic: "", budget: true,   // budget laws shown by default: only ~78 (Mercy) gone: false, basic: false, court: false,
+const V = { q: "", topic: "",   // budget laws are always listed (Mercy) gone: false, basic: false, court: false,
             sort: "changed", limit: PAGE_SIZE, openId: null };
 
 const normHe = s => String(s || "").replace(/[֑-ׇ]/g, "").replace(/["'״׳]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -24,10 +24,13 @@ function matches(l) {
   if (V.court && !courtOf(l).length) return false;
   // hidden by default — but a law the reader asked for by address is always shown
   if (l.i === V.openId) return true;
-  if (!V.budget && isBudget(l)) return false;
-  if (!V.gone && isGone(l)) return false;
+  if (!V.gone && !V.court && notApplying(l)) return false;
   return true;
 }
+
+/* no longer applies = repealed / expired / obsolete, or voided in full by the
+   court (the Knesset still says תקף) — folded unless asked for (Mercy) */
+const notApplying = l => isGone(l) || shownState(l) === "voided";
 
 const SORTS = {
   changed: (a, b) => (b.lp || b.p || "").localeCompare(a.lp || a.p || ""),
@@ -74,8 +77,8 @@ function renderList() {
   hits.sort((a, b) => ((lawState(b) === "pending") - (lawState(a) === "pending")) || SORTS[V.sort](a, b));
   const shown = hits.slice(0, V.limit);
   const total = d.laws.length;
-  const hidB = V.budget ? 0 : d.laws.filter(isBudget).length;
-  const hidG = V.gone ? 0 : d.laws.filter(l => isGone(l) && !isBudget(l)).length;
+  const hidB = 0;                                           // budget laws are always listed
+  const hidG = V.gone || V.court ? 0 : d.laws.filter(notApplying).length;
   const stat = document.getElementById("stat");
   stat.innerHTML = esc(hits.length === total ? fill(t("shown"), { n: fmtN(hits.length) })
       : fill(t("shownOf"), { n: fmtN(hits.length), m: fmtN(total) })) +
@@ -122,7 +125,6 @@ function syncUrl() {
 function applyControls() {
   V.q = document.getElementById("q").value.trim();
   V.topic = document.getElementById("topic").value;
-  V.budget = document.getElementById("optBudget").checked;
   V.gone = document.getElementById("optGone").checked;
   V.basic = document.getElementById("optBasic").checked;
   V.court = document.getElementById("optCourt").checked;
