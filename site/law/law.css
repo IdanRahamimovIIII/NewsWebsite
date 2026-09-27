@@ -74,6 +74,12 @@ details.adv { margin: 4px 0 10px; font-size: 13.5px; color: var(--ink-2); }
 details.adv summary { cursor: pointer; color: var(--accent-ink); }
 details.adv .advin { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 8px 2px 2px; }
 details.adv label { display: inline-flex; gap: 7px; align-items: center; cursor: pointer; }
+/* סדר / סוג / נושאים: one column of labels, three boxes of one width — a long
+   choice is cut (Mercy) */
+.lawctl label, details.adv label:has(select) { display: inline-flex; gap: 7px; align-items: center; font-size: 13.5px; color: var(--ink-2); }
+.lawctl label > span, details.adv label:has(select) > span { min-width: 3.9em; }
+.lawctl select, details.adv select { width: 140px; text-overflow: ellipsis; }
+.lawctl { padding-inline: 2px; }   /* level with .advin's 2px */
 .statline { color: var(--ink-2); font-size: 13.5px; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
 .statline .hid { color: var(--ink-3); }
 
