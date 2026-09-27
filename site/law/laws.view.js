@@ -11,7 +11,7 @@
 
 const PAGE_SIZE = 150;
 const V = { q: "", topic: "", kind: "in", basic: false, court: false,   // budget laws always listed; kind: all|in|gone (Mercy)
-            sort: "changed", limit: PAGE_SIZE, openId: null };
+            sort: "changed", limit: PAGE_SIZE, openId: null, picked: null };
 
 const normHe = s => String(s || "").replace(/[֑-ׇ]/g, "").replace(/["'״׳]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 
@@ -21,12 +21,13 @@ function matches(l, loose) {   // loose: the name only, no settings
     const name = normHe(l.n);
     if (!words.every(w => name.includes(w))) return false;
   }
+  // a law the reader picked (a suggestion, an old ?law= address) shows whatever
+  // the settings — until the next search (applyControls clears it)
+  if (l.i === V.picked) return true;
   if (loose) return true;
   if (V.topic && !(l.t || []).includes(Number(V.topic))) return false;
   if (V.basic && !(l.f || "").includes("b")) return false;
   if (V.court && !courtOf(l).length) return false;
-  // hidden by default — but a law the reader asked for by address is always shown
-  if (l.i === V.openId) return true;
   if (V.kind === "in" && isGone(l)) return false;           // in force per the Knesset (+ not yet, which leads)
   if (V.kind === "gone" && !notApplying(l)) return false;
   return true;
@@ -93,7 +94,7 @@ function renderList() {
     ((hidB || hidG) ? ` <span class="hid">${esc(fill(t(hidB ? "hiddenNote" : "hiddenGone"), { b: fmtN(hidB), g: fmtN(hidG) }))}</span>` : "");
   const list = document.getElementById("list");
   if (!hits.length) { list.innerHTML = `<p class="hint">${esc(t("noMatch"))}</p>`; return; }
-  let html = (loose.length ? `<p class="hint">${esc(t("looseNote"))}</p>` : "") + shown.map(rowHtml).join("");
+  let html = (loose.length ? `<p class="loosenote"><b>!</b> ${esc(t("looseNote"))}</p>` : "") + shown.map(rowHtml).join("");
   if (hits.length > shown.length) {
     html += `<button class="morebtn" onclick="V.limit += ${PAGE_SIZE}; renderList()">${esc(fill(t("more"), { n: fmtN(Math.min(PAGE_SIZE, hits.length - shown.length)) }))}</button>`;
   }
@@ -106,7 +107,7 @@ function toggleLaw(id) {
   syncUrl();
 }
 function openLaw(id) {
-  V.openId = id;
+  V.openId = V.picked = id;
   // the law must be in view: make sure the filters and the page size let it through
   const d = LAW.data, l = LAW.byId.get(id);
   if (!l) return;
@@ -129,7 +130,38 @@ function syncUrl() {
   history.replaceState(null, "", location.pathname + (qs ? "?" + qs : ""));
 }
 
+/* ---------- suggestions under the search field (attachSuggest, common.js):
+   every law, whatever the settings, with its tag; a pick fills the field
+   and opens that law (Mercy) ---------- */
+function lawSuggest(text) {
+  const q = normHe(text), words = q.split(" ").filter(Boolean);
+  if (!words.length || !LAW.data) return [];
+  const hits = [];
+  for (const l of LAW.data.laws) {
+    const n = normHe(l.n);
+    if (words.every(w => n.includes(w))) hits.push([l, n.includes(q) ? 0 : 1, notApplying(l) ? 1 : 0, n.length]);
+  }
+  // the typed phrase whole first, then laws in force, then the shorter name
+  hits.sort((a, b) => a[1] - b[1] || a[2] - b[2] || a[3] - b[3]);
+  return hits.slice(0, 8).map(([l]) => {
+    const st = shownState(l), cb = courtBadge(l);
+    const tags = (st === "in" ? "" : `<span class="lbadge${st === "voided" ? " stop" : ""}">${esc(t(STATE_KEY[st]))}</span>`) +
+      (cb && cb.k === "frozen" ? `<span class="lbadge stop">${esc(t(KIND_KEY.frozen))}</span>` : "");
+    return { html: `<span class="sname">${markWords(lawName(l), words)}</span>${tags}`, pick: () => pickLaw(l) };
+  });
+}
+function pickLaw(l) {
+  const q = document.getElementById("q");
+  q.value = lawName(l); q.blur();                           // blur: the phone keyboard goes away
+  V.q = q.value; V.openId = V.picked = l.i; V.limit = PAGE_SIZE;
+  renderList();
+  syncUrl();
+  const el = document.getElementById("law-" + l.i);
+  if (el) el.scrollIntoView({ block: "start", behavior: "smooth" });
+}
+
 function applyControls() {
+  V.picked = null;
   V.q = document.getElementById("q").value.trim();
   V.topic = document.getElementById("topic").value;
   V.kind = document.getElementById("kind").value;
@@ -173,6 +205,7 @@ window.onLangChange = () => { fillControls(); renderList(); };
   try {
     await loadLaws();
     fillControls();
+    attachSuggest(document.getElementById("q"), lawSuggest);
     if (want && LAW.byId.has(want)) openLaw(want);
     else renderList();
   } catch (e) {

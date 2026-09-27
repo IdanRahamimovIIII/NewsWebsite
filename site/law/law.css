@@ -85,7 +85,10 @@ details.adv label { display: inline-flex; gap: 7px; align-items: center; cursor:
 .statline .hid { color: var(--ink-3); }
 
 .lawrow { border-bottom: 1px solid var(--grid); }
-.lawrow:first-child { border-top: 1px solid var(--grid); }   /* each law in its own box (Mercy) */
+.lawrow:first-child, .loosenote + .lawrow { border-top: 1px solid var(--grid); }
+/* "! nothing matches with your settings…" — its own block, a line above (Mercy) */
+.loosenote { margin: 14px 0 10px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--ink-2); font-size: 14px; }
+.loosenote b { color: var(--ink-1); margin-inline-end: 2px; }   /* each law in its own box (Mercy) */
 .lawrow > button.head { all: unset; box-sizing: border-box; display: block; width: 100%;
   cursor: pointer; padding: 11px 2px; }
 .lawrow > button.head:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }

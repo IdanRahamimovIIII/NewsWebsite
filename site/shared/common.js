@@ -351,3 +351,62 @@ function watchHeader() {
 /* ---------- boot ---------- */
 buildChrome();
 watchHeader();
+
+/* ---------- suggestions under a search field, like Google (Mercy: every
+   search bar, page by page). source(text) → [{ html, pick }]; the field's
+   parent is the .searchrow, which the list hangs from. ---------- */
+function attachSuggest(input, source) {
+  const box = document.createElement("ul");
+  box.className = "sugg"; box.id = input.id + "-sugg"; box.hidden = true;
+  box.setAttribute("role", "listbox");
+  input.parentElement.appendChild(box);
+  input.setAttribute("role", "combobox"); input.setAttribute("aria-autocomplete", "list");
+  input.setAttribute("aria-controls", box.id); input.setAttribute("aria-expanded", "false");
+  input.autocomplete = "off";
+  let items = [], at = -1;
+  const mark = k => {
+    at = k;
+    [...box.children].forEach((li, j) => li.setAttribute("aria-selected", String(j === k)));
+    if (k >= 0) input.setAttribute("aria-activedescendant", box.id + "-" + k); else input.removeAttribute("aria-activedescendant");
+  };
+  const close = () => { box.hidden = true; items = []; mark(-1); input.setAttribute("aria-expanded", "false"); };
+  const choose = k => { const it = items[k]; close(); if (it) it.pick(); };
+  input.addEventListener("input", () => {
+    items = input.value.trim() ? source(input.value) : [];
+    if (!items.length) return close();
+    box.innerHTML = items.map((it, k) => `<li role="option" id="${box.id}-${k}" aria-selected="false">${it.html}</li>`).join("");
+    box.hidden = false; at = -1; input.setAttribute("aria-expanded", "true");
+  });
+  input.addEventListener("keydown", e => {
+    if (box.hidden) return;
+    const n = items.length;
+    if (e.key === "ArrowDown") { e.preventDefault(); mark((at + 1) % n); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); mark(at <= 0 ? n - 1 : at - 1); }
+    else if (e.key === "Enter" && at >= 0) { e.preventDefault(); choose(at); }
+    else if (e.key === "Enter" || e.key === "Escape") close();
+  });
+  box.addEventListener("pointerdown", e => e.preventDefault());   // a tap must not blur the field first
+  box.addEventListener("click", e => { const li = e.target.closest("li"); if (li) choose([...box.children].indexOf(li)); });
+  input.addEventListener("blur", close);
+}
+
+/* the typed words in bold inside a name — matched the way the searches match
+   (no niqqud, no quotes/geresh, spaces collapsed, case-blind) */
+function markWords(raw, words) {
+  const norm = [], at = [];
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (/[֑-ׇ"'׳״]/.test(ch)) continue;
+    if (/\s/.test(ch)) { if (norm.length && norm[norm.length - 1] !== " ") { norm.push(" "); at.push(i); } continue; }
+    norm.push(ch.toLowerCase()); at.push(i);
+  }
+  const s = norm.join(""), on = new Array(raw.length).fill(false);
+  for (const w of words) for (let k = s.indexOf(w); w && k >= 0; k = s.indexOf(w, k + w.length))
+    for (let j = k; j < k + w.length; j++) on[at[j]] = true;
+  let out = "", b = false;
+  for (let i = 0; i < raw.length; i++) {
+    if (on[i] !== b) { out += b ? "</b>" : "<b>"; b = on[i]; }
+    out += esc(raw[i]);
+  }
+  return out + (b ? "</b>" : "");
+}

@@ -143,7 +143,15 @@ td { border-bottom: 1px solid var(--grid); padding: 7px 8px; vertical-align: top
 td.num { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink-1); }
 
 /* ---------- search row ---------- */
-.searchrow { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.searchrow { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; position: relative; }
+/* suggestions under the field (attachSuggest) */
+.sugg { position: absolute; inset-inline: 0; top: 100%; z-index: 30; margin: 4px 0 0; padding: 4px 0;
+  list-style: none; background: var(--page); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .18); max-height: 60vh; overflow-y: auto; }
+.sugg li { padding: 8px 12px; cursor: pointer; line-height: 1.45; color: var(--ink-2); }
+.sugg li b { color: var(--ink-1); }
+.sugg li[aria-selected="true"], .sugg li:hover { background: var(--grid); }
+.sugg .lbadge { margin-inline-start: 6px; vertical-align: 1px; }
 .searchrow input {
   flex: 1 1 260px; background: var(--page); color: var(--ink-1);
   border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 15px;
