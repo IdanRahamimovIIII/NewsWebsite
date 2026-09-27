@@ -68,11 +68,11 @@
 
 /* ---------- the laws list ---------- */
 .lawctl { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 8px; }
-.lawctl select { background: var(--page); color: var(--ink-1); border: 1px solid var(--border);
+.lawctl select, details.adv select { background: var(--page); color: var(--ink-1); border: 1px solid var(--border);
   border-radius: 8px; padding: 6px 10px; font-size: 14px; max-width: 100%; }
 details.adv { margin: 4px 0 10px; font-size: 13.5px; color: var(--ink-2); }
 details.adv summary { cursor: pointer; color: var(--accent-ink); }
-details.adv .advin { display: flex; flex-direction: column; gap: 6px; padding: 8px 2px 2px; }
+details.adv .advin { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 8px 2px 2px; }
 details.adv label { display: inline-flex; gap: 7px; align-items: center; cursor: pointer; }
 .statline { color: var(--ink-2); font-size: 13.5px; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
 .statline .hid { color: var(--ink-3); }
@@ -98,7 +98,7 @@ details.adv label { display: inline-flex; gap: 7px; align-items: center; cursor:
 @media (max-width: 640px) {
   .it .nm, .lawrow .nm { font-size: 15px; }
   .card > h2.hh { font-size: 19px; margin-bottom: 10px; }
-  .lawctl select { font-size: 16px; }   /* no iPhone zoom */
+  .lawctl select, details.adv select { font-size: 16px; }   /* no iPhone zoom */
 }
 
 /* the "?" button lives in style.css; .info boxes are its hidden sources */

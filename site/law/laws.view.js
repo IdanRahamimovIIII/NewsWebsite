@@ -8,7 +8,7 @@
    ===================================================================== */
 
 const PAGE_SIZE = 150;
-const V = { q: "", topic: "", budget: false, gone: false, basic: false, court: false,
+const V = { q: "", topic: "", budget: true,   // budget laws shown by default: only ~78 (Mercy) gone: false, basic: false, court: false,
             sort: "changed", limit: PAGE_SIZE, openId: null };
 
 const normHe = s => String(s || "").replace(/[֑-ׇ]/g, "").replace(/["'״׳]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -79,7 +79,7 @@ function renderList() {
   const stat = document.getElementById("stat");
   stat.innerHTML = esc(hits.length === total ? fill(t("shown"), { n: fmtN(hits.length) })
       : fill(t("shownOf"), { n: fmtN(hits.length), m: fmtN(total) })) +
-    ((hidB || hidG) ? ` <span class="hid">${esc(fill(t("hiddenNote"), { b: fmtN(hidB), g: fmtN(hidG) }))}</span>` : "");
+    ((hidB || hidG) ? ` <span class="hid">${esc(fill(t(hidB ? "hiddenNote" : "hiddenGone"), { b: fmtN(hidB), g: fmtN(hidG) }))}</span>` : "");
   const list = document.getElementById("list");
   if (!hits.length) { list.innerHTML = `<p class="hint">${esc(t("noMatch"))}</p>`; return; }
   let html = shown.map(rowHtml).join("");
