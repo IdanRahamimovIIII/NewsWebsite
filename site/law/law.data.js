@@ -43,6 +43,9 @@ const isBudget = l => (l.f || "").includes("u");
 const isTemp = l => (l.f || "").includes("t") || !!l.e;
 const isGone = l => ["repealed", "expired", "obsolete"].includes(lawState(l));
 const courtOf = l => LAW.courtByLaw.get(l.i) || [];
+// the court stopped the WHOLE law (a "frozen" row = the law itself, as in
+// court.csv today) — a special state, marked in red (Mercy)
+const courtStops = l => courtOf(l).some(c => c.k === "void" || c.k === "frozen");
 
 /* what a reader should be told: a law the court voided IN FULL does not
    "apply today", whatever the Knesset's record says (it never updates) */

@@ -15,25 +15,27 @@ const V = { q: "", topic: "", kind: "in", basic: false, court: false,   // budge
 
 const normHe = s => String(s || "").replace(/[֑-ׇ]/g, "").replace(/["'״׳]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 
-function matches(l) {
+function matches(l, loose) {   // loose: the name only, no settings
   if (V.q) {
     const words = normHe(V.q).split(" ").filter(Boolean);
     const name = normHe(l.n);
     if (!words.every(w => name.includes(w))) return false;
   }
+  if (loose) return true;
   if (V.topic && !(l.t || []).includes(Number(V.topic))) return false;
   if (V.basic && !(l.f || "").includes("b")) return false;
   if (V.court && !courtOf(l).length) return false;
   // hidden by default — but a law the reader asked for by address is always shown
   if (l.i === V.openId) return true;
-  if (V.kind === "in" && notApplying(l)) return false;      // applies today (+ not yet in force, which leads)
-  if (V.kind === "gone" && !notApplying(l)) return false;   // repealed / expired / obsolete / voided in full
+  if (V.kind === "in" && isGone(l)) return false;           // in force per the Knesset (+ not yet, which leads)
+  if (V.kind === "gone" && !notApplying(l)) return false;
   return true;
 }
 
-/* no longer applies = repealed / expired / obsolete, or voided in full by the
-   court (the Knesset still says תקף) — folded unless asked for (Mercy) */
-const notApplying = l => isGone(l) || shownState(l) === "voided";
+/* "בוטלו או לא בתוקף" = the Knesset says repealed / expired / obsolete, OR
+   the court voided or froze the whole law. The latter still shows among
+   "חלים היום" when the Knesset says so — in both lists, marked red (Mercy) */
+const notApplying = l => isGone(l) || courtStops(l);
 
 const SORTS = {
   changed: (a, b) => (b.lp || b.p || "").localeCompare(a.lp || a.p || ""),
@@ -47,8 +49,8 @@ function rowHtml(l) {
   const st = shownState(l);
   const cb = courtBadge(l);
   const chips = [
-    st === "in" ? "" : `<span class="lbadge${st === "voided" ? " court" : ""}">${esc(t(STATE_KEY[st]))}</span>`,   // no tag = applies today
-    cb && !(st === "voided" && cb.k === "void") ? `<span class="lbadge court">${esc(t(KIND_KEY[cb.k]))}</span>` : "",
+    st === "in" ? "" : `<span class="lbadge${st === "voided" ? " stop" : ""}">${esc(t(STATE_KEY[st]))}</span>`,   // no tag = applies today
+    cb && !(st === "voided" && cb.k === "void") ? `<span class="lbadge ${cb.k === "void" || cb.k === "frozen" ? "stop" : "court"}">${esc(t(KIND_KEY[cb.k]))}</span>` : "",
     (l.f || "").includes("b") ? `<span class="lbadge soft">${esc(t("basicLaw"))}</span>` : "",
     isTemp(l) ? `<span class="lbadge soft">${esc(t("temporary"))}</span>` : "",
     isBudget(l) ? `<span class="lbadge soft">${esc(t("budgetLaw"))}</span>` : "",
@@ -75,20 +77,23 @@ function detailHtml(l) {
 function renderList() {
   const d = LAW.data;
   if (!d) return;
-  const hits = d.laws.filter(matches);
+  let hits = d.laws.filter(l => matches(l));
+  // a name search the settings emptied: show what they hid, and say so (Mercy)
+  const loose = !hits.length && V.q ? d.laws.filter(l => matches(l, true)) : [];
+  if (loose.length) hits = loose;
   // not yet in force leads, whatever the order (change first)
   hits.sort((a, b) => ((lawState(b) === "pending") - (lawState(a) === "pending")) || SORTS[V.sort](a, b));
   const shown = hits.slice(0, V.limit);
   const total = d.laws.length;
   const hidB = 0;                                           // budget laws are always listed
-  const hidG = V.kind === "in" ? d.laws.filter(notApplying).length : 0;
+  const hidG = V.kind === "in" && !loose.length ? d.laws.filter(isGone).length : 0;
   const stat = document.getElementById("stat");
   stat.innerHTML = esc(hits.length === total ? fill(t("shown"), { n: fmtN(hits.length) })
       : fill(t("shownOf"), { n: fmtN(hits.length), m: fmtN(total) })) +
     ((hidB || hidG) ? ` <span class="hid">${esc(fill(t(hidB ? "hiddenNote" : "hiddenGone"), { b: fmtN(hidB), g: fmtN(hidG) }))}</span>` : "");
   const list = document.getElementById("list");
   if (!hits.length) { list.innerHTML = `<p class="hint">${esc(t("noMatch"))}</p>`; return; }
-  let html = shown.map(rowHtml).join("");
+  let html = (loose.length ? `<p class="hint">${esc(t("looseNote"))}</p>` : "") + shown.map(rowHtml).join("");
   if (hits.length > shown.length) {
     html += `<button class="morebtn" onclick="V.limit += ${PAGE_SIZE}; renderList()">${esc(fill(t("more"), { n: fmtN(Math.min(PAGE_SIZE, hits.length - shown.length)) }))}</button>`;
   }
@@ -107,7 +112,7 @@ function openLaw(id) {
   if (!l) return;
   V.q = ""; document.getElementById("q").value = "";
   V.topic = ""; document.getElementById("topic").value = "";
-  const hits = d.laws.filter(matches).sort((a, b) => ((lawState(b) === "pending") - (lawState(a) === "pending")) || SORTS[V.sort](a, b));
+  const hits = d.laws.filter(l => matches(l)).sort((a, b) => ((lawState(b) === "pending") - (lawState(a) === "pending")) || SORTS[V.sort](a, b));
   const pos = hits.findIndex(x => x.i === id);
   if (pos >= V.limit) V.limit = pos + 1;
   renderList();

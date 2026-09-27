@@ -63,6 +63,7 @@
   background: var(--page); }
 .lbadge.court { border-color: var(--ink-2); color: var(--ink-1); }
 .lbadge.soft { font-weight: 500; }
+.lbadge.stop { border-color: var(--against); color: var(--against-ink); }   /* the court stopped the whole law — red on purpose (Mercy) */
 .doclink { color: var(--accent-ink); font-size: 13px; text-decoration: none; white-space: nowrap; }
 .doclink:hover { text-decoration: underline; }
 
