@@ -7,7 +7,8 @@ TRAP the live data has (a fixture more generous than the source is a rubber
 stamp):
   - pages capped at 100 rows whatever $top says (the laws span 3 pages)
   - the 2026 budget law NOT flagged IsBudgetLaw (the name must catch it)
-  - a law repealed by another law's original bill (the "replaced by" link)
+  - a law repealed by another law's original bill (the "replaced by" link),
+    and one still in force with a "מבטל" row (sections only — no link)
   - a committee item whose session id is in range but whose session is
     OUTSIDE the window (ids are not in date order)
   - a finished bill matched by status TEXT (garbled ids are no contract)
@@ -49,6 +50,8 @@ WORLD = {
         {"LawID": 900, "IsraelLawID": 2000002, "LawTypeID": 2, "BindingTypeDesc": "מבטל", "AmendmentTypeDesc": "עקיף"},
         {"LawID": 901, "IsraelLawID": 2000003, "LawTypeID": 2, "BindingTypeDesc": "מתקן", "AmendmentTypeDesc": "ישיר"},
         {"LawID": 902, "IsraelLawID": 2000003, "LawTypeID": 2, "BindingTypeDesc": "מתקן", "AmendmentTypeDesc": "עקיף"},
+        # a trap the live data has: "מבטל" on a law still in force (a few sections repealed)
+        {"LawID": 900, "IsraelLawID": 2000005, "LawTypeID": 2, "BindingTypeDesc": "מבטל", "AmendmentTypeDesc": "עקיף"},
     ],
     "KNS_CommitteeSession": [
         {"CommitteeSessionID": 100, "StartDate": "2026-09-16T10:00:00", "CommitteeID": 7},
@@ -130,6 +133,9 @@ class Laws(unittest.TestCase):
     def test_replaced_by(self):
         old = next(l for l in self.data["laws"] if l["i"] == 2000002)
         self.assertEqual(old["r"], 2000003)
+        # a law in force whose sections another law repealed was NOT replaced
+        partly = next(l for l in self.data["laws"] if l["i"] == 2000005)
+        self.assertIsNone(partly["r"])
 
     def test_amendment_counts(self):
         law = next(l for l in self.data["laws"] if l["i"] == 2000003)

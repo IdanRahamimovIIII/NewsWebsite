@@ -56,7 +56,7 @@ function rowHtml(l) {
   const am = l.a === 0 ? t("neverAmended") : l.a === 1 ? t("amendedOnce") : fill(t("amendedN"), { n: fmtN(l.a) });
   const topics = (l.t || []).slice(0, 3).map(id => `<span>${esc(LAW.topics[id] || "")}</span>`).join("");
   // the rare facts, in the row: a start still ahead, an end, a successor
-  const rep = l.r && LAW.byId.get(l.r);
+  const rep = isGone(l) && l.r && LAW.byId.get(l.r);   // a law in force was not replaced (sections only — pipeline NOTES)
   const facts = [
     lawState(l) === "pending" && l.s ? `<span><b>${esc(t("kvStart"))}:</b> ${esc(fmtDate(l.s))}</span>` : "",
     l.e ? `<span><b>${esc(t("kvEnd"))}:</b> ${esc(fmtDate(l.e))}</span>` : "",

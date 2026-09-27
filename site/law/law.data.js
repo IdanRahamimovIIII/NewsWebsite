@@ -82,7 +82,7 @@ function rulingLink(c) {
    court block), so the line would say nothing (Mercy) */
 function lawKv(l, opts) {
   const topics = (l.t || []).map(id => LAW.topics[id]).filter(Boolean);
-  const rep = l.r && LAW.byId.get(l.r);
+  const rep = isGone(l) && l.r && LAW.byId.get(l.r);   // a law in force was not replaced (sections only — pipeline NOTES)
   const st = shownState(l);                                 // "applies today" goes without saying (Mercy)
   return (opts && opts.status === false || st === "in" ? "" : kv("kvStatus", esc(t(STATE_KEY[st])))) +
     (knessetDiffers(l) ? kv("kvKnesset", esc(l.st)) : "") +

@@ -211,7 +211,10 @@ def build(w, court_rows):
         if TEMP_RE.search(name):
             flags += "t"
         rep = None
-        for bill in repeal_bill.get(lid, []):
+        # "מבטל" is recorded for a repeal of a few sections too: a law still in
+        # force was not replaced (התכנון והבנייה ← חוק ההסדרים 2026)
+        gone = re.search(r"בטל|פקע|נושן", l.get("LawValidityDesc") or "")
+        for bill in repeal_bill.get(lid, []) if gone else []:
             other = original_of_bill.get(bill)
             if other and other != lid and other in ids:
                 rep = other          # the law whose passing repealed this one
