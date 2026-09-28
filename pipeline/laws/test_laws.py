@@ -220,6 +220,22 @@ class Laws(unittest.TestCase):
         sums, bad = B.read_summaries()
         self.assertEqual(bad, [])
 
+    def test_publish_summaries_only_what_changed(self):
+        """publish_summaries.py: only files that changed since the last upload;
+        a card that already holds the summary is not rewritten; the card's own
+        time and data stay"""
+        import publish_summaries as P
+        s1 = {"i": 5, "d": "2026-09-28", "one": "x", "src": [{"t": "s"}]}
+        s2 = {"i": 6, "d": "2026-09-28", "one": "y", "src": [{"t": "s"}]}
+        ai1 = {k: v for k, v in s1.items() if k != "i"}
+        stamp = {"5": P.digest(ai1)}
+        self.assertEqual(list(P.plan({5: s1, 6: s2}, stamp)), [6])
+        self.assertEqual(sorted(P.plan({5: s1, 6: s2}, stamp, everything=True)), [5, 6])
+        raw = json.dumps({"t": 123, "data": {"n": "law", "am": [1]}})
+        new = json.loads(P.patch(raw, ai1))
+        self.assertEqual(new, {"t": 123, "data": {"n": "law", "am": [1], "ai": ai1}})
+        self.assertIsNone(P.patch(json.dumps(new), ai1))
+
     def test_amending_acts(self):
         """one act per bill id, every law it changes, its start date from the
         bill API; skipped: an act that CREATED a law, a printing correction
