@@ -10,13 +10,11 @@ window.PAGE_STR = {
 
     /* the search card */
     pageTitle: "תיק חבר/ת כנסת",
-    pageHint: "חפשו לפי שם, תפקיד או סיעה — גם מכנסות קודמות — וראו מה הגישו, איך הצביעו ואילו תפקידים מילאו.",
     searchMkPh: "שם, תפקיד או סיעה — למשל \"שר החוץ\" או \"יש עתיד\"…",
     noneFound: "לא נמצא חבר/ת כנסת בשם הזה. נסו שם משפחה בלבד.",
 
     /* the directory cards + the infinite scroll */
     dirTitle: "חברי הכנסת הנוכחית",
-    dirHint: "לחצו על כרטיס כדי לפתוח את התיק המלא. אפשר לחפש למעלה כל שם מכל כנסת.",
     dirLoadingMore: "טוען עוד חברי כנסת…",
     dirEnd: "זה הכל — המאגר הממוחשב מכסה מהכנסת ה-16 (2003) ואילך.",
     dirPassed: "{n} חוקים שעברו",
@@ -106,12 +104,10 @@ window.PAGE_STR = {
     tagline: "Who votes in our name",
 
     pageTitle: "Knesset member portfolio",
-    pageHint: "Search by name, role or faction — past Knessets included — and see what they proposed, how they voted, and which positions they held.",
     searchMkPh: "Name, role or faction (Hebrew) — e.g. \"שר החוץ\" or \"יש עתיד\"…",
     noneFound: "No Knesset member found by that name. Try the surname alone.",
 
     dirTitle: "Members of the current Knesset",
-    dirHint: "Click a card to open the full portfolio. The search above covers every Knesset.",
     dirLoadingMore: "Loading more members…",
     dirEnd: "That's all — the digital record covers the 16th Knesset (2003) onward.",
     dirPassed: "{n} laws passed",

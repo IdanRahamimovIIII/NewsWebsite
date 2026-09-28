@@ -202,7 +202,8 @@ ok(h.includes(`<loc>${ORIGIN}${heP}</loc><lastmod>2026-09-24</lastmod>`), "sitem
   ok(links[0] === "/mk/90-" + enc("בנימין-נתניהו") + "/" && links[1].startsWith("/mk/1096-"), "list: PM, then the minister");
   ok(["91", "92", "31"].every(id => links.slice(-3).some(l => l.startsWith(`/mk/${id}-`))), "list: leavers last");
   ok(h.includes('href="/mk/roster.txt"'), "list: points to the roster");
-  ok(h.includes('<span class="dcrole">שר נוסף במשרד המשפטים · 2023–היום</span>'), "list: a minister outside the Knesset keeps the role");
+  ok(h.includes('<span class="dcrole now">שר נוסף במשרד המשפטים · 2023–היום</span>'), "list: a minister outside the Knesset keeps the role — green, held today");
+  ok(h.includes('<span class="dcrole">') && h.includes('<span class="dcrole now">'), "list: a past role stays blue, a role held today is green (Mercy)");
   ok(!/dcbills">[^<]*0 /.test(h) && h.includes(fill(JSON.parse(I18N).he.dirPassed, 2)), "list: laws passed, never a 0");
   ok(!/<div id="dir"><div class="loading"/.test(h) && divBalance(h) === divBalance(SHELL), "list: loader replaced, divs balanced");
   ok(h.includes('data-i18n="devLabel"'), "footer carries the API link");

@@ -600,6 +600,13 @@ function cardRole(e) {
   return posCtx(last) + (y0 ? ` · ${y0}${y1 && y1 !== y0 ? "–" + y1 : ""}` : "");
 }
 
+/* is the card's role held today? (green on the card, Mercy) — the same
+   branches as cardRole: a role of substance now, or a sitting member */
+function cardRoleNow(e) {
+  const rows = e.rows !== undefined ? e.rows : e.k25;
+  return rows !== undefined && (!!currentRole(rows) || !!e.serving);
+}
+
 /* the card's years line: "2013–היום", or "2013–2025" for someone who left */
 function cardYears(e) {
   let a = e.since;

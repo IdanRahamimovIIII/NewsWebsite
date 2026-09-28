@@ -260,6 +260,8 @@ function cardRole(c, S) {
   const span = p.now ? "–" + S.untilNow : p.y1 && p.y1 !== p.y0 ? "–" + p.y1 : "";   // ongoing says so (the live card shows only the start)
   return String(p.role || "").trim() + (p.y0 ? ` · ${p.y0}${span}` : "");
 }
+// the role is held today (green on the card ≡ site mk.data.js cardRoleNow — Mercy)
+const cardRoleNow = c => !!c.current || !!((c.positions || [])[0] || {}).now;
 function listHtml(cards, S) {
   const list = Object.values(cards.data.members).filter(c => inKnesset(c, cards.data.knesset)).sort(listOrder);   // earlier Knessets: pages + sitemap + roster
   return `<div class="dirgrid">` + list.map(c => {
@@ -270,7 +272,7 @@ function listHtml(cards, S) {
     const b = c.bills && c.bills.passed;                 // none or unknown → no line (Mercy)
     const bills = !b ? "" : b === 1 ? S.dirPassed1 : fill(S.dirPassed, { n: b });
     return `<a class="dircard" href="${esc(pathOf(c, "he"))}">${av}` +
-      `<span class="dcname">${esc(c.he)}</span><span class="dcrole">${esc(cardRole(c, S))}</span>` +
+      `<span class="dcname">${esc(c.he)}</span><span class="dcrole${cardRoleNow(c) ? " now" : ""}">${esc(cardRole(c, S))}</span>` +
       (c.faction ? `<span class="dcparty" title="${esc(S.factionTip)}">${esc(c.faction)}</span>` : "") +
       (years ? `<span class="dcyears">${esc(years)}</span>` : "") +
       (bills ? `<span class="dcbills">${esc(bills)}</span>` : "") + `</a>`;

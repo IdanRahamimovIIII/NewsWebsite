@@ -157,10 +157,10 @@ function dirCardHtml(e, hit) {
   // no laws passed → no line at all (Mercy); unknown → no line either
   const bills = e.bills === undefined ? "…" : !e.bills ? ""
     : e.bills === 1 ? t("dirPassed1") : t("dirPassed").replace("{n}", e.bills);
-  // name → role (blue, the eye's second stop) → party → years → laws (Mercy)
+  // name → role (blue, the eye's second stop; green while held today) → party → years → laws (Mercy)
   return avatarHtml(e.name, e.m.Id, "avxl") +
     `<span class="dcname">${esc(e.name)}</span>` +
-    `<span class="dcrole">${role === null ? "…" : esc(role)}</span>` +
+    `<span class="dcrole${cardRoleNow(e) ? " now" : ""}">${role === null ? "…" : esc(role)}</span>` +
     (e.faction ? `<span class="dcparty" data-tip="${esc(t("factionTip"))}">${esc(e.faction)}</span>` : "") +
     (years ? `<span class="dcyears">${esc(years)}</span>` : "") +
     (bills ? `<span class="dcbills">${esc(bills)}</span>` : "") +
