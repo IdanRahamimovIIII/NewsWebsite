@@ -200,7 +200,11 @@ ok(h.includes(`<loc>${ORIGIN}${heP}</loc><lastmod>2026-09-24</lastmod>`), "sitem
   ok(r.status === 200 && links.length === 8 && !links.some(l => l.startsWith("/mk/95-")), "list: the 8 of the current Knesset as links, not earlier Knessets");
   ok((await (await wl.fetch(new Request(ORIGIN + "/mk/?name=x"))).text()).includes(links[0]), "list: ?name= arrivals get it too");
   ok(links[0] === "/mk/90-" + enc("בנימין-נתניהו") + "/" && links[1].startsWith("/mk/1096-"), "list: PM, then the minister");
-  ok(["91", "92", "31"].every(id => links.slice(-3).some(l => l.startsWith(`/mk/${id}-`))), "list: leavers last");
+  const at = id => links.findIndex(l => l.startsWith(`/mk/${id}-`));
+  ok(at("31") === links.length - 1, "list: leavers last");
+  // in the government without a seat (the Norwegian law) = active, by that role (Mercy)
+  ok(at("91") < at("92") && at("92") < at("93"), "list: a minister / deputy minister outside the Knesset sorts with their role, above a deputy Speaker");
+  ok(/<span class="dcyears">בכנסת: \d{4}(–\d{4})?<\/span>/.test(h), "list: their years say they are the Knesset's years");
   ok(h.includes('href="/mk/roster.txt"'), "list: points to the roster");
   ok(h.includes('<span class="dcrole now">שר נוסף במשרד המשפטים · 2023–היום</span>'), "list: a minister outside the Knesset keeps the role — green, held today");
   ok(h.includes('<span class="dcrole">') && h.includes('<span class="dcrole now">'), "list: a past role stays blue, a role held today is green (Mercy)");

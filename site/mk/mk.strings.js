@@ -21,6 +21,7 @@ window.PAGE_STR = {
     dirPassed1: "חוק אחד שעבר",
     posMember: "חבר/ת הכנסת",     /* a card with no role of substance today; also the timeline's fallback role */
     untilNow: "היום",
+    dirInKnesset: "בכנסת: {y}",   /* in the government today, the Knesset years done (the Norwegian law) */
 
     /* the hero: portrait · name · role · one story line · the bills sentence · background facts */
     backToDir: "→ חזרה לרשימה",
@@ -114,6 +115,7 @@ window.PAGE_STR = {
     dirPassed1: "1 law passed",
     posMember: "Member of Knesset",
     untilNow: "today",
+    dirInKnesset: "In the Knesset: {y}",
 
     backToDir: "→ Back to the list",
     tenureSince: "In the Knesset since {y}",

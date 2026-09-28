@@ -392,6 +392,9 @@ function dirRank(e, drop, past, kEnd) {
   const has = re => open.some(r => re.test(role(r)));
   const d = drop[e.key];
   e.serving = !past && (!!(d && d.IsCurrent) || open.some(isMkRow));
+  // in the government today without a Knesset seat (the Norwegian law): as
+  // active as a member — sorted by that role, years say "בכנסת:" (Mercy)
+  e.govNow = !past && !e.serving && open.some(r => !!r.GovMinistryName);
   e.lastMin = 0;
   if (open.some(r => role(r) === "ראש הממשלה")) e.tier = 10;
   else if (has(/ראש הממשלה החלופי|ממלא מקום ראש הממשלה|סגן ראש הממשלה/)) e.tier = 9;
@@ -413,7 +416,7 @@ function dirRank(e, drop, past, kEnd) {
   // recent role that ended (its year, then its weight); the heaviest ever
   const subst = r => r._role && !plainRole(r);
   const w = r => cardWeight(isMinisterRow(r) && !/ראש הממשלה/.test(role(r)) ? "שר" : role(r));
-  const nowRows = e.serving ? e.k25.filter(r => subst(r) && !r.FinishDate) : [];
+  const nowRows = e.serving || e.govNow ? e.k25.filter(r => subst(r) && !r.FinishDate) : [];
   e.nowW = Math.max(0, ...nowRows.map(w));
   e.pastY = 0; e.pastW = 0; e.bestW = 0;
   for (const r of [...e.k25.filter(subst), ...e.minRows.filter(isMinisterRow)]) {
@@ -447,12 +450,14 @@ const tailOrder = (a, b) =>
   (b.lastK - a.lastK) || (b.tier - a.tier) || (b.lastMin - a.lastMin) ||
   String(a.m.Name).localeCompare(String(b.m.Name), "he");
 /* the current Knesset (Mercy: the last active date, then the role's weight):
-   sitting members — a role held NOW, heaviest first; then who held one, the
-   most recent end first, then its weight; then the rest. Leavers after
-   them: the last year in office, then the heaviest role. Name last. */
+   the active (sitting, or in the government) — a role held NOW, heaviest
+   first; then who held one, the most recent end first, then its weight; then
+   the rest. Leavers after them: the last year in office, then the heaviest
+   role. Name last. */
+const active = e => e.serving || e.govNow;
 const dirOrder = (a, b) =>
-  ((b.serving ? 1 : 0) - (a.serving ? 1 : 0)) ||
-  (a.serving ? (b.nowW - a.nowW) || (b.pastY - a.pastY) || (b.pastW - a.pastW)
+  ((active(b) ? 1 : 0) - (active(a) ? 1 : 0)) ||
+  (active(a) ? (b.nowW - a.nowW) || (b.pastY - a.pastY) || (b.pastW - a.pastW)
     : (b.lastK - a.lastK) || (b.bestW - a.bestW)) ||
   String(a.m.Name).localeCompare(String(b.m.Name), "he");   // surname first, the cmb form
 
@@ -652,6 +657,11 @@ function cardYears(e) {
   // leaves rows open for people who are long gone, so an open row is not
   // enough (Mercy)
   if (e.serving) return `${a}–${t("untilNow")}`;
+  if (e.govNow) {                                  // the Knesset years only; the green role says "today"
+    const mk = rows.filter(isMkRow).map(r => yearOf(r.FinishDate)).filter(Boolean);
+    const b = mk.length ? Math.max(...mk) : "";
+    return t("dirInKnesset").replace("{y}", b && b !== a ? `${a}–${b}` : String(a));
+  }
   const ends = rows.map(r => yearOf(r.FinishDate)).filter(Boolean);
   const b = ends.length ? Math.max(...ends) : (e.lastK && e.lastK !== 9999 ? e.lastK : "");
   return b ? `${a}–${b}` : String(a);

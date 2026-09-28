@@ -265,18 +265,21 @@ function cardWeight(role) {
    sitting — a role held now, heaviest first; then the most recent role that
    ended (year, weight); leavers — the last year in office, then the heaviest
    role. The roles counted: this Knesset's + any minister's post. */
+// in the government today without a Knesset seat (the Norwegian law) ≡ site e.govNow
+const govNow = c => !c.current && (c.positions || []).some(p => p.now && GOV.test(String(p.role || "").trim()));
+const cardActive = c => (c.current || govNow(c)) ? 1 : 0;
 function listOrder(k) {
   const mine = c => (c.positions || []).filter(p => p.k === k || MINISTER.test(String(p.role || "").trim()));
   const keys = c => {
     const ps = mine(c), w = p => cardWeight(p.role);
     let pastY = 0, pastW = 0;
     for (const p of ps) if (!p.now && p.y1 && (p.y1 > pastY || (p.y1 === pastY && w(p) > pastW))) { pastY = p.y1; pastW = w(p); }
-    return { nowW: c.current ? cardWeight(nowRole(c)) : 0, pastY, pastW, bestW: Math.max(0, ...ps.map(w)) };
+    return { nowW: cardActive(c) ? cardWeight(nowRole(c)) : 0, pastY, pastW, bestW: Math.max(0, ...ps.map(w)) };
   };
   return (a, b) => {
     const A = keys(a), B = keys(b);
-    return (b.current - a.current) ||
-      (a.current ? (B.nowW - A.nowW) || (B.pastY - A.pastY) || (B.pastW - A.pastW)
+    return (cardActive(b) - cardActive(a)) ||
+      (cardActive(a) ? (B.nowW - A.nowW) || (B.pastY - A.pastY) || (B.pastW - A.pastW)
         : ((b.until || 0) - (a.until || 0)) || (B.bestW - A.bestW)) ||
       a.he.localeCompare(b.he, "he");
   };
@@ -296,7 +299,9 @@ function listHtml(cards, S) {
     const initials = c.he.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("");
     const av = c.photo ? `<img class="avatar avxl" src="${esc(PHOTO_BASE + c.photo)}" alt="" loading="lazy">`
       : `<span class="avatar avxl">${esc(initials)}</span>`;
-    const years = c.since ? `${c.since}–${c.current ? S.untilNow : (c.until || "")}` : "";
+    const years = !c.since ? "" : govNow(c)                // the Knesset years only; the green role says "today"
+      ? fill(S.dirInKnesset, { y: c.until && c.until !== c.since ? `${c.since}–${c.until}` : c.since })
+      : `${c.since}–${c.current ? S.untilNow : (c.until || "")}`;
     const b = c.bills && c.bills.passed;                 // none or unknown → no line (Mercy)
     const bills = !b ? "" : b === 1 ? S.dirPassed1 : fill(S.dirPassed, { n: b });
     return `<a class="dircard" href="${esc(pathOf(c, "he"))}">${av}` +
