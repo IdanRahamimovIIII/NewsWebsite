@@ -197,6 +197,29 @@ class Laws(unittest.TestCase):
         self.assertNotIn("expl", cards[3])
         self.assertNotIn("expl", cards[4])
 
+    def test_summaries(self):
+        """the AI summary files: a good one attaches to its law's card; each
+        broken shape is refused by name (bad JSON, a typo'd key, the id not
+        matching the file, no sources); the real folder is all good"""
+        import tempfile
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            good = {"i": 5, "d": "2026-09-28", "one": "x", "does": ["a"], "src": [{"t": "s"}]}
+            (d / "5.json").write_text(json.dumps(good), encoding="utf-8")
+            (d / "6.json").write_text("{nope", encoding="utf-8")
+            (d / "7.json").write_text(json.dumps({**good, "i": 7, "whoo": "x"}), encoding="utf-8")
+            (d / "8.json").write_text(json.dumps({**good, "i": 9}), encoding="utf-8")
+            (d / "10.json").write_text(json.dumps({**good, "i": 10, "src": []}), encoding="utf-8")
+            sums, bad = B.read_summaries(d)
+            self.assertEqual(list(sums), [5])
+            self.assertEqual(sorted(b.split(":")[0] for b in bad), ["10.json", "6.json", "7.json", "8.json"])
+            cards = {5: {}, 11: {}}
+            self.assertEqual(B.attach_summaries(cards, sums), 1)
+            self.assertEqual(cards[5]["ai"]["one"], "x")
+            self.assertNotIn("i", cards[5]["ai"])
+        sums, bad = B.read_summaries()
+        self.assertEqual(bad, [])
+
     def test_amending_acts(self):
         """one act per bill id, every law it changes, its start date from the
         bill API; skipped: an act that CREATED a law, a printing correction

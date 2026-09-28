@@ -467,6 +467,36 @@ const COURT_ORDER = { void: 0, frozen: 1, partial: 2, deferred: 3 };
 const courtRank = (a, b) => (COURT_ORDER[a.k] ?? 9) - (COURT_ORDER[b.k] ?? 9) || (b.d || "").localeCompare(a.d || "");
 const amendWords = (l, S) => l.a === 0 ? S.neverAmended : l.a === 1 ? S.amendedOnce : fill(S.amendedN, { n: l.a });
 
+/* the AI summary (Mercy): hand-reviewed, from pipeline/laws/summaries/<id>.json
+   via the card. The status lines come from the data, not the text, so a new
+   ruling or date never leaves a summary saying something old. */
+function aiBox(l, card, court, S, st, ks) {
+  const a = card.ai, cb = [...court].sort(courtRank)[0];
+  const lines = [];
+  let stop = false;
+  if (cb) {
+    lines.push(fill(S[{ void: "aiVoid", frozen: "aiFrozen", partial: "aiPartial", deferred: "aiDeferred" }[cb.k]], { d: fmtD(cb.d), c: cb.c }));
+    stop = cb.k === "void" || cb.k === "frozen";
+  }
+  if (ks === "pending" && l.s) lines.push(fill(S.aiPending, { d: fmtD(l.s) }));
+  else if ((l.f || "").includes("t") && l.e) lines.push(fill(S.aiTemp, { d: fmtD(l.e) }));
+  if (a.st) lines.push(a.st);
+  // an amendment published after the summary was written → say so
+  const newer = (card.am || []).filter(x => x.d && x.d > (a.upto || "")).map(x => x.d).sort().pop();
+  const li = xs => `<ul>${xs.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`;
+  const kv = (key, body) => `<div class="aikv"><b>${esc(S[key])}</b>${body}</div>`;
+  const src = (a.src || []).map(s => s.u ? `<a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a>` : esc(s.t)).join(" · ");
+  return `<div class="card aisum" lang="he" dir="rtl"><h2 data-i18n="aiTitle">${esc(S.aiTitle)}</h2>
+    ${lines.length ? `<div class="aistatus${stop ? " stop" : ""}">${lines.map(x => `<p>${esc(x)}</p>`).join("")}</div>` : ""}
+    ${newer ? `<p class="aistale">${esc(fill(S.aiStale, { d: fmtD(newer) }))}</p>` : ""}
+    <p class="aione">${esc(a.one)}</p>
+    ${a.who ? kv("aiWho", esc(a.who)) : ""}
+    ${(a.does || []).length ? kv(st === "voided" ? "aiDid" : "aiDoes", li(a.does)) : ""}
+    ${a.why ? kv("aiWhy", esc(a.why)) : ""}
+    <p class="aifoot">${esc(S.aiFoot)}${src}. ${esc(fill(S.aiAsOf, { d: fmtD(a.d) }))}</p>
+  </div>`;
+}
+
 function lawBody(l, card, X, S, today) {
   const st = shownState(l, X, today), court = X.court.get(l.i) || [];
   const h2 = key => `<h2 data-i18n="${key}">${esc(S[key])}</h2>`;
@@ -508,6 +538,7 @@ function lawBody(l, card, X, S, today) {
     ${card && card.expl ? `<p class="official"><a class="golink" href="${esc(card.expl)}" target="_blank" rel="noopener" data-i18n="lpExpl">${esc(S.lpExpl)}</a></p>` : ""}
     ${about.join("")}
   </div>`);
+  if (card && card.ai) out.push(aiBox(l, card, court, S, st, ks));
 
   // two first, the rest one click away — all in the HTML (AI reads it)
   const two = (items, row) => `<ul class="hl plain">${items.slice(0, 2).map(row).join("")}</ul>` + (items.length > 2

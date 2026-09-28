@@ -34,8 +34,10 @@ const CARDS = {
     repBy: [], pend: [{ i: 1, n: "הצעת חוק העונשין (תיקון מס' 160)", no: "(פ/2198/25)", ty: "פרטית", step: "הכנה לקריאה ראשונה", cm: "", d: "2025-07-14" }],
     regs: [{ n: "תקנות א", d: "2022-07-04" }], nregs: 89, nproc: 11, replacedBy: [], replaces: [] },
   2015037: { i: 2015037, min: "", cm: "", note: "", ws: "", kz: "", prev: [], expl: "https://fs.knesset.gov.il/20/law/20_ls1_x.pdf", orig: { n: "x", d: "2017-02-13", pdf: "https://fs.knesset.gov.il/o.pdf", sum: "החוק נועד להסדיר" },
-    am: [], repBy: [], pend: [], regs: [], nregs: 0, nproc: 0, replacedBy: [], replaces: [] },
+    am: [], repBy: [], pend: [], regs: [], nregs: 0, nproc: 0, replacedBy: [], replaces: [],
+    ai: { d: "2026-09-28", one: "החוק נועד <i>להסדיר</i>", who: "על יישובים", does: ["קרקע נרשמת"], why: "לפי סעיף המטרה", src: [{ t: "נוסח החוק ברשומות", u: "https://fs.knesset.gov.il/20/law/20_lsr_369690.pdf" }, { t: "בלי קישור" }] } },
 };
+CARDS[2000479].ai = { d: "2026-09-28", upto: "2026-05-01", one: "החוק המרכזי של המשפט הפלילי", does: ["א", "ב"], src: [{ t: "דף החוק", u: "https://main.knesset.gov.il/x" }] };
 
 let failures = 0, n = 0;
 const ok = (cond, msg) => { n++; if (!cond) { failures++; console.error("FAIL: " + msg); } };
@@ -66,7 +68,7 @@ let h = await r.text();
 ok(r.status === 200, "voided law page 200, got " + r.status);
 ok(h.includes('<h1 class="lawname"><span class="lbadge">חל היום</span> <span class="lbadge stop">בוטל בבג״ץ</span> חוק להסדרת ההתיישבות ביהודה והשומרון, התשע&quot;ז-2017</h1>'),
    "[status] name on one line: the Knesset's word, the court's in red beside it (Mercy)");
-ok(!h.includes("ברשומות הכנסת"), "no separate Knesset line (Mercy)");
+ok(!h.slice(h.indexOf('class="card lawhead"'), h.indexOf('class="card aisum"')).includes("ברשומות הכנסת"), "no separate Knesset line in the head (Mercy)");
 ok(h.includes('href="https://main.knesset.gov.il/apps/legislation/main/laws/2015037"'), "the official page, under the name");
 ok(h.includes('href="https://fs.knesset.gov.il/20/law/20_ls1_x.pdf"') && h.includes("דברי ההסבר של הצעת החוק המקורית"), "the original bill's explanatory notes, under it (Mercy)");
 ok(h.includes('"legislationLegalForce":"NotInForce"'), "JSON-LD: not in force");
@@ -78,6 +80,14 @@ ok(h.includes("החוק נועד להסדיר"), "the original law's official su
 ok(h.includes('<base href="/law/">'), "relative files resolve from /law/");
 ok(!/<p class="tagline"/.test(h), "no section headline on a law's page");
 ok(r.headers.get("content-language") === "he", "content-language he");
+
+{ const ai = h.slice(h.indexOf('class="card aisum"'));
+  ok(h.indexOf('class="card aisum"') > h.indexOf('class="card lawhead"'), "the AI summary: its own card under the head (Mercy)");
+  ok(ai.includes('<div class="aistatus stop"><p>בית המשפט העליון ביטל את החוק כולו ב־9 ביוני 2020 (בג&quot;ץ 1308/17)'), "status from the DATA, red when the court stopped the whole law");
+  ok(ai.includes("<b>מה החוק קבע</b>") && !ai.includes("מה זה אומר בפועל"), "a law voided in full: 'what the law set', past tense");
+  ok(ai.includes("&lt;i&gt;להסדיר") && ai.includes("<b>למה נחקק</b>") && ai.includes("<b>על מי זה חל</b>"), "escaped; who + why shown");
+  ok(ai.includes('נכתב בעזרת AI מתוך מקורות רשמיים: <a href="https://fs.knesset.gov.il/20/law/20_lsr_369690.pdf"') && ai.includes(" · בלי קישור.") && ai.includes("אינו ייעוץ משפטי"), "sources, date, not legal advice");
+  ok(!ai.includes("aistale"), "no amendments → never stale"); }
 
 // slug/slash/id spellings → one address
 r = await get("/law/2015037");
@@ -111,10 +121,13 @@ ok(h.includes("הצעת חוק העונשין (תיקון מס&#39; 160)") && h.
 ok(h.includes("89 תקנות") && h.includes("ועוד 11 בהליך"), "regulations counted");
 ok(h.includes("https://he.wikisource.org/wiki/חוק_העונשין") && h.includes("כל זכות"), "sources: Wikisource + Kol Zchut");
 ok(h.includes("תיקון עקיף"), "direct/indirect in words");
+ok(h.includes('<p class="aistale">הסיכום נכתב לפני התיקון מ־1 בספט׳ 2026') && !h.includes("aistatus") && !h.includes("<b>על מי זה חל</b>"),
+   "an amendment newer than the summary → said; no status box / missing parts shown");
 
 // pending law
 r = await get("/law/2245315"); r = await get(new URL(r.headers.get("location")).pathname); h = await r.text();
 ok(h.includes("יתחיל לחול ב") && h.includes('"legislationLegalForce":"NotInForce"'), "a pending law starts later");
+ok(!h.includes("aisum"), "no summary file → no summary card");
 
 // sitemap + index.txt
 r = await get("/law/sitemap.xml"); h = await r.text();
@@ -169,6 +182,11 @@ if (fs.existsSync(path.join(outDir, "laws.json"))) {
   const cards = fs.existsSync(path.join(outDir, "lawcards.json")) ? JSON.parse(fs.readFileSync(path.join(outDir, "lawcards.json"), "utf8")) : {};
   SNAP = { t: Date.now(), data };
   Object.assign(CARDS, cards);
+  const sumDir = path.join(ROOT, "pipeline/laws/summaries");   // the real summaries, as the pipeline attaches them
+  for (const f of fs.existsSync(sumDir) ? fs.readdirSync(sumDir).filter(f => f.endsWith(".json")) : []) {
+    const { i, ...ai } = JSON.parse(fs.readFileSync(path.join(sumDir, f), "utf8"));
+    if (CARDS[i]) CARDS[i].ai = ai;
+  }
   const { default: w2 } = await import("./pages.js?real" + Date.now());
   let heavy = { n: "", kb: 0 }, bad = 0;
   for (const l of data.laws) {

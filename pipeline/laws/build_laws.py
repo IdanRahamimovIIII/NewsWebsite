@@ -358,6 +358,44 @@ def attach_expl(cards, docs):
     return n
 
 
+SUMS = HERE / "summaries"
+SUM_KEYS = {"i", "d", "upto", "one", "who", "does", "why", "st", "src"}
+
+
+def read_summaries(folder=SUMS):
+    """the AI summaries (Mercy): one reviewed file per law, <IsraelLawID>.json.
+    A malformed file stops the run — a broken summary must not go out."""
+    out, bad = {}, []
+    for f in sorted(folder.glob("*.json")) if folder.exists() else []:
+        try:
+            s = json.loads(f.read_text(encoding="utf-8"))
+        except ValueError as e:
+            bad.append("%s: %s" % (f.name, e))
+            continue
+        why = [k for k in s if k not in SUM_KEYS]
+        if str(s.get("i")) != f.stem:
+            why.append("i != file name")
+        if not s.get("one") or not re.match(r"\d{4}-\d\d-\d\d$", s.get("d") or ""):
+            why.append("needs one + d (YYYY-MM-DD)")
+        if not isinstance(s.get("does", []), list) or not s.get("src"):
+            why.append("does must be a list, src non-empty")
+        if why:
+            bad.append("%s: %s" % (f.name, ", ".join(why)))
+        else:
+            out[int(f.stem)] = s
+    return out, bad
+
+
+def attach_summaries(cards, sums):
+    n = 0
+    for i, s in sums.items():
+        c = cards.get(i)
+        if c is not None:
+            c["ai"] = {k: v for k, v in s.items() if k != "i"}
+            n += 1
+    return n
+
+
 def build_card(l, j):
     g = (j or {}).get("general") or {}
     c = (j or {}).get("corrections") or {}
@@ -637,6 +675,9 @@ def main(argv=None):
     if not proxy:
         sys.exit("could not read PROXY_URL from site\\shared\\config.js (or env RELAY_URL)")
     relay = Relay(proxy)
+    sums, sum_problems = read_summaries()   # before the 15-minute collect
+    if sum_problems:
+        sys.exit("bad summary files — fix them first:\n" + "\n".join(sum_problems))
     w = collect(relay)
     w["recess_ok"] = "--recess-ok" in argv
     data, problems = build(w, read_court())
@@ -653,6 +694,7 @@ def main(argv=None):
                               "&$select=DocumentBillID,BillID,FilePath", cap=60000)
         log("explanatory notes (first-reading bills): %d laws of %d"
             % (attach_expl(cards, docs), len(cards)))
+        log("AI summaries: %d laws" % attach_summaries(cards, sums))
         (OUT / "lawcards.json").write_text(json.dumps(cards, ensure_ascii=False), encoding="utf-8")
         log("built %d law cards (%d failed)" % (len(cards), len(card_failures)))
         counts_from_cards(data, cards)
