@@ -340,6 +340,24 @@ def fix_path(p):
     return re.sub(r"(?<!:)/{2,}", "/", s)
 
 
+def attach_expl(cards, docs):
+    """card["expl"] = the original bill's first-reading booklet — its
+    explanatory notes (Mercy). docs = KNS_DocumentBill rows of GroupTypeID 2;
+    old bills come as PDF + TIF + DOC and some have a reprint: the first PDF
+    by DocumentBillID. Returns how many laws got one."""
+    first = {}
+    for d in sorted(docs, key=lambda r: r.get("DocumentBillID") or 0):
+        p = fix_path(d.get("FilePath"))
+        if p.lower().endswith(".pdf"):
+            first.setdefault(d.get("BillID"), p)
+    n = 0
+    for c in cards.values():
+        u = first.get(int((c.get("orig") or {}).get("i") or 0))
+        if u:
+            c["expl"], n = u, n + 1
+    return n
+
+
 def build_card(l, j):
     g = (j or {}).get("general") or {}
     c = (j or {}).get("corrections") or {}
@@ -631,6 +649,10 @@ def main(argv=None):
     if "--no-cards" not in argv:
         log("\nlaw cards (one law-API call per law, ~15 minutes)…")
         cards, card_failures = collect_cards(relay, data["laws"])
+        docs = relay.od_paged("KNS_DocumentBill()?$filter=GroupTypeID eq 2"
+                              "&$select=DocumentBillID,BillID,FilePath", cap=60000)
+        log("explanatory notes (first-reading bills): %d laws of %d"
+            % (attach_expl(cards, docs), len(cards)))
         (OUT / "lawcards.json").write_text(json.dumps(cards, ensure_ascii=False), encoding="utf-8")
         log("built %d law cards (%d failed)" % (len(cards), len(card_failures)))
         counts_from_cards(data, cards)

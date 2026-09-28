@@ -178,6 +178,25 @@ class Laws(unittest.TestCase):
         bad = B.gates(self.data, self.problems, self.w)
         self.assertTrue(any("only 230 laws" in b for b in bad))
 
+    def test_explanatory_notes(self):
+        """the original bill's first-reading PDF, with the live data's traps:
+        an old bill's TIF + DOC listed BEFORE its PDF, a reprint (two PDFs →
+        the first), backslashes / doubled slashes, a law with no bill booklet"""
+        cards = {1: {"orig": {"i": 553192}}, 2: {"orig": {"i": 2214412}}, 3: {"orig": {"i": 9}}, 4: {"orig": {}}}
+        docs = [
+            {"DocumentBillID": 10, "BillID": 553192, "FilePath": "https://fs.knesset.gov.il//1/law/1_ls1_283474.TIF"},
+            {"DocumentBillID": 11, "BillID": 553192, "FilePath": "https://fs.knesset.gov.il//1/law/1_ls1_283551.DOC"},
+            {"DocumentBillID": 12, "BillID": 553192, "FilePath": "https://fs.knesset.gov.il\\1\\law\\1_ls1_283396.PDF"},
+            {"DocumentBillID": 31, "BillID": 2214412, "FilePath": "https://fs.knesset.gov.il/25/law/25_ls1_4165391.pdf"},
+            {"DocumentBillID": 30, "BillID": 2214412, "FilePath": "https://fs.knesset.gov.il/25/law/25_ls1_4048773.pdf"},
+            {"DocumentBillID": 40, "BillID": 9, "FilePath": "https://fs.knesset.gov.il/9/law/x.doc"},
+        ]
+        self.assertEqual(B.attach_expl(cards, docs), 2)
+        self.assertEqual(cards[1]["expl"], "https://fs.knesset.gov.il/1/law/1_ls1_283396.PDF")
+        self.assertEqual(cards[2]["expl"], "https://fs.knesset.gov.il/25/law/25_ls1_4048773.pdf")
+        self.assertNotIn("expl", cards[3])
+        self.assertNotIn("expl", cards[4])
+
     def test_amending_acts(self):
         """one act per bill id, every law it changes, its start date from the
         bill API; skipped: an act that CREATED a law, a printing correction

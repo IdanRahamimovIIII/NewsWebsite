@@ -505,6 +505,7 @@ function lawBody(l, card, X, S, today) {
     ${facts.length ? `<p class="facts">${facts.map(esc).join(" · ")}</p>` : ""}
     ${rel.map(r => `<p class="facts">${r}</p>`).join("")}
     <p class="official"><a class="golink" href="https://main.knesset.gov.il/apps/legislation/main/laws/${l.i}" target="_blank" rel="noopener" data-i18n="lpOfficial">${esc(S.lpOfficial)}</a></p>
+    ${card && card.expl ? `<p class="official"><a class="golink" href="${esc(card.expl)}" target="_blank" rel="noopener" data-i18n="lpExpl">${esc(S.lpExpl)}</a></p>` : ""}
     ${about.join("")}
   </div>`);
 

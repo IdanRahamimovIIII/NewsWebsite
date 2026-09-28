@@ -33,7 +33,7 @@ const CARDS = {
     am: Array.from({ length: 14 }, (_, k) => ({ n: `חוק העונשין (תיקון מס' ${155 - k})`, d: `2026-0${1 + (k % 9)}-01`, ty: k % 3 ? "ישיר" : "עקיף", pdf: k === 0 ? "https://fs.knesset.gov.il/a.pdf" : "", sum: k === 1 ? "תקציר <script>x</script>" : "" })),
     repBy: [], pend: [{ i: 1, n: "הצעת חוק העונשין (תיקון מס' 160)", no: "(פ/2198/25)", ty: "פרטית", step: "הכנה לקריאה ראשונה", cm: "", d: "2025-07-14" }],
     regs: [{ n: "תקנות א", d: "2022-07-04" }], nregs: 89, nproc: 11, replacedBy: [], replaces: [] },
-  2015037: { i: 2015037, min: "", cm: "", note: "", ws: "", kz: "", prev: [], orig: { n: "x", d: "2017-02-13", pdf: "https://fs.knesset.gov.il/o.pdf", sum: "החוק נועד להסדיר" },
+  2015037: { i: 2015037, min: "", cm: "", note: "", ws: "", kz: "", prev: [], expl: "https://fs.knesset.gov.il/20/law/20_ls1_x.pdf", orig: { n: "x", d: "2017-02-13", pdf: "https://fs.knesset.gov.il/o.pdf", sum: "החוק נועד להסדיר" },
     am: [], repBy: [], pend: [], regs: [], nregs: 0, nproc: 0, replacedBy: [], replaces: [] },
 };
 
@@ -68,6 +68,7 @@ ok(h.includes('<h1 class="lawname"><span class="lbadge">חל היום</span> <sp
    "[status] name on one line: the Knesset's word, the court's in red beside it (Mercy)");
 ok(!h.includes("ברשומות הכנסת"), "no separate Knesset line (Mercy)");
 ok(h.includes('href="https://main.knesset.gov.il/apps/legislation/main/laws/2015037"'), "the official page, under the name");
+ok(h.includes('href="https://fs.knesset.gov.il/20/law/20_ls1_x.pdf"') && h.includes("דברי ההסבר של הצעת החוק המקורית"), "the original bill's explanatory notes, under it (Mercy)");
 ok(h.includes('"legislationLegalForce":"NotInForce"'), "JSON-LD: not in force");
 ok(!h.includes('name="robots"'), "a court-touched law is indexed");
 ok(h.includes('<link rel="canonical" href="https://ourmoneyil.com/law/2015037/">'), "canonical address: the number only");
