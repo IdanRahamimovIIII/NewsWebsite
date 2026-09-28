@@ -237,3 +237,10 @@ footer .sitever .vcode { font-family: ui-monospace, monospace; }
   .searchrow button { padding: 9px 16px; }
   .searchrow button.sbtn { padding: 0; width: 46px; }
 }
+
+/* a text cut to 4 lines + "read more" (common.js clampBoxes) */
+.clampbox .clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; margin: 0; }
+.clampbox.open .clamp { display: block; -webkit-line-clamp: unset; line-clamp: none; overflow: visible; }
+.morebtn { background: none; border: 0; padding: 4px 0; margin-top: 4px; color: var(--accent-ink); font: inherit; font-size: 13.5px; cursor: pointer; }
+.morebtn .less, .clampbox.open .morebtn .more { display: none; }
+.clampbox.open .morebtn .less { display: inline; }

@@ -28,6 +28,8 @@ const COMMON_STR = {
     subRulings: "פסיקה",
     loading: "טוען נתונים…",
     searchBtn: "חיפוש",
+    readMore: "קרא עוד",
+    readLess: "הצג פחות",
     empty: "לא נמצאו תוצאות.",
     credit: "מקורות המידע: ",
     err: "שגיאה בטעינת הנתונים. נסו שוב מאוחר יותר.",
@@ -62,6 +64,8 @@ const COMMON_STR = {
     subRulings: "Rulings",
     loading: "Loading data…",
     searchBtn: "Search",
+    readMore: "Read more",
+    readLess: "Show less",
     empty: "No results found.",
     credit: "Data sources: ",
     err: "Failed to load data. Please try again later.",
@@ -348,9 +352,22 @@ function watchHeader() {
   sync();
 }
 
+/* ---------- a long text cut to a few lines (.clampbox > .clamp + button.morebtn):
+   the button opens and closes it; it stays hidden when the text fits. The
+   whole text is in the HTML either way (AI reads it). ---------- */
+function clampBoxes() {
+  document.querySelectorAll(".clampbox").forEach(box => {
+    const p = box.querySelector(".clamp"), btn = box.querySelector(".morebtn");
+    if (!p || !btn || p.scrollHeight <= p.clientHeight + 2) return;
+    btn.hidden = false;
+    btn.addEventListener("click", () => btn.setAttribute("aria-expanded", box.classList.toggle("open")));
+  });
+}
+
 /* ---------- boot ---------- */
 buildChrome();
 watchHeader();
+clampBoxes();
 
 /* ---------- suggestions under a search field, like Google (Mercy: every
    search bar, page by page). source(text) → [{ html, pick }]; the field's

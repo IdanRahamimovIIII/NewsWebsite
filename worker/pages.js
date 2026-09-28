@@ -526,7 +526,6 @@ function lawBody(l, card, X, S, today) {
   else if (gone && l.r && X.byId.get(l.r)) rel.push(esc(S.replacedByL) + lawRef({ i: l.r }));
   if (card && card.replaces && card.replaces.length) rel.push(esc(S.replacesL) + refs(card.replaces));
   const about = [];
-  if (card && card.orig && card.orig.sum) about.push(`<p>${esc(card.orig.sum)}</p>`);
   if (card && card.note) about.push(`<p class="note">${esc(card.note)}</p>`);
   if (card && card.kz) about.push(`<p>${link(card.kz, S.kolZchut, true)}</p>`);
   out.push(`<div class="card lawhead">
@@ -539,6 +538,9 @@ function lawBody(l, card, X, S, today) {
     ${about.join("")}
   </div>`);
   if (card && card.ai) out.push(aiBox(l, card, court, S, st, ks));
+  // the Knesset's own summary, its own block (Mercy): 4 lines + "read more" (common.js)
+  if (card && card.orig && card.orig.sum) out.push(`<div class="card clampbox">${h2("secKSum")}<p class="clamp ksum">${esc(card.orig.sum)}</p>` +
+    `<button type="button" class="morebtn" aria-expanded="false" hidden><span class="more" data-i18n="readMore">${esc(S.readMore)}</span><span class="less" data-i18n="readLess">${esc(S.readLess)}</span></button></div>`);
 
   // two first, the rest one click away — all in the HTML (AI reads it)
   const two = (items, row) => `<ul class="hl plain">${items.slice(0, 2).map(row).join("")}</ul>` + (items.length > 2

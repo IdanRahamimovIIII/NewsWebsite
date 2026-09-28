@@ -76,7 +76,9 @@ ok(!h.includes('name="robots"'), "a court-touched law is indexed");
 ok(h.includes('<link rel="canonical" href="https://ourmoneyil.com/law/2015037/">'), "canonical address: the number only");
 ok(h.includes('"BreadcrumbList"') && h.includes('"name":"חוקים"'), "breadcrumbs for Google");
 ok(h.includes("9 שופטים") && h.includes("נ&#39; סולברג"), "panel + dissent shown");
-ok(h.includes("החוק נועד להסדיר"), "the original law's official summary");
+{ const k = h.indexOf('<div class="card clampbox"><h2 data-i18n="secKSum">התקציר הרשמי של הכנסת</h2><p class="clamp ksum">החוק נועד להסדיר</p>');
+  ok(k > h.indexOf('class="card aisum"') && k < h.indexOf('data-i18n="secAmend"'), "the Knesset's summary: its own block, after ours (Mercy)");
+  ok(h.includes('class="morebtn" aria-expanded="false" hidden>') && h.includes('data-i18n="readMore">קרא עוד'), "'read more' — shown by common.js only when the text is longer than 4 lines"); }
 ok(h.includes('<base href="/law/">'), "relative files resolve from /law/");
 ok(!/<p class="tagline"/.test(h), "no section headline on a law's page");
 ok(r.headers.get("content-language") === "he", "content-language he");
