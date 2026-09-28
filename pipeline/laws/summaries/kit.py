@@ -5,7 +5,8 @@ r"""The AI summaries' work tool — reads the last local run (..\out\laws.json
   python kit.py <id>       one law's sources: gazette PDFs, official summaries,
                            explanatory notes, court rows, Wikisource (a guide only)
   python kit.py stale      summaries written before a newer amendment
-  python kit.py text <pdf> a gazette PDF as text (to verify each point)
+  python kit.py text <pdf> [--layout]  a gazette PDF as text (layout: numbers whole,
+                           Hebrew reversed — for numbers)
   python kit.py review <id…> ..\out\review.html — the batch for Mercy to read
 Scope (Mercy): in force or about to be (budget laws aside); a court-stopped
 law the Knesset still lists counts. Rules for the text: GUIDE.md.
@@ -44,8 +45,9 @@ def main(a):
     elif a[0] == "text":   # a gazette PDF's text (pypdf; Hebrew comes out line by line, numbers may flip)
         import io, urllib.request, pypdf
         raw = urllib.request.urlopen(a[1], timeout=60).read()
+        mode = {"extraction_mode": "layout"} if "--layout" in a else {}   # layout keeps numbers whole more often
         for p in pypdf.PdfReader(io.BytesIO(raw)).pages:
-            print((p.extract_text() or "").replace("﻿", " "))
+            print((p.extract_text(**mode) or "").replace("﻿", " "))
     elif a[0] == "review":   # Mercy reviews a batch before it's committed: ..\out\review.html
         import html
         e = html.escape
