@@ -409,17 +409,51 @@ function dirRank(e, drop, past, kEnd) {
   // the last year in office: the latest FinishDate in that Knesset's rows,
   // else the Knesset's own end (someone the register has no rows for)
   e.lastK = e.serving ? 9999 : (ends.length ? Math.max(...ends) : ((kEnd && kEnd[e.block]) || 0));
+  // the card order's keys (dirOrder): the heaviest role held NOW; the most
+  // recent role that ended (its year, then its weight); the heaviest ever
+  const subst = r => r._role && !plainRole(r);
+  const w = r => cardWeight(isMinisterRow(r) && !/ראש הממשלה/.test(role(r)) ? "שר" : role(r));
+  const nowRows = e.serving ? e.k25.filter(r => subst(r) && !r.FinishDate) : [];
+  e.nowW = Math.max(0, ...nowRows.map(w));
+  e.pastY = 0; e.pastW = 0; e.bestW = 0;
+  for (const r of [...e.k25.filter(subst), ...e.minRows.filter(isMinisterRow)]) {
+    e.bestW = Math.max(e.bestW, w(r));
+    if (!r.FinishDate) continue;
+    const y = yearOf(r.FinishDate) || 0;
+    if (y > e.pastY || (y === e.pastY && w(r) > e.pastW)) { e.pastY = y; e.pastW = w(r); }
+  }
+}
+/* how heavy a role is on the card list (≡ worker pages.js cardWeight — change
+   both). Claude's order, Mercy's call to change: PM · alternate/deputy PM ·
+   Speaker · opposition leader · minister · acting minister · deputy
+   minister · committee chair · deputy Speaker · faction chair · other */
+function cardWeight(role) {
+  const s = String(role || "").trim();
+  if (s === "ראש הממשלה") return 100;
+  if (/ראש הממשלה החלופי|ממלא מקום ראש הממשלה|^(סגן|סגנית) ראש הממשלה/.test(s)) return 90;
+  if (/^(סגן|סגנית)\s*(ה)?יושב(ת)?[-–\s]?ראש הכנסת/.test(s)) return 45;
+  if (/יושב(ת)?[-–\s]?ראש הכנסת/.test(s)) return 85;
+  if (/ראש האופוזיציה/.test(s)) return 80;
+  if (/^ה?שר(ה|ת)?(\s|$)/.test(s)) return 70;
+  if (/ממלא(ת)? מקום שר|מ"מ שר/.test(s)) return 65;
+  if (/^(סגן|סגנית)\s+שר/.test(s)) return 60;
+  if (/יושב(ת)?[-–\s]?ראש\s*ועד|יו"ר\s*ועד/.test(s)) return 50;
+  if (/יושב(ת)?[-–\s]?ראש\s*(סיע|ה?קואליציה)|יו"ר\s*(סיע|ה?קואליציה)/.test(s)) return 40;
+  return s ? 10 : 0;
 }
 /* after the current Knesset: everyone else by the last year they were in
    office, newest first (Mercy), then the tiers, then name */
 const tailOrder = (a, b) =>
   (b.lastK - a.lastK) || (b.tier - a.tier) || (b.lastMin - a.lastMin) ||
   String(a.m.Name).localeCompare(String(b.m.Name), "he");
+/* the current Knesset (Mercy: the last active date, then the role's weight):
+   sitting members — a role held NOW, heaviest first; then who held one, the
+   most recent end first, then its weight; then the rest. Leavers after
+   them: the last year in office, then the heaviest role. Name last. */
 const dirOrder = (a, b) =>
   ((b.serving ? 1 : 0) - (a.serving ? 1 : 0)) ||
-  (b.tier - a.tier) ||
-  (b.lastMin - a.lastMin) ||
-  (b.lastK - a.lastK) ||
+  (a.serving ? (b.nowW - a.nowW) || (b.pastY - a.pastY) || (b.pastW - a.pastW)
+    : (b.lastK - a.lastK) || (b.bestW - a.bestW)) ||
   String(a.m.Name).localeCompare(String(b.m.Name), "he");   // surname first, the cmb form
 
 /* cached as a PROMISE (like ensureCmb): the directory is asked for at load

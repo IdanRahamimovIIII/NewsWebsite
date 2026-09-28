@@ -246,12 +246,40 @@ function tier(c) {
   if (/^(יושב(ת)?[-–\s]?ראש\s*ועד|יו"ר\s*ועד)/.test(r)) return 4;
   return (c.positions || []).some(p => !p.now && MINISTER.test(String(p.role || "").trim())) ? 3 : 0;
 }
-const lastMin = c => Math.max(0, ...(c.positions || [])
-  .filter(p => !p.now && MINISTER.test(String(p.role || "").trim())).map(p => p.y1 || 0));
-function listOrder(a, b) {
-  return (b.current - a.current) ||
-    (a.current ? 0 : (b.until || 0) - (a.until || 0)) ||
-    (tier(b) - tier(a)) || (lastMin(b) - lastMin(a)) || a.he.localeCompare(b.he, "he");
+/* how heavy a role is on the card list ≡ site mk.data.js cardWeight (change both) */
+function cardWeight(role) {
+  const s = String(role || "").trim();
+  if (s === "ראש הממשלה") return 100;
+  if (/ראש הממשלה החלופי|ממלא מקום ראש הממשלה|^(סגן|סגנית) ראש הממשלה/.test(s)) return 90;
+  if (/^(סגן|סגנית)\s*(ה)?יושב(ת)?[-–\s]?ראש הכנסת/.test(s)) return 45;
+  if (/יושב(ת)?[-–\s]?ראש הכנסת/.test(s)) return 85;
+  if (/ראש האופוזיציה/.test(s)) return 80;
+  if (/^ה?שר(ה|ת)?(\s|$)/.test(s)) return 70;
+  if (/ממלא(ת)? מקום שר|מ"מ שר/.test(s)) return 65;
+  if (/^(סגן|סגנית)\s+שר/.test(s)) return 60;
+  if (/יושב(ת)?[-–\s]?ראש\s*ועד|יו"ר\s*ועד/.test(s)) return 50;
+  if (/יושב(ת)?[-–\s]?ראש\s*(סיע|ה?קואליציה)|יו"ר\s*(סיע|ה?קואליציה)/.test(s)) return 40;
+  return s ? 10 : 0;
+}
+/* ≡ site dirOrder (Mercy: the last active date, then the role's weight):
+   sitting — a role held now, heaviest first; then the most recent role that
+   ended (year, weight); leavers — the last year in office, then the heaviest
+   role. The roles counted: this Knesset's + any minister's post. */
+function listOrder(k) {
+  const mine = c => (c.positions || []).filter(p => p.k === k || MINISTER.test(String(p.role || "").trim()));
+  const keys = c => {
+    const ps = mine(c), w = p => cardWeight(p.role);
+    let pastY = 0, pastW = 0;
+    for (const p of ps) if (!p.now && p.y1 && (p.y1 > pastY || (p.y1 === pastY && w(p) > pastW))) { pastY = p.y1; pastW = w(p); }
+    return { nowW: c.current ? cardWeight(nowRole(c)) : 0, pastY, pastW, bestW: Math.max(0, ...ps.map(w)) };
+  };
+  return (a, b) => {
+    const A = keys(a), B = keys(b);
+    return (b.current - a.current) ||
+      (a.current ? (B.nowW - A.nowW) || (B.pastY - A.pastY) || (B.pastW - A.pastW)
+        : ((b.until || 0) - (a.until || 0)) || (B.bestW - A.bestW)) ||
+      a.he.localeCompare(b.he, "he");
+  };
 }
 function cardRole(c, S) {
   if (c.current) return String(c.role || "").trim() || S.posMember;
@@ -263,7 +291,7 @@ function cardRole(c, S) {
 // the role is held today (green on the card ≡ site mk.data.js cardRoleNow — Mercy)
 const cardRoleNow = c => !!c.current || !!((c.positions || [])[0] || {}).now;
 function listHtml(cards, S) {
-  const list = Object.values(cards.data.members).filter(c => inKnesset(c, cards.data.knesset)).sort(listOrder);   // earlier Knessets: pages + sitemap + roster
+  const list = Object.values(cards.data.members).filter(c => inKnesset(c, cards.data.knesset)).sort(listOrder(cards.data.knesset));   // earlier Knessets: pages + sitemap + roster
   return `<div class="dirgrid">` + list.map(c => {
     const initials = c.he.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("");
     const av = c.photo ? `<img class="avatar avxl" src="${esc(PHOTO_BASE + c.photo)}" alt="" loading="lazy">`
