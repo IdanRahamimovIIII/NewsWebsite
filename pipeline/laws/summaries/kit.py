@@ -1,10 +1,12 @@
-"""The AI summaries' work tool — reads the last local run (..\\out\\laws.json
+r"""The AI summaries' work tool — reads the last local run (..\out\laws.json
 + lawcards.json; run build_laws.py --no-publish first if they are old).
 
   python kit.py next [N]   the next N laws in scope with no summary, newest first
   python kit.py <id>       one law's sources: gazette PDFs, official summaries,
                            explanatory notes, court rows, Wikisource (a guide only)
   python kit.py stale      summaries written before a newer amendment
+  python kit.py text <pdf> a gazette PDF as text (to verify each point)
+  python kit.py review <id…> ..\out\review.html — the batch for Mercy to read
 Scope (Mercy): in force or about to be (budget laws aside); a court-stopped
 law the Knesset still lists counts. Rules for the text: GUIDE.md.
 """
@@ -39,6 +41,31 @@ def main(a):
         print("%d in scope, %d written, %d to go" % (sum(in_scope(l, today) for l in d["laws"]), len(sums), len(todo)))
         for l in todo[:int(a[1]) if len(a) > 1 else 20]:
             print(l["i"], l.get("p"), l["n"])
+    elif a[0] == "text":   # a gazette PDF's text (pypdf; Hebrew comes out line by line, numbers may flip)
+        import io, urllib.request, pypdf
+        raw = urllib.request.urlopen(a[1], timeout=60).read()
+        for p in pypdf.PdfReader(io.BytesIO(raw)).pages:
+            print((p.extract_text() or "").replace("﻿", " "))
+    elif a[0] == "review":   # Mercy reviews a batch before it's committed: ..\out\review.html
+        import html
+        e = html.escape
+        rows = []
+        for i in map(int, a[1:]):
+            s, l = sums[i], next(x for x in d["laws"] if x["i"] == i)
+            kv = lambda t, v: "<p><b>%s</b><br>%s</p>" % (t, v) if v else ""
+            rows.append("<section><h2>%s</h2>%s<p class=one>%s</p>%s%s%s<p class=src>%s</p></section>" % (
+                e(l["n"]), "<p class=st>%s</p>" % e(s["st"]) if s.get("st") else "", e(s["one"]),
+                kv("על מי זה חל", e(s.get("who", ""))),
+                kv("מה זה אומר בפועל", "<ul>%s</ul>" % "".join("<li>%s</li>" % e(x) for x in s.get("does", []))),
+                kv("למה נחקק", e(s.get("why", ""))),
+                " · ".join('<a href="%s">%s</a>' % (e(x["u"]), e(x["t"])) if x.get("u") else e(x["t"]) for x in s["src"])))
+        (OUT / "review.html").write_text(
+            '<!DOCTYPE html><html lang=he dir=rtl><meta charset=utf-8><meta name=viewport content="width=device-width">'
+            "<title>סיכומים לבדיקה</title><style>body{font:16px/1.6 Arial,sans-serif;max-width:760px;margin:auto;padding:16px;"
+            "background:#f7f6f2;color:#1d1d1b}section{background:#fff;border:1px solid #ddd;border-radius:12px;padding:6px 16px;"
+            "margin:14px 0}h2{font-size:18px}.one{font-weight:700}.st{background:#eee;padding:6px 10px;border-radius:6px}"
+            ".src{font-size:13px;color:#777}</style><h1>%d סיכומים לבדיקה</h1>%s" % (len(rows), "".join(rows)), encoding="utf-8")
+        print(OUT / "review.html")
     elif a[0] == "stale":
         for i, s in sorted(sums.items()):
             newer = [x for x in (cards.get(str(i)) or {}).get("am", []) if (x.get("d") or "") > (s.get("upto") or "")]
