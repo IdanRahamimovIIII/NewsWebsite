@@ -23,7 +23,12 @@ def load():
     d = json.loads((OUT / "laws.json").read_text(encoding="utf-8"))
     d = d.get("data", d)
     cards = json.loads((OUT / "lawcards.json").read_text(encoding="utf-8"))
-    sums = {int(f.stem): json.loads(f.read_text(encoding="utf-8")) for f in HERE.glob("*.json")}
+    sums = {}
+    for f in HERE.glob("*.json"):
+        try:
+            sums[int(f.stem)] = json.loads(f.read_text(encoding="utf-8"))
+        except ValueError:
+            pass   # a file still being written
     return d, cards, sums
 
 
