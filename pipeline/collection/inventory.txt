@@ -79,35 +79,19 @@ MINISTRY REPORTS  (pipeline/reports)
     תיאום הפעולות בשטחים                           21 reports  2016Q3, 2016Q4, 2017Q1, 2017Q2, 2017Q3, 2017Q4, 2018Q1, 2018Q2, 2018Q3, 2018Q4, 2019Q2, 2019Q3, 2019Q4, 2020Q1, 2020Q2, 2020Q3, 2021Q1, 2021Q3, 2022Q3, 2023Q3, 2023Q4
     תנופה                                          16 reports  2016Q3, 2016Q4, 2017Q1, 2017Q2, 2017Q3, 2018Q2, 2019Q1, 2019Q2, 2019Q3, 2019Q4, 2020Q1, 2020Q3, 2021Q2, 2021Q3, 2021Q4, 2022Q1
 
-  1181 MORE REPORTS EXIST THAT WE CANNOT DOWNLOAD
-  (the host refuses a server; a browser can still open them)
-    by year: 2015:48, 2016:209, 2017:229, 2018:236, 2019:250, 2020:203, 2021:6
-    worst affected:
-      רוה"מ                                          88
-      (none)                                         41
-      המשרד לשירותי דת                               38
-      משרד הבריאות                                   35
-      הנהלת בתי משפט                                 34
-      משרד החינוך                                    30
-      המשרד לבטחון פנים                              30
-      מכס ומע"מ                                      29
-      משרד המשפטים                                   28
-      תנופה                                          24
-    so we hold 1750 of 2931 known reports (60%)
+  every report we found was reachable
 
-  1229 REPORTS FAILED TO DOWNLOAD
-     1171  host refuses a server
-       47  HTTP Error 404
-       11  HTTP Error 403
+  10 REPORTS FAILED TO DOWNLOAD
+        9  HTTP Error 404
+        1  HTTP Error 403
     worst affected:
-      רוה"מ                                          88
-      (none)                                         41
-      המשרד לשירותי דת                               37
-      משרד הבריאות                                   35
-      הנהלת בתי משפט                                 34
-      משרד המשפטים                                   34
-      המשרד לבטחון פנים                              31
-      משרד החינוך                                    30
+      משרד המשפטים                                   3
+      המשרד לשירותי דת                               2
+      משרד האנרגיה והתשתיות                          1
+      מ.האוצר - מטה החשב הכללי                       1
+      המכון הגיאולוגי                                1
+      תנופה                                          1
+      קרן שיקום מחצבות יו"ש                          1
 
 PARSED REPORTS  (pipeline/paid)
   section     records   reports       size
@@ -173,8 +157,5 @@ BUDGETKEY  (pipeline/build/raw)
   nothing collected yet
 
 AGAINST THE LAST RUN
-  publishers 78 -> 77
-  records    554138 -> 554731
-  ! THIS RUN FOUND LESS THAN THE LAST ONE.
-  ! Most likely the report cache was evicted and only some
-  ! years were re-collected. Not committing a smaller dataset.
+  publishers 77 -> 77
+  records    554731 -> 554731
