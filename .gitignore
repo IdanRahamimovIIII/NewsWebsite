@@ -16,6 +16,10 @@ pipeline/paid/*.full.json
 # the D1/KV config — it holds an API TOKEN. Never in git.
 /pipeline/d1-config.json
 
+# the local traffic viewer: reads Cloudflare analytics with a token, keeps
+# visitor addresses — this computer only, never the site (Mercy)
+/analytics/
+
 # leftovers from clean-up .bats (moved, not deleted, until Mercy empties it)
 _old_delete_me/
 *.log
