@@ -78,7 +78,7 @@ function renderList() {
   const loose = !hits.length && V.q ? d.laws.filter(l => matches(l, true)) : [];
   if (loose.length) hits = loose;
   // not yet in force leads, whatever the order (change first)
-  hits.sort((a, b) => ((lawState(b) === "pending") - (lawState(a) === "pending")) || SORTS[V.sort](a, b));
+  hits.sort((a, b) => (isSoon(b) - isSoon(a)) || SORTS[V.sort](a, b));
   const shown = hits.slice(0, V.limit);
   const total = d.laws.length;
   const hidB = 0;                                           // budget laws are always listed

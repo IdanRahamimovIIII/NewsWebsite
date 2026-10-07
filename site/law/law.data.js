@@ -36,6 +36,12 @@ function lawState(l) {
   if (/נושן/.test(st)) return "obsolete";
   return "in";
 }
+/* "about to take effect" = not in force yet AND it can still start. The one
+   exception (Mercy): פקודת הבטריקיה האורתודוכסית, 1941 — "טרם נכנס לתוקף" in
+   the register since 1941, never brought into force; its status stays, it
+   just doesn't lead the lists or sit under "עומדים להיכנס לתוקף". */
+const NEVER_STARTED = new Set([2070108]);
+const isSoon = l => lawState(l) === "pending" && !NEVER_STARTED.has(l.i);
 const STATE_KEY = { in: "stIn", pending: "stPending", repealed: "stRepealed", expired: "stExpired", obsolete: "stObsolete", voided: "stVoided" };
 const KIND_KEY = { void: "kVoid", partial: "kPartial", frozen: "kFrozen", deferred: "kDeferred" };
 

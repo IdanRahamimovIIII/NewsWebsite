@@ -143,7 +143,7 @@ function render() {
   const acts = d.amends || [];
   const asRows = (list, row) => list.map(l => ({ sort: l.s || l.p || "", html: key => row(l, key) }));
   const soonRow = lawRow(l => l.s ? t("startsDate") + fmtDate(l.s) : t("stPending") + " · " + t("noDate"));
-  const soon = laws.filter(l => lawState(l) === "pending")
+  const soon = laws.filter(isSoon)
     .map(l => ({ sort: l.s || "9999", html: key => soonRow(l, key) }))      // no start date → last, never first
     .concat(amendRows(acts.filter(a => a.c && a.c > TODAY), true))
     .sort((a, b) => a.sort.localeCompare(b.sort));
