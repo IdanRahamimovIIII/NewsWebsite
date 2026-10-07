@@ -108,6 +108,20 @@ function currentList() {
   return state.groups || [];
 }
 
+/* the pager's page n: a page already found shows at once (an advanced search
+   tops it up); one past them takes the old step forward (check more / load older) */
+async function votesGo(n) {
+  toTop();
+  const known = Math.max(1, Math.ceil(currentList().length / ROWS_PER_PAGE));
+  if (n <= known) {
+    state.page = n;
+    renderVotes();
+    if (state.advGroups && !state.advAllChecked) { await fillPage(state.advSeq); renderVotes(); }
+    return;
+  }
+  state.page = known;
+  return goPage(1);
+}
 async function goPage(d) {
   if (d < 0) {
     if (state.page > 1) { state.page--; renderVotes(); }

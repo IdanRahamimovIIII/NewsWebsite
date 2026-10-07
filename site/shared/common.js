@@ -40,6 +40,8 @@ const COMMON_STR = {
     snapPartial: "רק התפקידים הבולטים, מהעותק השמור שלנו ({d}) — הרשימה המלאה לא זמינה כרגע.",
     posFail: "רשימת התפקידים לא זמינה כרגע. נסו שוב מאוחר יותר.",
     billsFail: "רשימת הצעות החוק לא זמינה כרגע. נסו שוב מאוחר יותר.",
+    pgFirst: "ראשון", pgPrev: "הקודם", pgNext: "הבא", pgLast: "אחרון",
+    pgNav: "מעבר בין עמודים", pgPage: "עמוד {n}",
     snapLatest: "{n} ההצעות שעודכנו לאחרונה, מהעותק השמור שלנו ({d}) — הכנסת לא עונה כרגע, ולכן החיפוש לא זמין.",
     errProxy: "הממסר מוגדר אך הבקשה נכשלה. ודאו שהגרסה העדכנית של worker.js הועתקה ל-Cloudflare, או ספרו לקלוד מה כתוב בתחתית העמוד.",
     aboutBody: "״הכסף שלנו״ הוא אתר עצמאי, ללא קשר לגוף ממשלתי, למפלגה או לארגון, שנועד להעניק לאזרחי ישראל מבט נקי ומסודר על פעילות המדינה ועל האופן שבו היא משתמשת בכסף שלנו. כל הנתונים מגיעים ישירות מהמקורות הרשמיים ומוצגים כפי שהם, עם קישור למקור. מצאתם טעות או נתון חסר? כתבו לנו ונתקן:",
@@ -82,6 +84,8 @@ const COMMON_STR = {
     snapPartial: "Only the main roles, from our saved copy ({d}) — the full list isn't available right now.",
     posFail: "The list of positions isn't available right now. Try again later.",
     billsFail: "The list of bills isn't available right now. Try again later.",
+    pgFirst: "First", pgPrev: "Previous", pgNext: "Next", pgLast: "Last",
+    pgNav: "Pages", pgPage: "Page {n}",
     snapLatest: "The {n} most recently updated bills, from our saved copy ({d}) — the Knesset isn't answering right now, so search is unavailable.",
     errProxy: "A relay is configured but the request failed. Make sure the latest worker.js is deployed on Cloudflare, or tell Claude what the bottom of the page says.",
     aboutBody: "Our Money is an independent site, unaffiliated with any government body, party or organization, built to give Israel's citizens a clean, clear view of the state's activity and of how it uses our money. All the data comes straight from the official sources and is shown as it is, linked to the original. Found a mistake or a missing figure? Write to us and we'll fix it:",
@@ -321,6 +325,39 @@ function debug(msg) {
   console.warn("[our-money]", msg);
   const d = document.getElementById("debug");
   if (d) d.textContent = msg ? "⚠ " + String(msg).slice(0, 300) : "";
+}
+
+/* ---------- the ONE pager (Mercy): every result list, now and future ----------
+   ראשון · הקודם · 1 … 4 5 [6] 7 8 … 20 · הבא · אחרון, and a page change jumps
+   to the top of the page. LIST_PAGE rows a page (the MK grid: its own size).
+   pages = null → the total isn't known yet (a list that checks or loads as it
+   goes): the pages known so far, then הבא — אחרון only once the end is known.
+   go = the NAME of a global function taking the page number. */
+const LIST_PAGE = 30;
+const pageCount = (n, size) => Math.max(1, Math.ceil(n / (size || LIST_PAGE)));
+function pagerHtml(page, pages, go, known) {
+  const last = pages || known || page;
+  const open = pages === null || pages === undefined;            // more may exist beyond `last`
+  if (!open && last <= 1) return "";
+  const btn = (n, label, cls) => `<button class="pgbtn${cls ? " " + cls : ""}" type="button" onclick="${go}(${n})"` +
+    ` aria-label="${esc(t("pgPage").replace("{n}", n))}">${esc(label)}</button>`;
+  const nums = [];
+  const from = Math.max(1, page - 2), to = Math.min(last, page + 2);
+  if (from > 1) { nums.push(btn(1, "1")); if (from > 2) nums.push(`<span class="pggap">…</span>`); }
+  for (let n = from; n <= to; n++)
+    nums.push(n === page ? `<span class="pgcur" aria-current="page">${n}</span>` : btn(n, String(n)));
+  if (to < last) { if (to < last - 1) nums.push(`<span class="pggap">…</span>`); nums.push(btn(last, String(last))); }
+  if (open) nums.push(`<span class="pggap">…</span>`);
+  return `<nav class="pgr" aria-label="${esc(t("pgNav"))}">` +
+    (page > 1 ? btn(1, t("pgFirst"), "pgend") + btn(page - 1, t("pgPrev"), "pgend") : "") +
+    nums.join("") +
+    (page < last || open ? btn(page + 1, t("pgNext"), "pgend") : "") +
+    (!open && page < last ? btn(last, t("pgLast"), "pgend") : "") +
+    `</nav>`;
+}
+/* every page change starts at the top of the page (Mercy) */
+function toTop() {
+  try { window.scrollTo({ top: 0, left: 0, behavior: "instant" }); } catch (e) { window.scrollTo(0, 0); }
 }
 
 /* ---------- the tooltip — ONE look site-wide (style.css #tip). showTip(evt,

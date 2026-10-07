@@ -15,9 +15,9 @@
      8. init
    ===================================================================== */
 
-const VOTES_PER_PAGE = 25;
 const POS_PREVIEW = 4;     // positions shown before "show all" (Mercy: the last 4)
-const BILLS_PAGE = 20;     // bills shown before "more" (one list, filtered)
+const DIR_PAGE = 156;      // the grid's own page size (Mercy): the whole current Knesset (152) on page 1
+// bills and votes: the site-wide pager, LIST_PAGE a page (common.js)
 
 /* =====================================================================
    1. SHARED BITS
@@ -71,6 +71,7 @@ function liveSearchInput() {
 async function runLiveSearch(openUnique) {
   const q = document.getElementById("mkq").value.trim();
   const my = ++searchSeq;
+  if (q !== state.dirQ) state.dirPage = 1;
   state.dirQ = q;
   renderDirectory();                       // cut at once from what is on the page
   if (q) {
@@ -106,51 +107,44 @@ async function loadDirectory() {
     debug("dir: " + e.message);
   }
 }
-let dirObserver = null, moreObserver = null;
+let dirObserver = null;
 function renderDirectory() {
   const box = document.getElementById("dir");
   const list = state._dir;
   if (!list) return;
-  // one continuous grid: the current Knesset, then everyone else by the last
-  // year in office — no dividers (Mercy), the years on the cards say it.
-  // A search only removes cards; a match by party/role adds the reason to its card.
+  // one grid: the current Knesset, then everyone else by the last year in
+  // office — no dividers (Mercy), the years on the cards say it. Pages of
+  // DIR_PAGE (the site-wide pager); a page past what's loaded fetches the
+  // earlier Knessets it needs. A search only removes cards; a match by
+  // party/role adds the reason to its card.
   const shown = visibleDir();
   const searching = !!(state.dirQ || "").trim();
+  const pages = pageCount(searching ? shown.length : dirTotal(), DIR_PAGE);
+  if (state.dirPage > pages) state.dirPage = pages;
+  const from = (state.dirPage - 1) * DIR_PAGE, to = state.dirPage * DIR_PAGE;
+  const wanting = !searching && to > list.length && state._dirNextK >= 16;   // this page needs earlier Knessets
   let html = (state._dirNote ? `<div class="snapnote">${esc(snapNote(state._dirNote))}</div>` : "") + `<div class="dirgrid">`;
-  shown.forEach(({ e, i, hit }) => {
+  shown.slice(from, to).forEach(({ e, i, hit }) => {
     html += `<button class="dircard" data-i="${i}" onclick="dirOpen(${i})">${dirCardHtml(e, hit)}</button>`;
   });
   html += `</div>`;
   if (searching && !shown.length) html += `<div class="loading">${esc(t("noneFound"))}</div>`;
-  // the sentinel: reaching it fetches the next Knesset back (or says the archive ends) — not while searching
-  const more = !searching && state._dirNextK >= 16;
-  if (!searching) html += `<div id="dirmore" class="dirmore">${esc(more ? t("dirLoadingMore") : t("dirEnd"))}</div>`;
+  if (wanting) html += `<div class="dirmore">${esc(t("dirLoadingMore"))}</div>`;
+  else if (!searching && state.dirPage === pages) html += `<div class="dirmore">${esc(t("dirEnd"))}</div>`;   // where the archive ends
+  html += pagerHtml(state.dirPage, pages, "dirPage");
   box.innerHTML = html;
   if (dirObserver) dirObserver.disconnect();
-  if (moreObserver) moreObserver.disconnect();
   if ("IntersectionObserver" in window) {
     dirObserver = new IntersectionObserver(entries => {
       entries.forEach(en => { if (en.isIntersecting) { dirWant(+en.target.dataset.i); dirObserver.unobserve(en.target); } });
     }, { rootMargin: "300px 0px" });   // start a little before the card is on screen
     box.querySelectorAll(".dircard").forEach(el => dirObserver.observe(el));
-    if (more) {
-      moreObserver = new IntersectionObserver(entries => {
-        if (entries.some(en => en.isIntersecting)) dirMore();
-      }, { rootMargin: "600px 0px" });
-      moreObserver.observe(document.getElementById("dirmore"));
-    }
   } else {
-    list.forEach((e, i) => dirWant(i));
+    shown.slice(from, to).forEach(({ i }) => dirWant(i));
   }
+  if (wanting) dirLoadUpTo(to).then(() => { if (!state.sel) renderDirectory(); });
 }
-/* the sentinel came into view: append the previous Knesset and redraw */
-async function dirMore() {
-  if (state._dirLoading) return;
-  if (moreObserver) moreObserver.disconnect();
-  const grew = await loadNextKnesset();
-  if (!state.sel) renderDirectory();   // (a portfolio may have opened meanwhile — the grid redraws on return)
-  else if (!grew) return;
-}
+function dirPage(n) { state.dirPage = n; renderDirectory(); toTop(); }
 function dirCardHtml(e, hit) {
   const role = cardRole(e);
   const years = cardYears(e);
@@ -467,17 +461,17 @@ function renderBills() {
   const list = b.bills.filter(x => x._bucket === state.billPile && (!q || String(x.Name || "").includes(q)))
     .sort((a, c) => (+c.KnessetNum || 0) - (+a.KnessetNum || 0) || (dateOf(c.LastUpdatedDate) || 0) - (dateOf(a.LastUpdatedDate) || 0));
   const dotOf = Object.fromEntries(BUCKETS.map(([k, , dot]) => [k, dot]));
-  const shown = list.slice(0, state.billShown);
+  const pages = pageCount(list.length);
+  if (state.billPage > pages) state.billPage = pages;
+  const shown = list.slice((state.billPage - 1) * LIST_PAGE, state.billPage * LIST_PAGE);
   state._bShown = shown;
   // each row opens to the bill's official documents (Mercy)
   const rows = shown.map((x, i) => `<button class="brow${x._open ? " sel" : ""}" onclick="openBill(${i})"><span class="dot ${dotOf[x._bucket]}" data-tip="${esc(t(BUCKETS.find(u => u[0] === x._bucket)[1]))}"></span><span class="bname">${x._open ? "▾" : "▸"} ${esc(x.Name)}${
       x._lead ? ` <span class="leadchip">${esc(t("bLead"))}</span>` : ""}
       <span class="names">— ${esc(x._status)}${x.KnessetNum ? ` · ${esc(t("knesset"))} ${x.KnessetNum}` : ""}</span></span></button>` +
       (x._open ? `<div class="kidsbox">${docsHtml(x._docs)}</div>` : "")).join("");
-  const more = list.length > shown.length
-    ? `<div style="margin:8px 0 0"><button class="votechip" onclick="state.billShown+=${BILLS_PAGE};renderBills()">${
-        esc(t("bMore").replace("{n}", list.length - shown.length))}</button></div>` : "";
-  document.getElementById("billslist").innerHTML = list.length ? rows + more : `<div class="loading">${esc(t("bNoMatch"))}</div>`;
+  document.getElementById("billslist").innerHTML = list.length ? rows + pagerHtml(state.billPage, pages, "billsPage")
+    : `<div class="loading">${esc(t("bNoMatch"))}</div>`;
 }
 function openBill(i) {
   const x = (state._bShown || [])[i];
@@ -492,14 +486,15 @@ function openBill(i) {
 }
 function pickBillPile(k) {
   state.billPile = k;
-  state.billShown = BILLS_PAGE;
+  state.billPage = 1;
   renderBills();
 }
 function billSearch(v) {
   state.billQ = v || "";
-  state.billShown = BILLS_PAGE;
+  state.billPage = 1;
   renderBills();
 }
+function billsPage(n) { state.billPage = n; renderBills(); toTop(); }
 
 /* ---- the official documents block (bills and votes share it) ----
    docs: undefined = not asked, "loading", null = the register failed, [] = none */
@@ -547,21 +542,15 @@ function renderVotesSec() {
   const g = q ? all.filter(x => String(x.title || "").includes(q)) : all;
   if (!g.length) { box.innerHTML = `<div class="loading">${esc(t("vNoMatch"))}</div>`; return; }
 
-  const pages = Math.max(1, Math.ceil(g.length / VOTES_PER_PAGE));
+  const pages = pageCount(g.length);
   if (state.vPage > pages) state.vPage = pages;
-  const list = g.slice((state.vPage - 1) * VOTES_PER_PAGE, state.vPage * VOTES_PER_PAGE);
+  const list = g.slice((state.vPage - 1) * LIST_PAGE, state.vPage * LIST_PAGE);
   state._vShown = list;
   let html = list.map((x, i) => `<button class="vote${x._open ? " sel" : ""}" onclick="openVote(${i})">
       <div class="vtitle">${x._open ? "▾" : "▸"} ${esc(x.title)}</div>
       <div class="vmeta"><span>${fmtDate(x.date)}</span>${passBadge(x)}${myVoteChip(x)}</div>
     </button>` + (x._open ? voteDetailHtml(x) : "")).join("");
-  if (pages > 1) {
-    html += `<div class="pager">` +
-      (state.vPage > 1 ? `<button class="votechip" onclick="votePage(-1)">${esc(t("prevPage"))}</button>` : "") +
-      `<span>${esc(t("pageN").replace("{n}", state.vPage))}</span>` +
-      (state.vPage < pages ? `<button class="votechip" onclick="votePage(1)">${esc(t("nextPage"))}</button>` : "") +
-      `</div>`;
-  }
+  html += pagerHtml(state.vPage, pages, "mkVotesPage");
   box.innerHTML = html;
   annotateGroups(list, state.seq, renderVotesSec);
 }
@@ -608,10 +597,7 @@ function voteSearch(v) {
   state.vPage = 1;
   renderVotesSec();
 }
-function votePage(d) {
-  state.vPage = Math.max(1, state.vPage + d);
-  renderVotesSec();
-}
+function mkVotesPage(n) { state.vPage = n; renderVotesSec(); toTop(); }
 
 /* =====================================================================
    8. INIT

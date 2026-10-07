@@ -44,7 +44,8 @@ const state = {
   positions: null, posAll: false,
   bills: null,
   billPile: "",                 // the ONE pile on screen (radio, Mercy); "" = pick the default
-  billQ: "", billShown: 20,     // the name search, and how many rows are on screen
+  billQ: "", billPage: 1,       // the name search, and the page on screen
+  dirPage: 1,                   // the directory grid's page
   votesByK: {},         // KnessetId → groups (each: title, date, votes[])
   vK: null,             // the Knesset whose record is on screen
   vPage: 1,
@@ -543,6 +544,8 @@ async function buildDirectoryOnce() {
   }
   const mks = cmb.MKS || [];
   const latest = Math.max(...mks.map(m => +m.KnessetId || 0), 0);
+  // everyone the grid will hold once every Knesset is loaded (the pager's last page)
+  state._dirTotal = new Set(mks.filter(m => +m.KnessetId >= 16).map(m => nameKey(m.Name))).size;
   let rowsOk = true;
   const [k25, minRows] = await Promise.all([
     bulkPositions(`KnessetNum eq ${latest}`).catch(e => { rowsOk = false; debug("dir-k25: " + e.message); return []; }),
@@ -698,7 +701,24 @@ function dirFromCards(cards) {
   return list;
 }
 
-/* ---- infinite scroll (Mercy): when the reader reaches the
+/* the grid's size for the pager: what's loaded once nothing is left to load,
+   else everyone the votes directory knows since K16 */
+function dirTotal() {
+  const n = (state._dir || []).length;
+  return state._dirNextK >= 16 ? Math.max(n, state._dirTotal || 0) : n;
+}
+/* load earlier Knessets until the grid holds n cards (a page asked for them) —
+   one run at a time (the blocks are appended and the tail re-sorted in place) */
+function dirLoadUpTo(n) {
+  if (state._dirUpTo) return state._dirUpTo;
+  state._dirUpTo = (async () => {
+    try { while ((state._dir || []).length < n && state._dirNextK >= 16) if (!(await loadNextKnesset())) break; }
+    finally { state._dirUpTo = null; }
+  })();
+  return state._dirUpTo;
+}
+
+/* ---- earlier Knessets (Mercy): when a page reaches past the
    bottom, the previous Knesset's members (those not on the page yet) are
    fetched — one bulk query per Knesset, ~550 rows — and the whole tail
    after the current Knesset is re-sorted by the last year in office,
@@ -1231,7 +1251,7 @@ async function openPerson(c) {
   state.sel = c;
   state.positions = null; state.posAll = false;
   state.bills = null; state.bio = null; state.bioSnap = false;
-  state.billPile = ""; state.billQ = ""; state.billShown = 20;
+  state.billPile = ""; state.billQ = ""; state.billPage = 1;
   state.votesByK = {}; state.vPage = 1;
   state.vK = c.cmb.length ? c.cmb[0].KnessetId : null; state.voteQ = "";
   renderAll();

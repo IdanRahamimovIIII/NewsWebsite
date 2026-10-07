@@ -5,7 +5,7 @@
    (expanding a row, the autocomplete, the advanced panel).
    ===================================================================== */
 
-const ROWS_PER_PAGE = 40;  // rows per page of results
+const ROWS_PER_PAGE = LIST_PAGE;  // rows per page of results (the site-wide pager, common.js)
 
 const passBadge = g =>
   g._passed === true ? `<span class="passed yes">${esc(t("passedYes"))}</span>`
@@ -57,13 +57,7 @@ function renderVotes() {
   // search still has candidates waiting to be checked
   const canOlder = (!state.q && !state.mkSel && !state.advGroups && !state.found && !state.noMore)
     || (state.advGroups && !state.advAllChecked);
-  if (pages > 1 || canOlder) {
-    html += `<div class="pager">` +
-      (state.page > 1 ? `<button class="votechip" onclick="goPage(-1)">${esc(t("prevPage"))}</button>` : "") +
-      `<span>${esc(t("pageN").replace("{n}", state.page))}</span>` +
-      (state.page < pages || canOlder ? `<button class="votechip" onclick="goPage(1)">${esc(t("nextPage"))}</button>` : "") +
-      `</div>`;
-  }
+  html += pagerHtml(state.page, canOlder ? null : pages, "votesGo", pages);   // more may exist → no "last" yet
   box.innerHTML = html;
   // fill in ✔/✘ for the rows actually on screen (an advanced search does its
   // own checking, page by page — don't duplicate the requests here)

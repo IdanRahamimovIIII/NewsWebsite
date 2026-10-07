@@ -247,3 +247,12 @@ footer .sitever .vcode { font-family: ui-monospace, monospace; }
 
 /* "shown from our saved copy (<date>)" — a source that didn't answer, said plainly */
 .snapnote { font-size: 13px; color: var(--ink-3); margin: 0 0 10px; }
+
+/* the ONE pager (common.js pagerHtml) — every result list */
+.pgr { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin: 18px 0 6px; }
+.pgbtn, .pgcur { min-width: 36px; height: 36px; padding: 0 10px; border-radius: 8px; font: inherit; font-size: 14px;
+  display: inline-flex; align-items: center; justify-content: center; }
+.pgbtn { border: 1px solid var(--border); background: var(--page); color: var(--ink-1); cursor: pointer; }
+.pgbtn:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
+.pgcur { background: var(--series-1); color: #fff; font-weight: 600; }
+.pggap { color: var(--ink-3); padding: 0 2px; }

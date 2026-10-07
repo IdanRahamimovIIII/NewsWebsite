@@ -254,9 +254,11 @@ const tabs = await page.$$eval('nav.tabs a', els => els.map(e => e.getAttribute(
 ok('the nav has three tabs (budget · law · MKs)', tabs.length === 3, tabs.join(','));
 ok('the MK page is the active tab', await page.$eval('nav.tabs a.active', e => e.getAttribute('href')) === '../mk/');
 const chips = await page.$$eval('#dir .dircard .dcname', els => els.map(e => e.textContent));
-ok('the directory lists this Knesset\'s members once each', chips.length === 5, chips.join(','));
+// a page holds 156: this Knesset's members lead it, earlier ones follow once fetched
+ok('the directory lists this Knesset\'s members once each, leading the page',
+  chips.length >= 5 && new Set(chips).size === chips.length, chips.join(','));
 ok('ordered by importance: PM → minister → former minister → plain member → the one who left',
-  chips.join(',') === 'יאיר לפיד,משה כהן,רגב מירי,בנימין גנץ,דני עזב', chips.join(','));
+  chips.slice(0, 5).join(',') === 'יאיר לפיד,משה כהן,רגב מירי,בנימין גנץ,דני עזב', chips.join(','));
 ok('"גנץ בני" found the persons table\'s "בנימין גנץ" (tolerant match) and counts as serving', chips.includes('בנימין גנץ'));
 const gantzPids = await page.evaluate(() => state._dir.find(e => e.name === 'בנימין גנץ').personIds.join(','));
 ok('…and only him — a prefix-only lookalike is not taken', gantzPids === '3100', gantzPids);
@@ -287,9 +289,8 @@ ok('zero laws passed → no line at all', regev.bills === '', regev.bills);
 ok('two concurrent asks for the directory share one build (the photo-manifest race)',
   await page.evaluate(() => Promise.all([buildDirectory(), buildDirectory()]).then(([a, b]) => a === b && a.length >= 5)));
 
-console.log('\nreaching the bottom appends earlier members, by the last year in office:');
-await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-await page.waitForFunction(() => document.querySelector('#dirmore') && document.querySelector('#dirmore').textContent.includes('זה הכל'), null, { timeout: 15000 });
+console.log('\na page with room fetches earlier members itself, by the last year in office (no scrolling):');
+await page.waitForFunction(() => document.querySelector('#dir .dirmore') && document.querySelector('#dir .dirmore').textContent.includes('זה הכל'), null, { timeout: 15000 });
 const heads = await page.$$eval('#dir .dirk', els => els.map(e => e.textContent.replace(/\s+/g, ' ')));
 ok('one continuous grid — no dividers', heads.length === 0 && (await page.$$eval('#dir .dirgrid', els => els.length)) === 1, heads.join('|'));
 ok('a sitting member with only plain roles today reads "חבר/ת הכנסת", not the deputy-minister line of 2022',
@@ -298,8 +299,22 @@ const allNames = await page.$$eval('#dir .dircard .dcname', els => els.map(e => 
 ok('its member who never sat in the 25th is there, with the card fully drawn', allNames.includes('משה לוי')
   && (await page.$$eval('#dir .dircard', els => { const c = els.find(e => e.querySelector('.dcname').textContent === 'משה לוי'); return c.querySelector('.dcrole').textContent.includes('ועדת החינוך') && c.querySelector('.dcyears').textContent === '2013–2015'; })));
 ok('someone already shown under the 25th is not repeated', allNames.filter(n => n === 'יאיר לפיד').length === 1);
-ok('the archive ends at the 16th, and says so', (await page.textContent('#dirmore')).includes('הכנסת ה-16'));
-await page.evaluate(() => window.scrollTo(0, 0));
+ok('the archive ends at the 16th, and says so', (await page.textContent('#dir .dirmore')).includes('הכנסת ה-16'));
+ok('everyone fits one page of 156: no pager', await page.$('#dir .pgr') === null);
+
+console.log('\nthe ONE pager (Mercy, site-wide):');
+const pg = await page.evaluate(() => {
+  const strip = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return { mid: strip(pagerHtml(6, 20, 'go')), first: strip(pagerHtml(1, 20, 'go')), last: strip(pagerHtml(20, 20, 'go')),
+           one: pagerHtml(1, 1, 'go'), open: strip(pagerHtml(3, null, 'go', 3)), calls: (pagerHtml(6, 20, 'go').match(/onclick="go\(\d+\)"/g) || []).length };
+});
+ok('the middle: first · previous · 1 … 4 5 6 7 8 … 20 · next · last', pg.mid === 'ראשון הקודם 1 … 4 5 6 7 8 … 20 הבא אחרון', pg.mid);
+ok('page 1 has no first/previous', pg.first === '1 2 3 … 20 הבא אחרון', pg.first);
+ok('the last page has no next/last', pg.last === 'ראשון הקודם 1 … 18 19 20', pg.last);
+ok('one page → no pager at all', pg.one === '');
+ok('an unknown total: the pages found, then next — never a "last" it can\'t know', pg.open === 'ראשון הקודם 1 2 3 … הבא', pg.open);
+ok('every button calls the page\'s own function with a page number', pg.calls === 10, String(pg.calls));
+ok('a page change goes back to the top', await page.evaluate(() => { window.scrollTo(0, 500); dirPage(1); return window.scrollY === 0; }));
 
 console.log('\nthe search filters the grid in place (Mercy, 2026-09-07):');
 // the manifest arrives on its own schedule and the directory is redrawn when it does — wait, don't peek
@@ -311,10 +326,10 @@ await page.fill('#mkq', 'משה');            // fill fires the input event — 
 await page.waitForFunction(() => document.querySelectorAll('#dir .dircard').length === 2);
 const names = await gridNames();
 ok('only the matching cards remain, in the grid\'s own order (serving first)', names.join(',') === 'משה כהן,משה לוי', names.join(','));
-ok('no second list, no sentinel while searching', await page.$('.mkcard') === null && await page.$('#dirmore') === null);
+ok('no second list, no end note while searching', await page.$('.mkcard') === null && await page.$('#dir .dirmore') === null);
 await page.fill('#mkq', '');
 await page.waitForFunction((n) => document.querySelectorAll('#dir .dircard').length === n, total);
-ok('clearing the box brings every card back, and the sentinel', (await gridNames()).length === total && await page.$('#dirmore') !== null);
+ok('clearing the box brings every card back, and the end note', (await gridNames()).length === total && await page.$('#dir .dirmore') !== null);
 await page.fill('#mkq', 'אין כזה');
 await page.waitForFunction(() => document.querySelectorAll('#dir .dircard').length === 0);
 ok('no match says so, in place', (await page.textContent('#dir')).includes('לא נמצא'));

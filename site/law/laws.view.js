@@ -9,9 +9,8 @@
    Address: ?q= ?topic=; an old ?law=<id> goes to that law's page.
    ===================================================================== */
 
-const PAGE_SIZE = 150;
 const V = { q: "", topic: "", kind: "in", basic: false, court: false,   // budget laws always listed; kind: all|in|gone (Mercy)
-            sort: "changed", limit: PAGE_SIZE };
+            sort: "changed", page: 1 };
 
 const normHe = s => String(s || "").replace(/[֑-ׇ]/g, "").replace(/["'״׳]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 
@@ -79,7 +78,9 @@ function renderList() {
   if (loose.length) hits = loose;
   // not yet in force leads, whatever the order (change first)
   hits.sort((a, b) => (isSoon(b) - isSoon(a)) || SORTS[V.sort](a, b));
-  const shown = hits.slice(0, V.limit);
+  const pages = pageCount(hits.length);
+  if (V.page > pages) V.page = pages;
+  const shown = hits.slice((V.page - 1) * LIST_PAGE, V.page * LIST_PAGE);
   const total = d.laws.length;
   const hidB = 0;                                           // budget laws are always listed
   const hidG = V.kind === "in" && !loose.length ? d.laws.filter(isGone).length : 0;
@@ -90,11 +91,10 @@ function renderList() {
   const list = document.getElementById("list");
   if (!hits.length) { list.innerHTML = `<p class="hint">${esc(t("noMatch"))}</p>`; return; }
   let html = (loose.length ? `<p class="loosenote"><b>!</b> ${esc(t("looseNote"))}</p>` : "") + shown.map(rowHtml).join("");
-  if (hits.length > shown.length) {
-    html += `<button class="morebtn" onclick="V.limit += ${PAGE_SIZE}; renderList()">${esc(fill(t("more"), { n: fmtN(Math.min(PAGE_SIZE, hits.length - shown.length)) }))}</button>`;
-  }
+  html += pagerHtml(V.page, pages, "lawsPage");
   list.innerHTML = html;
 }
+function lawsPage(n) { V.page = n; renderList(); toTop(); }
 
 function syncUrl() {
   const p = new URLSearchParams();
@@ -132,7 +132,7 @@ function applyControls() {
   V.basic = document.getElementById("optBasic").checked;
   V.court = document.getElementById("optCourt").checked;
   V.sort = document.getElementById("sort").value;
-  V.limit = PAGE_SIZE;
+  V.page = 1;
   renderList();
   syncUrl();
 }
