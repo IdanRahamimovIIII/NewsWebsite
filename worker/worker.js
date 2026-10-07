@@ -162,14 +162,29 @@ async function upstream(url, method, body, cacheable) {
       "Accept": "application/json, text/plain, */*",
       ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
     },
-    cf: (method || "GET") === "GET" && cacheable !== false
+    ...(cacheable === "no-store" ? { cache: "no-store" } : {}),
+    cf: (method || "GET") === "GET" && cacheable !== false && cacheable !== "no-store"
       ? { cacheTtl: ttl, cacheEverything: true } : {},
   });
+}
+/* The Knesset geo-blocks servers outside Israel — and this worker runs
+   abroad: it answers 200 + an HTML page titled "Unavailable" ("inaccessible
+   from your location"). Never pass that on, or cache it, as data. */
+async function isBlockPage(res) {
+  if (!/text\/html/i.test(res.headers.get("Content-Type") || "")) return false;
+  // the title sits ~98 KB in (after an inline logo); the English line is cut by <br>s
+  return /<title>\s*Unavailable\s*<\/title>/i.test(await res.clone().text());
+}
+function blockedResponse(host) {
+  return new Response(JSON.stringify({ error: "blocked", host,
+    message: host + " refuses servers outside Israel right now (geo-block); try again later" }),
+    { status: 502, headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "no-store" } });
 }
 async function upstreamJson(url, method, body) {
   const res = await upstream(url, method, body, false);
   if (res.status === 204) return null;
   if (!res.ok) throw new Error("HTTP " + res.status + " from " + url);
+  if (await isBlockPage(res)) throw new Error("blocked (geo) by " + new URL(url).hostname);
   const j = await res.json();
   // BudgetKey failure mode: HTTP 200 with {"success":false,"error":"…"}
   if (j && (j.success === false)) throw new Error("upstream error: " + String(j.error).slice(0, 140));
@@ -995,7 +1010,12 @@ export default {
     if (method !== "GET" && method !== "POST")
       return new Response("Only GET/POST", { status: 405, headers: CORS });
 
-    const res = await upstream(t.toString(), method, body);
+    let res = await upstream(t.toString(), method, body);
+    if (await isBlockPage(res)) {
+      // a block page from the edge cache may outlive the block: ask once more, uncached
+      if (res.headers.get("CF-Cache-Status") === "HIT") res = await upstream(t.toString(), method, body, "no-store");
+      if (await isBlockPage(res)) return blockedResponse(t.hostname);
+    }
 
     if (headOnly) {
       return new Response(JSON.stringify({

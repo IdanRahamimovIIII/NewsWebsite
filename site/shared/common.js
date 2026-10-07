@@ -35,6 +35,12 @@ const COMMON_STR = {
     err: "שגיאה בטעינת הנתונים. נסו שוב מאוחר יותר.",
     updatedAt: "הנתונים עודכנו: ",
     errCors: "המידע הזה דורש ממסר (relay). פתחו את README.md — הקמה חד-פעמית קצרה, בחינם.",
+    errBlocked: "הכנסת חוסמת כרגע גישה מחוץ לישראל, ולכן חלק מהמידע לא זמין עכשיו. נסו שוב מאוחר יותר.",
+    snapNote: "מוצג מהעותק השמור שלנו ({d}) — הכנסת לא עונה כרגע.",
+    snapPartial: "רק התפקידים הבולטים, מהעותק השמור שלנו ({d}) — הרשימה המלאה לא זמינה כרגע.",
+    posFail: "רשימת התפקידים לא זמינה כרגע. נסו שוב מאוחר יותר.",
+    billsFail: "רשימת הצעות החוק לא זמינה כרגע. נסו שוב מאוחר יותר.",
+    snapLatest: "{n} ההצעות שעודכנו לאחרונה, מהעותק השמור שלנו ({d}) — הכנסת לא עונה כרגע, ולכן החיפוש לא זמין.",
     errProxy: "הממסר מוגדר אך הבקשה נכשלה. ודאו שהגרסה העדכנית של worker.js הועתקה ל-Cloudflare, או ספרו לקלוד מה כתוב בתחתית העמוד.",
     aboutBody: "״הכסף שלנו״ הוא אתר עצמאי, ללא קשר לגוף ממשלתי, למפלגה או לארגון, שנועד להעניק לאזרחי ישראל מבט נקי ומסודר על פעילות המדינה ועל האופן שבו היא משתמשת בכסף שלנו. כל הנתונים מגיעים ישירות מהמקורות הרשמיים ומוצגים כפי שהם, עם קישור למקור. מצאתם טעות או נתון חסר? כתבו לנו ונתקן:",
     contactLabel: "אמצעי תקשורת - ",
@@ -71,6 +77,12 @@ const COMMON_STR = {
     err: "Failed to load data. Please try again later.",
     updatedAt: "Data updated: ",
     errCors: "This data needs a relay. Open README.md — a short one-time, free setup.",
+    errBlocked: "The Knesset is blocking access from outside Israel right now, so some of this data isn't available. Try again later.",
+    snapNote: "Shown from our saved copy ({d}) — the Knesset isn't answering right now.",
+    snapPartial: "Only the main roles, from our saved copy ({d}) — the full list isn't available right now.",
+    posFail: "The list of positions isn't available right now. Try again later.",
+    billsFail: "The list of bills isn't available right now. Try again later.",
+    snapLatest: "The {n} most recently updated bills, from our saved copy ({d}) — the Knesset isn't answering right now, so search is unavailable.",
     errProxy: "A relay is configured but the request failed. Make sure the latest worker.js is deployed on Cloudflare, or tell Claude what the bottom of the page says.",
     aboutBody: "Our Money is an independent site, unaffiliated with any government body, party or organization, built to give Israel's citizens a clean, clear view of the state's activity and of how it uses our money. All the data comes straight from the official sources and is shown as it is, linked to the original. Found a mistake or a missing figure? Write to us and we'll fix it:",
     contactLabel: "Contact - ",
@@ -180,8 +192,26 @@ function fmtDate(v, style) {
 const PROXY = (typeof window !== "undefined" && window.PROXY_URL) ? window.PROXY_URL.replace(/\/$/, "") : "";
 
 /* fetch JSON through the relay. url = the real government address.
-   bodyObj (optional) makes it a POST with a JSON body. 204 → null. */
+   bodyObj (optional) makes it a POST with a JSON body. 204 → null.
+   The Knesset geo-blocks servers outside Israel, and the relay runs abroad;
+   its WebSiteApi answers browsers directly (CORS *), so a visitor in Israel
+   still gets the data: on a relay failure ask it straight, and after one
+   success go straight first for the rest of the visit. */
+const DIRECT_OK = /^https:\/\/knesset\.gov\.il\/WebSiteApi\//i;
+let directFirst = false;
 async function viaRelay(url, bodyObj) {
+  const direct = DIRECT_OK.test(url);
+  if (direct && directFirst) {
+    try { return await fetchJsonOpts(url, bodyObj); } catch (e) { /* the relay may still answer */ }
+  }
+  try { return await relayOnce(url, bodyObj); }
+  catch (e) {
+    if (!direct || directFirst) throw e;
+    try { const j = await fetchJsonOpts(url, bodyObj); directFirst = true; return j; }
+    catch (e2) { throw e; }
+  }
+}
+async function relayOnce(url, bodyObj) {
   if (!PROXY) throw new Error("CORS_OR_NET::no-relay");
   const final = PROXY + "/?url=" + encodeURIComponent(url);
   let res;
@@ -191,7 +221,24 @@ async function viaRelay(url, bodyObj) {
       : undefined);
   } catch (e) { throw new Error("CORS_OR_NET::" + final); }
   if (res.status === 204) return null;
+  if (res.status === 502 && /json/i.test(res.headers.get("Content-Type") || "")) {
+    const j = await res.json().catch(() => null);
+    if (j && j.error === "blocked") throw new Error("BLOCKED::" + j.host);
+  }
   if (!res.ok) throw new Error("HTTP " + res.status + "::" + final);
+  // an older relay passed the block page through as 200 HTML — never data
+  if (/text\/html/i.test(res.headers.get("Content-Type") || "")) throw new Error("BLOCKED::" + new URL(url).hostname);
+  return res.json();
+}
+async function fetchJsonOpts(url, bodyObj) {
+  let res;
+  try {
+    res = await fetch(url, bodyObj
+      ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyObj) }
+      : undefined);
+  } catch (e) { throw new Error("CORS_OR_NET::" + url); }
+  if (res.status === 204) return null;
+  if (!res.ok) throw new Error("HTTP " + res.status + "::" + url);
   return res.json();
 }
 
@@ -209,7 +256,10 @@ async function preset(name, params) {
 }
 
 /* our own snapshot dataset, kept fresh by the worker's scheduled refresh.
-   Returns the data; also shows a small "data updated at…" note in the footer. */
+   Returns the data; also shows a small "data updated at…" note in the footer.
+   DS_T[name] = when that copy was made (a page saying "from our saved copy
+   of <date>" reads it). */
+const DS_T = {};
 async function dataset(name) {
   if (!PROXY) throw new Error("CORS_OR_NET::no-relay");
   const url = PROXY + "/data/" + name;
@@ -219,6 +269,7 @@ async function dataset(name) {
   if (!res.ok) throw new Error("HTTP " + res.status + "::" + url);
   const j = await res.json();
   if (!j || j.error || j.data === undefined) throw new Error("DATASET::" + ((j && j.error) || "bad response"));
+  DS_T[name] = j.t;
   showFreshness(j.t);
   return j.data;
 }
@@ -261,6 +312,7 @@ async function fetchJson(url) {
 /* ---------- errors & debug ---------- */
 function friendly(e) {
   const m = String(e.message);
+  if (m.startsWith("BLOCKED")) return t("errBlocked");
   if (m.startsWith("CORS_OR_NET")) return PROXY ? t("errProxy") : t("errCors");
   if (PROXY && /^HTTP [45]/.test(m)) return t("errProxy");
   return t("err");

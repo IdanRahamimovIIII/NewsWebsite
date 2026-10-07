@@ -59,8 +59,18 @@ async function runBSearch() {
     state.btab = { src: rows, noMore: rows.length < 40 };
     renderBTab();
   } catch (e) {
-    box.innerHTML = `<div class="error">${esc(friendly(e))}</div>`;
     debug("bsearch: " + e.message);
+    // the plain "latest bills" view survives the Knesset not answering: the
+    // snapshot's 15 newest (worker DATASETS.bills), labelled as exactly that
+    const plain = !initName && ["bq", "bstatus", "btype", "bfrom", "bto"].every(id => { const v = document.getElementById(id).value.trim(); return !v || v === "all"; });
+    const saved = plain ? await dataset("bills").then(d => (d && d.bills) || []).catch(() => []) : [];
+    if (saved.length) {
+      state.btab = { src: saved, noMore: true, note: t("snapLatest").replace("{n}", saved.length)
+        .replace("{d}", DS_T.bills ? fmtDate(new Date(DS_T.bills)) : "") };
+      renderBTab();
+      return;
+    }
+    box.innerHTML = `<div class="error">${esc(friendly(e))}</div>`;
   }
 }
 
@@ -115,6 +125,7 @@ function renderBTab() {
   let html = state.btab.initiator
     ? `<div class="hint" style="margin:0 0 8px"><b>${esc(t("bInitHdr"))} ${esc(state.btab.initiator)}</b> · ${state.btab.initTotal}</div>`
     : "";
+  if (state.btab.note) html = `<div class="snapnote">${esc(state.btab.note)}</div>` + html;
   html += shown.map(({ b, i }) => `<button class="vote" onclick="toggleBill(${i})">
       <div class="vtitle">${rowHeadHtml(b._open, b.Name, "")}</div>
       <div class="vmeta"><span>${esc(state.statuses[b.StatusID] || "")}</span><span>${fmtDate(b.LastUpdatedDate)}</span></div>

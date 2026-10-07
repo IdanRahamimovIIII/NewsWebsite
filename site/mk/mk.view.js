@@ -116,7 +116,7 @@ function renderDirectory() {
   // A search only removes cards; a match by party/role adds the reason to its card.
   const shown = visibleDir();
   const searching = !!(state.dirQ || "").trim();
-  let html = `<div class="dirgrid">`;
+  let html = (state._dirNote ? `<div class="snapnote">${esc(snapNote(state._dirNote))}</div>` : "") + `<div class="dirgrid">`;
   shown.forEach(({ e, i, hit }) => {
     html += `<button class="dircard" data-i="${i}" onclick="dirOpen(${i})">${dirCardHtml(e, hit)}</button>`;
   });
@@ -285,7 +285,11 @@ const yearIn = v => { const m = String(v || "").match(/\d{4}/g); return m ? m[m.
    two tight columns, bullets folded into comma runs, no borders. */
 function bioFacts() {
   const b = state.bio;
-  if (!b) return [];
+  if (!b) {
+    // the Knesset didn't answer: the saved card carries the same facts (pipeline bio_facts ≡ this function)
+    const c = state.bioSnap && snapOf(state.sel);
+    return c && Array.isArray(c.bio) ? c.bio.filter(x => x && x[1]).map(([k, v]) => ({ k: t(k), v: String(v) })) : [];
+  }
   const out = [];
   const add = (key, v) => { v = String(v || "").trim(); if (v) out.push({ k: t(key), v }); };
   const by = yearIn(b.DateOfBirth), dy = yearIn(b.DeathDate);
@@ -317,6 +321,7 @@ function tenureLine(s, pos) {
     const k = (state.cmb.Knessets || []).find(x => x.KnessetId === firstK);
     a = k ? yearOf(k.KnessetStart) : 0;
   }
+  if (!a) a = (snapOf(s) || {}).since || 0;
   if (!a) return "";
   // "מאז" only for someone in the current Knesset; an open row alone is not
   // enough — the register leaves rows open for people long gone
@@ -331,7 +336,8 @@ function tenureLine(s, pos) {
 
 /* is this person in the current Knesset at all? (the votes directory says) */
 const inLatestKnesset = s => {
-  const latest = Math.max(...(((state.cmb && state.cmb.MKS) || []).map(m => +m.KnessetId || 0)), 0);
+  const latest = Math.max(...(((state.cmb && state.cmb.MKS) || []).map(m => +m.KnessetId || 0)), 0)
+    || (state.cards && state.cards.knesset) || 0;
   return !latest || (s.cmb || []).some(x => x.KnessetId === latest);
 };
 
@@ -346,8 +352,9 @@ function renderHead() {
   const role = inLatestKnesset(s) ? currentRole(pos) : "";   // no "current" role for someone no longer there
   // faction · how long in the Knesset. (The ever-PM spans were here and
   // came out as clutter — Mercy, 2026-09-06; the timeline below has them.)
+  const fName = fRow ? fRow.FactionName.trim() : state.posNote ? ((snapOf(s) || {}).faction || "") : "";
   const story = [
-    fRow ? `<span class="factionname" data-tip="${esc(t("factionTip"))}">${esc(fRow.FactionName.trim())}</span>` : "",
+    fName ? `<span class="factionname" data-tip="${esc(t("factionTip"))}">${esc(fName)}</span>` : "",
     esc(tenureLine(s, pos)),
   ].filter(Boolean);
   document.getElementById("phead").innerHTML =
@@ -401,12 +408,15 @@ function renderPositions() {
   const box = document.getElementById("positions");
   const rows = state.positions;
   if (rows === null) { box.innerHTML = `<div class="loading">${esc(t("loading"))}</div>`; return; }
-  if (!rows.length) { box.innerHTML = `<div class="loading">${esc(t("posNoData"))}</div>`; return; }
+  const note = state.posNote ? `<div class="snapnote">${esc(snapNote(state.posNote))}</div>` : "";
+  if (!rows.length) { box.innerHTML = note || `<div class="loading">${esc(t("posNoData"))}</div>`; return; }
   const shown = state.posAll ? rows : rows.slice(0, POS_PREVIEW);
   const line = r => {
     const role = r._role || t("posMember");
     const ctx = [r.GovMinistryName, r.CommitteeName, r.FactionName].filter(Boolean).join(" · ");
-    const from = fmtDate(r.StartDate), to = fmtDate(r.FinishDate);
+    // a saved card's highlight knows years only
+    const from = r._y0 !== undefined ? String(r._y0 || "") : fmtDate(r.StartDate),
+          to = r._y0 !== undefined ? String(r._y1 || "") : fmtDate(r.FinishDate);
     const now = r.IsCurrent && !r.FinishDate;
     return `<div class="posrow">
       <div class="posdates">${esc(from)}${from || to ? " – " : ""}${now ? `<span class="nowchip">${esc(t("posNow"))}</span>` : esc(to)}</div>
@@ -414,7 +424,7 @@ function renderPositions() {
         r.KnessetNum ? ` <span class="names">· ${esc(t("posKnesset"))} ${r.KnessetNum}</span>` : ""}</div>
     </div>`;
   };
-  let html = shown.map(line).join("");
+  let html = note + shown.map(line).join("");
   if (rows.length > POS_PREVIEW)
     html += `<div style="margin-top:8px"><button class="votechip" onclick="state.posAll=!state.posAll;renderPositions()">${
       esc(state.posAll ? t("posHideSome") : t("posShowAll"))} (${rows.length})</button></div>`;
@@ -435,14 +445,14 @@ function renderBills() {
   const box = document.getElementById("bills");
   const b = state.bills;
   if (b === null) { box.innerHTML = `<div class="loading">${esc(t("loading"))}</div>`; box.dataset.for = ""; return; }
-  if (!b.bills.length) { box.innerHTML = `<div class="loading">${esc(t("bNoBills"))}</div>`; box.dataset.for = ""; return; }
+  if (!b.bills.length) { box.innerHTML = `<div class="loading">${esc(b.note ? snapNote(b.note) : t("bNoBills"))}</div>`; box.dataset.for = ""; return; }
   const count = k => b.bills.filter(x => x._bucket === k).length;
   if (!state.billPile || !count(state.billPile))
     state.billPile = (BUCKETS.map(u => u[0]).find(k => count(k)) || "passed");
   // the controls are built once per person (typing must not lose the caret); the list every time
   if (box.dataset.for !== String(state.seq)) {
     box.dataset.for = String(state.seq);
-    box.innerHTML = `<div class="billsctl">
+    box.innerHTML = (b.note ? `<div class="snapnote">${esc(snapNote(b.note))}</div>` : "") + `<div class="billsctl">
         <div class="fchips">${BUCKETS.map(([k, label, dot, tip]) => count(k)
           ? `<button class="fchip" data-k="${k}" role="radio" data-tip="${esc(t(tip))}" onclick="pickBillPile('${k}')"><span class="ck ${dot}"></span>${esc(t(label))} · ${count(k)}</button>` : "").join("")}</div>
         <input class="billq" type="search" placeholder="${esc(t("bSearchPh"))}" oninput="billSearch(this.value)">
@@ -531,6 +541,7 @@ function renderVotesSec() {
 
   const all = state.votesByK[state.vK];
   if (!all || all === "loading") { box.innerHTML = `<div class="loading">${esc(t("loading"))}</div>`; return; }
+  if (all.fail) { box.innerHTML = `<div class="error">${esc(friendly(all.fail))}</div>`; return; }
   if (!all.length) { box.innerHTML = `<div class="loading">${esc(t("vNoVotes"))}</div>`; return; }
   const q = state.voteQ.trim();
   const g = q ? all.filter(x => String(x.title || "").includes(q)) : all;

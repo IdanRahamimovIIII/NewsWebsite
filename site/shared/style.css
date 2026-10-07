@@ -244,3 +244,6 @@ footer .sitever .vcode { font-family: ui-monospace, monospace; }
 .morebtn { background: none; border: 0; padding: 4px 0; margin-top: 4px; color: var(--accent-ink); font: inherit; font-size: 13.5px; cursor: pointer; }
 .morebtn .less, .clampbox.open .morebtn .more { display: none; }
 .clampbox.open .morebtn .less { display: inline; }
+
+/* "shown from our saved copy (<date>)" — a source that didn't answer, said plainly */
+.snapnote { font-size: 13px; color: var(--ink-3); margin: 0 0 10px; }

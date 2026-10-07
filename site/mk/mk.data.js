@@ -76,6 +76,47 @@ function ensurePersons() {
   return state._personsP;
 }
 
+/* the saved MK cards (/data/mkcards, pipeline\mkcards\NOTES.md): party,
+   years, role, laws passed, ≤4 highlight roles, bio — every MK since 2003.
+   The directory's laws line comes from here (no live $count per card), and
+   the cards stand in for the Knesset when it doesn't answer (it geo-blocks
+   servers abroad; the relay is one). MkIds never change between Knessets
+   (measured: 504 names, one Id each), so a card fits every Knesset row. */
+function ensureCards() {
+  if (!state._cardsP) state._cardsP = dataset("mkcards")
+    .then(d => (state.cards = d && d.members ? d : null))
+    .catch(e => { debug("mkcards: " + e.message); return (state.cards = null); });
+  return state._cardsP;
+}
+const snapOf = c => {
+  const m = state.cards && state.cards.members;
+  if (!m || !c) return null;
+  for (const r of (c.cmb || [])) if (m[String(r.Id)]) return m[String(r.Id)];
+  return (c.m && m[String(c.m.Id)]) || null;
+};
+/* "from our saved copy (25 Sep 2026)…" — the date the card set was built */
+const snapNote = key => t(key).replace("{d}", DS_T.mkcards ? fmtDate(new Date(DS_T.mkcards)) : "");
+/* a card's role line ≡ worker pages.js cardRole (change both) */
+function snapRole(c) {
+  if (c.current) return String(c.role || "").trim() || t("posMember");
+  const p = (c.positions || [])[0];                    // a leaver: the latest role
+  if (!p) return t("posMember");
+  const span = p.now ? "–" + t("untilNow") : p.y1 && p.y1 !== p.y0 ? "–" + p.y1 : "";
+  return String(p.role || "").trim() + (p.y0 ? ` · ${p.y0}${span}` : "");
+}
+/* the order keys dirOrder/tailOrder read, from a card (≈ pages.js listOrder) —
+   when the register's rows didn't come */
+function snapRank(e, past) {
+  const c = e.snap, ps = c.positions || [], w = p => cardWeight(p.role);
+  e.serving = !past && !!c.current;
+  e.govNow = !past && !c.current && ps.some(p => p.now && cardWeight(p.role) >= 60);
+  e.nowW = e.serving || e.govNow ? cardWeight(String(c.role || "").trim() || (ps.find(p => p.now) || {}).role) : 0;
+  e.pastY = 0; e.pastW = 0; e.bestW = Math.max(0, ...ps.map(w));
+  for (const p of ps) if (!p.now && p.y1 && (p.y1 > e.pastY || (p.y1 === e.pastY && w(p) > e.pastW))) { e.pastY = p.y1; e.pastW = w(p); }
+  e.tier = Math.floor(e.bestW / 10); e.lastMin = 0;
+  e.lastK = e.serving ? 9999 : (c.until || 0);
+}
+
 /* name → a stable key: the words, sorted. "לפיד יאיר" and "יאיר לפיד" meet. */
 const nameKey = s => String(s || "").split(/\s+/).filter(Boolean).sort().join(" ");
 const nameHas = (nm, words) => words.every(w => String(nm || "").includes(w));
@@ -162,7 +203,7 @@ async function positionsForMany(pids) {
     const namesP = ensurePosNames();
     const chunks = [];
     for (let i = 0; i < missing.length; i += 6) chunks.push(missing.slice(i, i + 6));
-    let ci = 0;
+    let ci = 0, failed = null;
     const worker = async () => {
       while (ci < chunks.length) {
         const chunk = chunks[ci++];
@@ -174,7 +215,12 @@ async function positionsForMany(pids) {
             rows.push(...page);
             if (page.length < 100) break;
           }
-        } catch (e) { debug("pos-batch: " + e.message); }
+        } catch (e) {
+          // a failed ask is NOT "no positions": nothing cached, the caller hears it
+          debug("pos-batch: " + e.message);
+          failed = e;
+          continue;
+        }
         const names = await namesP;
         chunk.forEach(id => { posCache[id] = []; });   // asked = answered, even when empty
         rows.forEach(r => {
@@ -185,6 +231,7 @@ async function positionsForMany(pids) {
       }
     };
     await Promise.all(Array.from({ length: Math.min(3, chunks.length) }, worker));
+    if (failed) throw failed;
   }
   const out = {};
   pids.forEach(id => { out[id] = posCache[id] || []; });
@@ -319,13 +366,29 @@ function currentRole(rows) {
 }
 
 async function loadPositions(sel, seq) {
-  let rows = [];
+  let rows = [], failed = false;
+  state.posNote = "";
   try {
     // the same batched, per-person-cached fetch the cards use — a person
     // whose card was on screen costs nothing to open
     const byId = await positionsForMany(sel.personIds);
     rows = sel.personIds.flatMap(id => byId[id] || []);
-  } catch (e) { debug("positions: " + e.message); }
+  } catch (e) { failed = true; debug("positions: " + e.message); }
+  if (failed) {
+    // never "no recorded positions" for a register that didn't answer: the
+    // card's highlights (≤4, labelled as such), else an honest error
+    await ensureCards();
+    const c = snapOf(sel);
+    if (state.seq !== seq) return;
+    if (c && (c.positions || []).length) {
+      state.positions = c.positions.map(p => ({ _role: p.role, _y0: p.y0, _y1: p.y1, KnessetNum: p.k,
+        IsCurrent: !!p.now, FinishDate: p.now ? null : String(p.y1 || "") }));
+      state.posNote = "snapPartial";
+    } else { state.positions = []; state.posNote = "posFail"; }
+    renderPositions();
+    renderHead();
+    return;
+  }
   if (state.seq !== seq) return;
   state.positions = ongoingFirst(tidyPositions(rows));
   renderPositions();
@@ -471,11 +534,18 @@ function buildDirectory() {
   return state._dirP;
 }
 async function buildDirectoryOnce() {
-  const [cmb, persons, drop] = await Promise.all([ensureCmb(), ensurePersons(), ensureDropdown()]);
+  let cmbErr = null;
+  const [cmb, persons, drop, cards] = await Promise.all([
+    ensureCmb().catch(e => { cmbErr = e; return null; }), ensurePersons(), ensureDropdown(), ensureCards()]);
+  if (!cmb) {                                  // the Knesset is down or blocking: the saved cards are the grid
+    if (cards) return (state._dir = dirFromCards(cards));
+    throw cmbErr;
+  }
   const mks = cmb.MKS || [];
   const latest = Math.max(...mks.map(m => +m.KnessetId || 0), 0);
+  let rowsOk = true;
   const [k25, minRows] = await Promise.all([
-    bulkPositions(`KnessetNum eq ${latest}`).catch(e => { debug("dir-k25: " + e.message); return []; }),
+    bulkPositions(`KnessetNum eq ${latest}`).catch(e => { rowsOk = false; debug("dir-k25: " + e.message); return []; }),
     bulkPositions(`GovMinistryID ne null and KnessetNum ge 16 and KnessetNum lt ${latest}`)
       .catch(e => { debug("dir-min: " + e.message); return []; }),
   ]);
@@ -521,7 +591,7 @@ async function buildDirectoryOnce() {
      page), resolved, ranked, sorted. `kRows` = that Knesset's register rows
      (bulk). Used for the current Knesset at load and for each earlier one
      the infinite scroll appends. */
-  const buildBlock = async (k, kRows, past) => {
+  const buildBlock = async (k, kRows, past, rowsOk = true) => {
     const byPid = {};
     kRows.forEach(r => { (byPid[r.PersonID] = byPid[r.PersonID] || []).push(r); });
     const resolvePids = (cmbName) => {
@@ -552,8 +622,10 @@ async function buildDirectoryOnce() {
           minRows: personIds.flatMap(id => minByPid[id] || []), // their ministry rows before the current Knesset (bulk, at load)
           rows: undefined,     // full positions — undefined = not asked yet (lazy, per visible card)
           bills: undefined,    // laws passed — undefined = not asked yet, null = unknowable
+          noRows: !rowsOk,     // the register didn't answer: role, years and order come from the card
         };
-      });
+      })
+      .map(withSnap);
     // the few names the persons snapshot spells differently (6 of 151 in K25,
     // measured): one try by KNS_Person, both word orders, BEFORE
     // ranking — without a PersonID they have no rows and would sink to the
@@ -564,7 +636,7 @@ async function buildDirectoryOnce() {
       e.k25 = e.personIds.flatMap(id => byPid[id] || []);
       e.minRows = e.personIds.flatMap(id => minByPid[id] || []);
     }));
-    block.forEach(e => dirRank(e, drop, past, kEnd));
+    block.forEach(e => (e.noRows && e.snap ? snapRank(e, past) : dirRank(e, drop, past, kEnd)));
     block.sort(past ? tailOrder : dirOrder);
     return block;
   };
@@ -585,13 +657,45 @@ async function buildDirectoryOnce() {
       k25: [], minRows: pids.flatMap(id => minByPid[id] || []),
       rows: undefined, bills: undefined,
     };
+    withSnap(e);
     dirRank(e, drop, true, kEnd);
     return e;
   };
   state._dirCtx = { buildBlock, makeEntry, latest, kStart, kEnd };
   state._dirNextK = latest - 1;      // the next Knesset the infinite scroll will append
-  state._dir = await buildBlock(latest, k25, false);
+  state._dirNote = !rowsOk && cards ? "snapNote" : "";
+  state._dir = await buildBlock(latest, k25, false, rowsOk);
   return state._dir;
+}
+/* the card behind a directory entry: laws passed from it always (the same
+   count the live $count gave — pipeline\mkcards counts FROM the bill list) */
+function withSnap(e) {
+  e.snap = snapOf(e);
+  if (e.snap && e.bills === undefined) e.bills = e.snap.bills ? e.snap.bills.passed : null;
+  return e;
+}
+/* the whole grid from the saved cards — when the votes directory (cmb) didn't
+   come. Everyone since 2003 at once (no infinite scroll: the cards are all
+   there is), the current Knesset first, then by the last year in office. */
+function dirFromCards(cards) {
+  const latest = cards.knesset;
+  const list = Object.values(cards.members).map(c => {
+    const ks = (c.knessets || []).slice().sort((a, b) => b - a);
+    const e = {
+      m: { Id: c.id, Name: c.he }, key: nameKey(c.he), personIds: (c.pids || []).slice(0, 3),
+      block: ks[0] || 0, name: c.he, cmb: ks.map(k => ({ Id: c.id, KnessetId: k })),
+      faction: c.faction || "", since: c.since || "", k25: [], minRows: [],
+      rows: undefined, bills: c.bills ? c.bills.passed : null, snap: c, noRows: true,
+    };
+    snapRank(e, e.block !== latest);
+    return e;
+  });
+  const cur = e => e.block === latest;
+  list.sort((a, b) => ((cur(b) ? 1 : 0) - (cur(a) ? 1 : 0)) || (cur(a) ? dirOrder(a, b) : tailOrder(a, b)));
+  state._dirCtx = null;
+  state._dirNextK = 0;                // nothing more to append
+  state._dirNote = "snapNote";
+  return list;
 }
 
 /* ---- infinite scroll (Mercy): when the reader reaches the
@@ -607,8 +711,9 @@ async function loadNextKnesset() {
   const k = state._dirNextK;
   state._dirLoading = true;
   try {
-    const rows = await bulkPositions(`KnessetNum eq ${k}`).catch(e => { debug("dir-k" + k + ": " + e.message); return []; });
-    const block = await ctx.buildBlock(k, rows, true);
+    let ok = true;
+    const rows = await bulkPositions(`KnessetNum eq ${k}`).catch(e => { ok = false; debug("dir-k" + k + ": " + e.message); return []; });
+    const block = await ctx.buildBlock(k, rows, true, ok);
     state._dir.push(...block);
     const cur = e => e.block === ctx.latest;
     state._dir.sort((a, b) => ((cur(b) ? 1 : 0) - (cur(a) ? 1 : 0)) || (cur(a) ? dirOrder(a, b) : tailOrder(a, b)));
@@ -623,6 +728,7 @@ async function loadNextKnesset() {
    that. Until the full history lands, this Knesset's rows (bulk, at load)
    answer — so the line is there at first paint; null only if neither is. */
 function cardRole(e) {
+  if (e.noRows && e.snap && e.rows === undefined) return snapRole(e.snap);
   const rows = e.rows !== undefined ? e.rows : e.k25;
   if (rows === undefined) return null;
   const now = currentRole(rows);
@@ -642,12 +748,18 @@ function cardRole(e) {
 /* is the card's role held today? (green on the card, Mercy) — the same
    branches as cardRole: a role of substance now, or a sitting member */
 function cardRoleNow(e) {
+  if (e.noRows && e.snap && e.rows === undefined) return !!e.snap.current || !!((e.snap.positions || [])[0] || {}).now;
   const rows = e.rows !== undefined ? e.rows : e.k25;
   return rows !== undefined && (!!currentRole(rows) || !!e.serving);
 }
 
 /* the card's years line: "2013–היום", or "2013–2025" for someone who left */
 function cardYears(e) {
+  if (e.noRows && e.snap && e.rows === undefined) {
+    const c = e.snap;
+    if (!c.since) return "";
+    return c.current ? `${c.since}–${t("untilNow")}` : c.until && c.until !== c.since ? `${c.since}–${c.until}` : String(c.since);
+  }
   let a = e.since;
   const rows = e.rows && e.rows.length ? e.rows : (e.k25 || []);
   const ys = rows.map(r => yearOf(r.StartDate)).filter(Boolean);
@@ -682,11 +794,15 @@ function dirWant(i) {
 async function dirFlush() {
   const batch = [...dirAsk];
   dirAsk.clear();
-  const pids = batch.flatMap(e => e.personIds);
-  positionsForMany(pids).then(byId => {
-    batch.forEach(e => { e.rows = e.personIds.flatMap(id => byId[id] || []); refreshDirCard(e); });
+  const live = batch.filter(e => !e.noRows);    // the register refused this block's bulk rows: it would refuse these too
+  const pids = live.flatMap(e => e.personIds);
+  if (pids.length) positionsForMany(pids).then(byId => {
+    live.forEach(e => { e.rows = e.personIds.flatMap(id => byId[id] || []); refreshDirCard(e); });
   }).catch(e => debug("dir-pos: " + e.message));
-  batch.forEach(e => { if (e.personIds.length) billQ.push(e); else { e.bills = null; refreshDirCard(e); } });
+  batch.forEach(e => {
+    if (e.bills !== undefined) return;            // from the saved card
+    if (e.personIds.length && !e.noRows) billQ.push(e); else { e.bills = null; refreshDirCard(e); }
+  });
   pumpBills();
 }
 const billQ = [];
@@ -749,6 +865,8 @@ function entryHit(e, words) {
   // a role (substance first — a faction-membership row is "why" only through its faction name)
   const roleRow = rowsAll.find(r => !plainRole(r) && textFits(posCtx(r), qws));
   if (roleRow) return posCtx(roleRow) + yrs(roleRow);
+  if (e.snap && !rowsAll.length &&
+      [{ role: e.snap.role }, ...(e.snap.positions || [])].some(x => x.role && textFits(x.role, qws))) return snapRole(e.snap);
   // a faction — the card's short party, or an official (often longer) faction name in a row
   if (textFits(e.faction, qws)) return "";                                          // the card says it
   const fRow = rowsAll.find(r => r.FactionName && textFits(r.FactionName, qws));
@@ -908,11 +1026,28 @@ async function loadBills(sel, seq) {
     });
     bills.sort((a, b) => (dateOf(b.LastUpdatedDate) || 0) - (dateOf(a.LastUpdatedDate) || 0));
     out = { bills, total: bids.length };
-  } catch (e) { debug("bills: " + e.message); }
+  } catch (e) {
+    debug("bills: " + e.message);
+    out = await savedBills(sel).catch(e2 => { debug("mkbills: " + e2.message); return { bills: [], total: 0, note: "billsFail" }; });
+  }
   if (state.seq !== seq) return;
   state.bills = out;
   renderBills();
   renderTiles();
+}
+
+/* the whole bill list as the pipeline saved it (/data/mkbills/<MkId>: every
+   bill, lead + co-signed, name + exact status + pile; pipeline\mkcards\NOTES.md).
+   No BillID → a row's documents can't be fetched (_docs null = "the register
+   failed"); no lead-sponsor flag. */
+async function savedBills(sel) {
+  await ensureCards();
+  const c = snapOf(sel);
+  if (!c) throw new Error("no saved card");
+  const list = await dataset("mkbills/" + c.id);
+  const bills = (list || []).map(b => ({ Name: b.n, _status: b.s, _bucket: b.b === "stale" ? "undecided" : b.b,
+    KnessetNum: b.k, _lead: false, _docs: null }));
+  return { bills, total: bills.length, note: "snapNote" };
 }
 
 /* ---- a bill's official documents (Mercy) ----
@@ -992,7 +1127,7 @@ function resClass(title) {
 
 /* one Knesset's record for the selected person (cached) */
 async function loadMkVotes(kId, seq) {
-  if (state.votesByK[kId]) return;
+  if (state.votesByK[kId] && !state.votesByK[kId].fail) return;
   state.votesByK[kId] = "loading";
   renderVotesSec();
   let groups = [];
@@ -1000,7 +1135,10 @@ async function loadMkVotes(kId, seq) {
     const entry = (state.sel.cmb || []).find(x => x.KnessetId === kId);
     const j = await kapi("GetVotesHeaders", { SearchType: 2, KnessetNum: kId, MkId: entry.Id });
     groups = groupVotes(rowsOf(j));
-  } catch (e) { debug("mkvotes: " + e.message); }
+  } catch (e) {
+    debug("mkvotes: " + e.message);
+    groups = { fail: e };      // a failed ask is not "no votes" — the view says so; picking the Knesset again retries
+  }
   if (state.seq !== seq) return;
   state.votesByK[kId] = groups;
   renderVotesSec();
@@ -1069,7 +1207,7 @@ async function loadBio(sel, seq) {
       bio = await viaRelay("https://knesset.gov.il/WebSiteApi/knessetapi/MKs/GetMkDetailsContent?mkId="
         + (+mkId) + "&languageKey=he");
     }
-  } catch (e) { debug("bio: " + e.message); }
+  } catch (e) { debug("bio: " + e.message); state.bioSnap = true; }
   // (a gender for prose verbs is one GET away — KNS_Person GenderID 251 זכר /
   //  250 נקבה, measured — should the hero ever speak in sentences again)
   if (state.seq !== seq) return;
@@ -1092,7 +1230,7 @@ async function openPerson(c) {
   const seq = ++state.seq;
   state.sel = c;
   state.positions = null; state.posAll = false;
-  state.bills = null; state.bio = null;
+  state.bills = null; state.bio = null; state.bioSnap = false;
   state.billPile = ""; state.billQ = ""; state.billShown = 20;
   state.votesByK = {}; state.vPage = 1;
   state.vK = c.cmb.length ? c.cmb[0].KnessetId : null; state.voteQ = "";

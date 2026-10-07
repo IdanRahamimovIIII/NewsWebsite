@@ -162,6 +162,9 @@ const BILLS = [
 const json = o => ({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 
+/* the relay's address as config.js has it (the old workers.dev name kept for old shells) */
+const isRelay = url => /^https:\/\/(our-money\.|api\.ourmoneyil\.com\/)/.test(url.href);
+
 /* answer like the relay: /?url=<real address> (GET or POST), /data/<name> */
 function answer(route) {
   const u = new URL(route.request().url());
@@ -241,14 +244,14 @@ const ok = (name, cond, extra = '') => {
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const page = await browser.newPage();
 page.on('pageerror', e => ok('no page error', false, String(e)));
-await page.route(url => url.href.startsWith('https://our-money.'), answer);
-await page.route(url => !url.href.startsWith(`http://localhost:${PORT}/`) && !url.href.startsWith('https://our-money.'), r => r.abort());
+await page.route(isRelay, answer);
+await page.route(url => !url.href.startsWith(`http://localhost:${PORT}/`) && !isRelay(url), r => r.abort());
 
 console.log('\nthe directory + nav:');
 await page.goto(`http://localhost:${PORT}/mk/index.html`, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('#dir .dircard');
 const tabs = await page.$$eval('nav.tabs a', els => els.map(e => e.getAttribute('href')));
-ok('the nav has four tabs', tabs.length === 4, tabs.join(','));
+ok('the nav has three tabs (budget · law · MKs)', tabs.length === 3, tabs.join(','));
 ok('the MK page is the active tab', await page.$eval('nav.tabs a.active', e => e.getAttribute('href')) === '../mk/');
 const chips = await page.$$eval('#dir .dircard .dcname', els => els.map(e => e.textContent));
 ok('the directory lists this Knesset\'s members once each', chips.length === 5, chips.join(','));
@@ -272,7 +275,7 @@ const lapid = await cardOf('יאיר לפיד'), cohen = await cardOf('משה כ
 ok('a leaver\'s years close at the year they left', left.years === '2015–2024', left.years);
 ok('a leaver\'s role is the last one of substance, with years', left.role === 'סגן יושב–ראש הכנסת · 2022–2023', left.role);
 ok('party from the votes directory, trailing space trimmed', lapid.party === 'יש עתיד', lapid.party);
-ok('card order: name, then role, then party', await page.$eval('#dir .dircard', e => [...e.children].map(c => c.className).join(',')).then(s => /dcname,dcrole,dcparty/.test(s)));
+ok('card order: name, then role, then party', await page.$eval('#dir .dircard', e => [...e.children].map(c => c.classList[0]).join(',')).then(s => /dcname,dcrole,dcparty/.test(s)));   // (a role held now adds "now")
 ok('the "בראשות <leader>" suffix is dropped from a party name', cohen.party === 'עוצמה יהודית', cohen.party);
 ok('years start at the register\'s earliest row, not just the votes directory', lapid.years === '2020–היום', lapid.years);
 ok('the heaviest current role of substance is the role line', lapid.role === 'ראש הממשלה' && cohen.role === 'שר האוצר', lapid.role + ' / ' + cohen.role);
@@ -363,9 +366,10 @@ await page.waitForFunction(() => document.getElementById('positions').querySelec
 const story = await page.textContent('#phead .story');
 ok('the story line: faction · in the Knesset since the register\'s first year', story.includes('יש עתיד') && story.includes('בכנסת מאז 2020'), story);
 ok('…and nothing else (the PM spans are the timeline\'s job)', !story.includes('ראש הממשלה'), story);
-ok('the faction explanation is two short sentences', (await page.$eval('#phead .factionname', e => e.title)).length < 140);
+const ftip = await page.$eval('#phead .factionname', e => e.dataset.tip || '');
+ok('the faction explanation is two short sentences', !!ftip && ftip.split(/[.!?](\s|$)/).filter(x => x && x.trim()).length === 2, ftip);
 ok('no list of Knesset numbers anywhere in the hero', !(await page.textContent('#phead')).includes('24, 25'));
-ok('the faction name carries its explanation (no underline any more)', (await page.$eval('#phead .factionname', e => e.title)).includes('לא תמיד זהה למפלגה')
+ok('the faction name carries its explanation (no underline any more)', (await page.$eval('#phead .factionname', e => e.dataset.tip || '')).includes('לא תמיד זהה למפלגה')
   && await page.$('#phead .term') === null);
 ok('the counts carry explanations on hover', (await page.$$eval('#ptiles .bleg .chip', els => els.every(e => (e.dataset.tip || '').length > 20))));
 ok('the role by the name is the same size as the name', await page.$eval('#phead .mkrole', e => getComputedStyle(e).fontSize) === await page.$eval('#phead .mkname', e => getComputedStyle(e).fontSize));
@@ -515,12 +519,69 @@ await page.click('#langbtn');
 ok('English flips the direction', await page.$eval('html', e => e.dir) === 'ltr');
 ok('English strings appear', (await page.textContent('#profile')).includes('What did they do over the years?'));
 const page2 = await browser.newPage();
-await page2.route(url => url.href.startsWith('https://our-money.'), answer);
-await page2.route(url => !url.href.startsWith(`http://localhost:${PORT}/`) && !url.href.startsWith('https://our-money.'), r => r.abort());
+await page2.route(isRelay, answer);
+await page2.route(url => !url.href.startsWith(`http://localhost:${PORT}/`) && !isRelay(url), r => r.abort());
 await page2.goto(`http://localhost:${PORT}/mk/index.html?name=${encodeURIComponent('לפיד יאיר')}`, { waitUntil: 'domcontentloaded' });
 await page2.waitForSelector('.mkname');
 ok('?name= opens the portfolio directly', (await page2.$eval('.mkname', e => e.firstChild.textContent.trim())) === 'יאיר לפיד');
 await page2.close();
+
+/* the Knesset geo-blocks servers abroad (seen from 2026-10-05): the relay gets
+   its 200 HTML "Unavailable" page (an older worker passed it through) or says
+   502 {"error":"blocked"} (the current one); a reader ABROAD can't reach the
+   Knesset directly either. Only our KV snapshots answer. */
+console.log('\nthe Knesset blocks the relay, the reader is abroad (saved cards only):');
+const BLOCK_HTML = '<!DOCTYPE html><html dir="rtl"><head><style>body{margin:0}</style></head><title>Unavailable</title><body>The site is temporarily<br /> inaccessible from <br />your location</body></html>';
+const CARDS = { knesset: 25, members: {
+  800: { id: 800, pids: [2605], he: 'יאיר לפיד', current: true, role: 'ראש האופוזיציה', faction: 'יש עתיד', since: 2013, until: null,
+    knessets: [25, 24], bills: { proposed: 10, passed: 3 }, photo: null, bio: [['factBorn', '1963 · תל-אביב']],
+    positions: [{ role: 'ראש האופוזיציה', y0: 2023, y1: null, k: 25, now: true }, { role: 'ראש הממשלה', y0: 2022, y1: 2022, k: 24, now: false }] },
+  400: { id: 400, pids: [2700], he: 'בנימין גנץ', current: true, role: '', faction: 'כחול לבן', since: 2019, until: null,
+    knessets: [25], bills: null, photo: null, bio: [], positions: [] },                         // no role, laws unknowable
+  300: { id: 300, pids: [3300], he: 'דוד ותיק', current: false, role: '', faction: 'הליכוד', since: 2003, until: 2015,
+    knessets: [19, 18, 17, 16], bills: { proposed: 4, passed: 0 }, photo: null, bio: [],
+    positions: [{ role: 'שר האוצר', y0: 2009, y1: 2013, k: 18, now: false }] },                // a leaver: his last role
+} };
+const MKBILLS = [{ n: 'חוק ההדגמה', s: 'התקבלה בקריאה שלישית', k: 25, b: 'passed' },
+                 { n: 'הצעת חוק שנפלה', s: 'הוסרה מסדר היום', k: 24, b: 'rejected' }];
+function blockedAnswer(route) {
+  const u = new URL(route.request().url());
+  if (u.pathname === '/data/mkcards') return route.fulfill(json({ t: Date.UTC(2026, 8, 25), data: CARDS }));
+  if (u.pathname === '/data/mkbills/800') return route.fulfill(json({ t: Date.UTC(2026, 8, 25), data: MKBILLS }));
+  if (u.pathname.startsWith('/data/')) return answer(route);                      // persons, bills, photos: as before
+  const target = u.searchParams.get('url') || '';
+  if (target.includes('GetVotesCmbData'))                                          // the older relay: the page as "data"
+    return route.fulfill({ status: 200, contentType: 'text/html', body: BLOCK_HTML });
+  return route.fulfill({ status: 502, contentType: 'application/json',
+    body: JSON.stringify({ error: 'blocked', host: 'knesset.gov.il', message: 'geo-block' }) });
+}
+const page3 = await browser.newPage();
+const p3errors = [];
+page3.on('pageerror', e => p3errors.push(String(e)));
+await page3.route(isRelay, blockedAnswer);
+await page3.route(url => !url.href.startsWith(`http://localhost:${PORT}/`) && !isRelay(url), r => r.abort());   // abroad: no direct Knesset
+await page3.goto(`http://localhost:${PORT}/mk/index.html`, { waitUntil: 'domcontentloaded' });
+await page3.waitForSelector('#dir .dircard');
+const cards3 = await page3.$$eval('#dir .dircard', els => els.map(e => ({
+  name: (e.querySelector('.dcname') || {}).textContent, role: (e.querySelector('.dcrole') || {}).textContent,
+  years: (e.querySelector('.dcyears') || {}).textContent || '', bills: (e.querySelector('.dcbills') || {}).textContent || '' })));
+ok('the grid is built from the saved cards — all of them, not an error', cards3.length === 3, JSON.stringify(cards3));
+ok('…and says so, with the copy\'s date', await page3.$eval('#dir .snapnote', e => /2026/.test(e.textContent)).catch(() => false));
+ok('…in the page\'s order: a role held now first, the leaver last',
+  cards3.map(c => c.name).join('|') === 'יאיר לפיד|בנימין גנץ|דוד ותיק', cards3.map(c => c.name).join('|'));
+ok('a sitting member\'s card: the card\'s role and laws count', cards3[0] && cards3[0].role === 'ראש האופוזיציה' && /3/.test(cards3[0].bills), JSON.stringify(cards3[0]));
+ok('no role → the plain member line; unknowable laws → no line (never "0")', cards3[1] && cards3[1].role && !/ראש|שר/.test(cards3[1].role) && cards3[1].bills === '', JSON.stringify(cards3[1]));
+ok('a leaver: his last role with its years, and his years in office', cards3[2] && cards3[2].role === 'שר האוצר · 2009–2013' && cards3[2].years === '2003–2015', JSON.stringify(cards3[2]));
+await page3.click('#dir .dircard');
+await page3.waitForFunction(() => /חוק ההדגמה/.test(document.getElementById('bills').textContent) &&
+  !!document.querySelector('#positions .posrow') && !document.querySelector('#mkvotes .loading'));
+ok('bills: the saved list, labelled as the saved copy', await page3.$eval('#bills', e => !!e.querySelector('.snapnote') && e.textContent.includes('חוק ההדגמה')));
+ok('positions: the card\'s highlights, labelled as only those',
+  await page3.$eval('#positions', e => !!e.querySelector('.snapnote') && e.textContent.includes('ראש האופוזיציה') && e.textContent.includes('2022')));
+ok('votes: an honest error, never "no votes"', await page3.$eval('#mkvotes', e => !!e.querySelector('.error')));
+ok('background: the card\'s facts', (await page3.textContent('#ptiles')).includes('1963'));
+ok('no page error while everything upstream failed', !p3errors.length, p3errors.join(' | '));
+await page3.close();
 
 await browser.close();
 server.close();
